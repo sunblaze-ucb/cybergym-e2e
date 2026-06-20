@@ -1,0 +1,133 @@
+From 1a18793a02e1dab7676d594366b93847fde6fe44 Mon Sep 17 00:00:00 2001
+From: Michael Vrhel <michael.vrhel@artifex.com>
+Date: Wed, 13 Apr 2022 16:37:07 -0700
+Subject: [PATCH] Bug 705197  OSS 46307
+
+In the example of Bug 705197 the PDF interpreter
+reuses a pattern during a circular reference causing an aliasing
+of two nested patterns, one of which has a softmask. The change in
+the buffer size of the inner one blows away the color information of the
+outer one leading to a mismatch of color spaces. Added a check
+in the pdf14 group composition to catch the case when the color space sizes
+are wrong and avoid buffer over-runs that would occur when we try
+to do the group composition.  I return a Fatal error to the interpreter
+thinking it would stop but it seems to swallow this and continue on its way.
+Clearly being in this situation indicates something very bad has
+happened I would expect to see GS error out when this occurs.
+---
+ base/gdevp14.c  | 21 +++++++++++++++++++--
+ base/gsptype1.c |  6 +++---
+ base/gxpcmap.c  |  6 +++---
+ 3 files changed, 25 insertions(+), 8 deletions(-)
+
+diff --git a/base/gdevp14.c b/base/gdevp14.c
+index af594ff1f..d0fa9d881 100644
+--- a/base/gdevp14.c
++++ b/base/gdevp14.c
+@@ -1614,6 +1614,23 @@ pdf14_pop_transparency_group(gs_gstate *pgs, pdf14_ctx *ctx,
+         return 0;
+     }
+ 
++    /* Before we get started, lets see if we have somehow gotten into
++       what should be an impossible situation where the group color
++       information does not match the buffer color information. This
++       can occur is there were memory issues that have perhaps blown
++       away information, or in the example of Bug 705197 the PDF interpreter
++       reuses a pattern during a circular reference causing an aliasing
++       of two nested patterns, one of which has a softmask. The change in
++       the buffer size of the inner one blows away the buffer of the
++       outer one leading to a mismatch of color spaces.  This is clearly
++       a problem, and one that should be solved by the interpreter. Here
++       we can at least catch the case when the color space sizes have
++       changed and avoid buffer over-runs that would occur when we try
++       to do the group composition */
++    if (nos->n_chan - 1 != nos->group_color_info->num_components ||
++        tos->n_chan - 1 != tos_num_color_comp)
++        return_error(gs_error_Fatal);
++
+     /* Here is the case with the soft mask.  Go ahead and create a new
+        target buffer (nos) with the same color information etc, but blank
+        and go ahead and do the blend with the softmask so that it gets applied. */
+@@ -5180,7 +5197,7 @@ pdf14_tile_pattern_fill(gx_device * pdev, const gs_gstate * pgs,
+                 curr_clip_rect = cpath_intersection.rect_list->list.head->next;
+                 for( k = 0; k < cpath_intersection.rect_list->list.count && code >= 0; k++){
+                     if_debug5m('v', pgs->memory,
+-                               "[v]pdf14_tile_pattern_fill, (%d, %d), %d x %d pat_id %d \n",
++                               "[v]pdf14_tile_pattern_fill, (%d, %d), %d x %d pat_id %u \n",
+                                curr_clip_rect->xmin, curr_clip_rect->ymin,
+                                curr_clip_rect->xmax-curr_clip_rect->xmin,
+                                curr_clip_rect->ymax-curr_clip_rect->ymin, (int)ptile->id);
+@@ -5192,7 +5209,7 @@ pdf14_tile_pattern_fill(gx_device * pdev, const gs_gstate * pgs,
+             } else if (cpath_intersection.rect_list->list.count == 1) {
+                 /* The case when there is just a single rect */
+                 if_debug5m('v', pgs->memory,
+-                           "[v]pdf14_tile_pattern_fill, (%d, %d), %d x %d pat_id %d \n",
++                           "[v]pdf14_tile_pattern_fill, (%d, %d), %d x %d pat_id %u \n",
+                            cpath_intersection.rect_list->list.single.xmin,
+                            cpath_intersection.rect_list->list.single.ymin,
+                            cpath_intersection.rect_list->list.single.xmax-
+diff --git a/base/gsptype1.c b/base/gsptype1.c
+index 75f6b9529..cea1ad3bc 100644
+--- a/base/gsptype1.c
++++ b/base/gsptype1.c
+@@ -1960,7 +1960,7 @@ gx_dc_pattern_write(
+            Just write the tile id. */
+         gs_id id = ptile->id; /* Ensure sizeof(gs_id). */
+         if_debug2m('v', dev->memory,
+-                   "[v*] Writing trans tile ID into clist, uid = %ld id = %ld \n",
++                   "[v*] Writing trans tile ID into clist, uid = %ld id = %u \n",
+                    ptile->uid.id, ptile->id);
+         memcpy(dp, &ptile->id, sizeof(id));
+         *psize = sizeof(gs_id);
+@@ -1972,7 +1972,7 @@ gx_dc_pattern_write(
+        the clist */
+         if (ptile->ttrans != NULL) {
+             if_debug2m('v', dev->memory,
+-                       "[v*] Writing trans tile into clist, uid = %ld id = %ld \n",
++                       "[v*] Writing trans tile into clist, uid = %ld id = %u \n",
+                        ptile->uid.id, ptile->id);
+             return gx_dc_pattern_trans_write_raster(ptile, offset, data, psize);
+         }
+@@ -2286,7 +2286,7 @@ gx_dc_pattern_read(
+                 ptile->ttrans->deep = deep;
+                 pdevc->type = &gx_dc_pattern_trans;
+                 if_debug2m('v', pgs->memory,
+-                           "[v*] Reading trans tile from clist into cache, uid = %ld id = %ld \n",
++                           "[v*] Reading trans tile from clist into cache, uid = %ld id = %u \n",
+                            ptile->uid.id, ptile->id);
+ 
+                 code = gx_dc_pattern_read_trans_buff(ptile, offset1, dp, left, mem);
+diff --git a/base/gxpcmap.c b/base/gxpcmap.c
+index 43682e03f..9f2683a67 100644
+--- a/base/gxpcmap.c
++++ b/base/gxpcmap.c
+@@ -947,7 +947,7 @@ gx_pattern_cache_free_entry(gx_pattern_cache * pcache, gx_color_tile * ctile)
+ 
+         if (ctile->ttrans != NULL) {
+             if_debug2m('v', mem,
+-                       "[v*] Freeing trans pattern from cache, uid = %ld id = %ld\n",
++                       "[v*] Freeing trans pattern from cache, uid = %ld id = %u\n",
+                        ctile->uid.id, ctile->id);
+             if ( ctile->ttrans->pdev14 == NULL) {
+                 /* This can happen if we came from the clist */
+@@ -1192,7 +1192,7 @@ gx_pattern_cache_add_entry(gs_gstate * pgs,
+             ctile->tmask.data = 0;
+         if (trans != 0) {
+             if_debug2m('v', pgs->memory,
+-                       "[v*] Adding trans pattern to cache, uid = %ld id = %ld\n",
++                       "[v*] Adding trans pattern to cache, uid = %ld id = %u\n",
+                        ctile->uid.id, ctile->id);
+             ctile->ttrans = trans;
+         }
+@@ -1524,7 +1524,7 @@ gx_pattern_load(gx_device_color * pdc, const gs_gstate * pgs,
+     if (code < 0)
+         goto fail;
+     if (pinst->templat.uses_transparency) {
+-        if_debug0m('v', mem, "gx_pattern_load: pushing the pdf14 compositor device into this graphics state\n");
++        if_debug1m('v', mem, "gx_pattern_load: pushing the pdf14 compositor device into this graphics state pat_id = %u\n", pinst->id);
+         if ((code = gs_push_pdf14trans_device(saved, true, false, 0, 0)) < 0)   /* spot_color_count taken from pdf14 target values */
+             return code;
+         saved->device->is_open = true;
+-- 
+2.43.2
+

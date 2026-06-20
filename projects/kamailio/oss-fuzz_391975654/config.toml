@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:391975654"
+target_prog = "fuzz_parse_msg"
+vul_commit = "65e51b776290a1981e9ac27fbe6b47813516bc8b"
+patch_commit = "200cdb318569191cd012dfe99b252f98fe9623b9"
+build_image = "cybergym/e2e:kamailio"

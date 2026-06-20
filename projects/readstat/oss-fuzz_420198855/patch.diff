@@ -1,0 +1,69 @@
+From 039118f405d4094790c61b6467b90e193731f180 Mon Sep 17 00:00:00 2001
+From: Evan Miller <emmiller@gmail.com>
+Date: Mon, 26 May 2025 05:57:51 -0400
+Subject: [PATCH] Fix buffer overflow
+
+---
+ src/spss/readstat_sav_parse.c  | 8 ++++----
+ src/spss/readstat_sav_parse.rl | 4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/spss/readstat_sav_parse.c b/src/spss/readstat_sav_parse.c
+index 40c36a3..43846a2 100644
+--- a/src/spss/readstat_sav_parse.c
++++ b/src/spss/readstat_sav_parse.c
+@@ -411,13 +411,13 @@ _match:
+                 // been set when this record is processed. So just set the longname to every
+                 // matching variable, ghost or real.
+                 varlookup_t *iter_match = found;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match >= table) {
++                while (iter_match >= table && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match--;
+                 }
+                 iter_match = found + 1;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match - table < var_count) {
++                while (iter_match - table < var_count && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match++;
+@@ -471,13 +471,13 @@ _again:
+                 // been set when this record is processed. So just set the longname to every
+                 // matching variable, ghost or real.
+                 varlookup_t *iter_match = found;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match >= table) {
++                while (iter_match >= table && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match--;
+                 }
+                 iter_match = found + 1;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match - table < var_count) {
++                while (iter_match - table < var_count && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match++;
+diff --git a/src/spss/readstat_sav_parse.rl b/src/spss/readstat_sav_parse.rl
+index 0617202..eb3fd07 100644
+--- a/src/spss/readstat_sav_parse.rl
++++ b/src/spss/readstat_sav_parse.rl
+@@ -112,13 +112,13 @@ readstat_error_t sav_parse_long_variable_names_record(void *data, int count, sav
+                 // been set when this record is processed. So just set the longname to every
+                 // matching variable, ghost or real.
+                 varlookup_t *iter_match = found;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match >= table) {
++                while (iter_match >= table && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match--;
+                 }
+                 iter_match = found + 1;
+-                while (strcmp(iter_match->name, temp_key) == 0 && iter_match - table < var_count) {
++                while (iter_match - table < var_count && strcmp(iter_match->name, temp_key) == 0) {
+                     spss_varinfo_t *info = ctx->varinfo[iter_match->index];
+                     snprintf(info->longname, sizeof(info->longname), "%*s", (int)str_len, temp_val);
+                     iter_match++;
+-- 
+2.25.1
+

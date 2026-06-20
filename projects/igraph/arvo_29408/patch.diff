@@ -1,0 +1,24 @@
+From 47eec2c3a87e0c129766046ad15b074eb60a1213 Mon Sep 17 00:00:00 2001
+From: Tamas Nepusz <ntamas@gmail.com>
+Date: Tue, 12 Jan 2021 21:36:54 +0100
+Subject: [PATCH] fix: fix a double-free problem in igraph_read_graph_gml
+
+---
+ src/io/gml.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/io/gml.c b/src/io/gml.c
+index 71e524822..635bd37fe 100644
+--- a/src/io/gml.c
++++ b/src/io/gml.c
+@@ -222,7 +222,6 @@ int igraph_read_graph_gml(igraph_t *graph, FILE *instream) {
+     if (i >= 0 &&
+         igraph_gml_tree_type(context.tree, i) == IGRAPH_I_GML_TREE_INTEGER &&
+         igraph_gml_tree_get_integer(context.tree, i) != 1) {
+-        igraph_gml_tree_destroy(context.tree);
+         IGRAPH_ERROR("Unknown GML version", IGRAPH_UNIMPLEMENTED);
+         /* RETURN HERE!!!! */
+     }
+-- 
+2.43.2
+

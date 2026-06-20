@@ -1,0 +1,4 @@
+task_id = "arvo:25530"
+target_prog = "sndfile_fuzzer"
+vul_commit = "2db6a8fd2e1e7d9d1ad309d4f4110712f7cb4e5d"
+patch_commit = "3970faeb7fc8cee60cc5260ab4102433c37d5d63"

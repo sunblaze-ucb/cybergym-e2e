@@ -1,0 +1,25 @@
+From 601dd1a7483cae70c0007c6a3ae90c5fb516c61e Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Wed, 5 Feb 2025 19:10:41 +0000
+Subject: [PATCH] [face-builder] Fix an OOM issue
+
+Fixes https://oss-fuzz.com/testcase-detail/5721476158521344
+---
+ src/hb-face.cc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/hb-face.cc b/src/hb-face.cc
+index 34fec1f3b..90355f5e9 100644
+--- a/src/hb-face.cc
++++ b/src/hb-face.cc
+@@ -677,6 +677,7 @@ hb_face_set_get_table_tags_func (hb_face_t *face,
+   {
+     if (destroy)
+       destroy (user_data);
++    return;
+   }
+ 
+   if (face->get_table_tags_destroy)
+-- 
+2.25.1
+

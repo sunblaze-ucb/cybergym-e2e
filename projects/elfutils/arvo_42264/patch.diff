@@ -1,0 +1,139 @@
+From d844d1575522b5ad9ada0aa3c26105230a1c1884 Mon Sep 17 00:00:00 2001
+From: Mark Wielaard <mark@klomp.org>
+Date: Sun, 19 Dec 2021 21:11:13 +0100
+Subject: [PATCH] libdwfl: Rewrite GElf_Nhdr reading in
+ dwfl_segment_report_module
+
+Make sure that the notes filesz is not too big. Rewrite reading of the
+notes to check for overflow at every step. Also limit the size of the
+buildid bytes.
+
+Signed-off-by: Mark Wielaard <mark@klomp.org>
+---
+ libdwfl/ChangeLog                    |  5 ++
+ libdwfl/dwfl_segment_report_module.c | 79 ++++++++++++++++------------
+ 2 files changed, 49 insertions(+), 35 deletions(-)
+
+diff --git a/libdwfl/ChangeLog b/libdwfl/ChangeLog
+index 1f83576d..18ffc347 100644
+--- a/libdwfl/ChangeLog
++++ b/libdwfl/ChangeLog
+@@ -1,3 +1,8 @@
++2021-12-19  Mark Wielaard  <mark@klomp.org>
++
++	* dwfl_segment_report_module.c (dwfl_segment_report_module): Check
++	notes filesz. Rewrite reading of GElf_Nhdr.
++
+ 2021-12-08  Mark Wielaard  <mark@klomp.org>
+ 
+ 	* dwfl_segment_report_module.c (dwfl_segment_report_module): Make sure
+diff --git a/libdwfl/dwfl_segment_report_module.c b/libdwfl/dwfl_segment_report_module.c
+index 78c70795..a6d6be85 100644
+--- a/libdwfl/dwfl_segment_report_module.c
++++ b/libdwfl/dwfl_segment_report_module.c
+@@ -520,6 +520,9 @@ dwfl_segment_report_module (Dwfl *dwfl, int ndx, const char *name,
+               if (data_size != 0)
+                 filesz = data_size;
+ 
++	      if (filesz > SIZE_MAX / sizeof (Elf32_Nhdr))
++		continue;
++
+               assert (sizeof (Elf32_Nhdr) == sizeof (Elf64_Nhdr));
+ 
+               void *notes;
+@@ -532,6 +535,8 @@ dwfl_segment_report_module (Dwfl *dwfl, int ndx, const char *name,
+                 {
+                   const unsigned int xencoding = ehdr.e32.e_ident[EI_DATA];
+ 
++		  if (filesz > SIZE_MAX / sizeof (Elf32_Nhdr))
++		    continue;
+                   notes = malloc (filesz);
+                   if (unlikely (notes == NULL))
+                     continue; /* Next header */
+@@ -552,44 +557,48 @@ dwfl_segment_report_module (Dwfl *dwfl, int ndx, const char *name,
+ 
+               const GElf_Nhdr *nh = notes;
+               size_t len = 0;
+-              size_t last_len;
+-              while (filesz > len + sizeof (*nh))
++              while (filesz - len > sizeof (*nh))
+                 {
+-                  const void *note_name;
+-                  const void *note_desc;
+-                  last_len = len;
+-
+-                  len += sizeof (*nh);
+-                  note_name = notes + len;
+-
+-                  len += nh->n_namesz;
+-                  len = align == 8 ? NOTE_ALIGN8 (len) : NOTE_ALIGN4 (len);
+-                  note_desc = notes + len;
+-
+-                  if (unlikely (filesz < len + nh->n_descsz
+-                                || len <= last_len
+-                                || len + nh->n_descsz < last_len))
+-                    break;
+-
+-                  if (nh->n_type == NT_GNU_BUILD_ID
+-                      && nh->n_descsz > 0
+-                      && nh->n_namesz == sizeof "GNU"
+-                      && !memcmp (note_name, "GNU", sizeof "GNU"))
+-                    {
+-                      build_id.vaddr = (note_desc
++		  len += sizeof (*nh);
++
++		  size_t namesz = nh->n_namesz;
++		  namesz = align == 8 ? NOTE_ALIGN8 (namesz) : NOTE_ALIGN4 (namesz);
++		  if (namesz > filesz - len || len + namesz < namesz)
++		    break;
++
++		  void *note_name = notes + len;
++		  len += namesz;
++
++		  size_t descsz = nh->n_descsz;
++		  descsz = align == 8 ? NOTE_ALIGN8 (descsz) : NOTE_ALIGN4 (descsz);
++		  if (descsz > filesz - len || len + descsz < descsz)
++		    break;
++
++		  void *note_desc = notes + len;
++		  len += descsz;
++
++		  /* We don't handle very short or really large build-ids.  We need at
++		     at least 3 and allow for up to 64 (normally ids are 20 long).  */
++#define MIN_BUILD_ID_BYTES 3
++#define MAX_BUILD_ID_BYTES 64
++		  if (nh->n_type == NT_GNU_BUILD_ID
++		      && nh->n_descsz >= MIN_BUILD_ID_BYTES
++		      && nh->n_descsz <= MAX_BUILD_ID_BYTES
++		      && nh->n_namesz == sizeof "GNU"
++		      && !memcmp (note_name, "GNU", sizeof "GNU"))
++		    {
++		      build_id.vaddr = (note_desc
+ 					- (const void *) notes
+ 					+ note_vaddr);
+-                      build_id.len = nh->n_descsz;
+-                      build_id.memory = malloc (build_id.len);
+-                      if (likely (build_id.memory != NULL))
+-                        memcpy (build_id.memory, note_desc, build_id.len);
+-                      break;
+-                    }
+-
+-                  len += nh->n_descsz;
+-                  len = align == 8 ? NOTE_ALIGN8 (len) : NOTE_ALIGN4 (len);
+-                  nh = (void *) notes + len;
+-                }
++		      build_id.len = nh->n_descsz;
++		      build_id.memory = malloc (build_id.len);
++		      if (likely (build_id.memory != NULL))
++			memcpy (build_id.memory, note_desc, build_id.len);
++		      break;
++		    }
++
++		  nh = (void *) notes + len;
++		}
+ 
+               if (notes != data)
+                 free (notes);
+-- 
+2.43.2
+

@@ -1,0 +1,65 @@
+From b7e119beadd56e5d6aefcf4a3edee33dc78c92c6 Mon Sep 17 00:00:00 2001
+From: Marti Maria <marti.maria@littlecms.com>
+Date: Tue, 26 Jul 2022 08:53:11 +0200
+Subject: [PATCH] Check for duplicated tags
+
+If so, discard profile
+---
+ src/cmscnvrt.c |  2 +-
+ src/cmsio0.c   | 17 +++++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/src/cmscnvrt.c b/src/cmscnvrt.c
+index fe25525..abac021 100644
+--- a/src/cmscnvrt.c
++++ b/src/cmscnvrt.c
+@@ -386,7 +386,7 @@ cmsBool ComputeConversion(cmsUInt32Number i,
+ 
+         if (BPC) {
+ 
+-            cmsCIEXYZ BlackPointIn, BlackPointOut;
++            cmsCIEXYZ BlackPointIn = { 0, 0, 0}, BlackPointOut = { 0, 0, 0 };
+ 
+             cmsDetectBlackPoint(&BlackPointIn,  hProfiles[i-1], Intent, 0);
+             cmsDetectDestinationBlackPoint(&BlackPointOut, hProfiles[i], Intent, 0);
+diff --git a/src/cmsio0.c b/src/cmsio0.c
+index f02d240..9c07aa1 100644
+--- a/src/cmsio0.c
++++ b/src/cmsio0.c
+@@ -815,11 +815,11 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
+ 
+        // Search for links
+         for (j=0; j < Icc ->TagCount; j++) {
+-
++           
+             if ((Icc ->TagOffsets[j] == Tag.offset) &&
+                 (Icc ->TagSizes[j]   == Tag.size)) {
+ 
+-                // Check types. Abort whole profile if a forged link is found
++                // Check types. 
+                 if (CompatibleTypes(_cmsGetTagDescriptor(Icc->ContextID, Icc->TagNames[j]),
+                                     _cmsGetTagDescriptor(Icc->ContextID, Tag.sig))) {
+ 
+@@ -832,6 +832,19 @@ cmsBool _cmsReadHeader(_cmsICCPROFILE* Icc)
+         Icc ->TagCount++;
+     }
+ 
++
++    for (i = 0; i < Icc->TagCount; i++) {
++        for (j = 0; j < Icc->TagCount; j++) {
++
++            // Tags cannot be duplicate
++            if ((i != j) && (Icc->TagNames[i] == Icc->TagNames[j])) {
++                cmsSignalError(Icc->ContextID, cmsERROR_RANGE, "Duplicate tag found");
++                return FALSE;
++            }
++
++        }
++    }
++
+     return TRUE;
+ }
+ 
+-- 
+2.43.2
+

@@ -1,0 +1,7 @@
+name = "dav1d"
+language = "c++"
+homepage = "https://code.videolan.org/videolan/dav1d"
+main_repo = "https://code.videolan.org/videolan/dav1d.git"
+repo_to_patch = "dav1d"
+build_image = "n132/arvo:40933-fix"
+immutable_files = ["tests"]

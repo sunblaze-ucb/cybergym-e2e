@@ -1,0 +1,5 @@
+task_id = "arvo:58481"
+target_prog = "fuzzer_tool_flac"
+vul_commit = "4caaef6bf4189250b2e7a9038261e2ff0da86554"
+patch_commit = "183b22ac320c5e59f1d14b0fda395cecad38b932"
+build_image = "n132/arvo:58481-fix"

@@ -1,0 +1,52 @@
+From e83662f85c6f9534dc19e1a0cede55bebc64f21f Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Tue, 14 May 2019 19:52:58 +0200
+Subject: [PATCH] Fix buffer overflow in dotnet module. (#1063)
+
+Credit to OSS-Fuzz.
+---
+ libyara/modules/dotnet.c                                  |   9 +++------
+ ...fuzz-testcase-minimized-dotnet_fuzzer-5105966966636544 | Bin 0 -> 907 bytes
+ 2 files changed, 3 insertions(+), 6 deletions(-)
+ create mode 100644 tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5105966966636544
+
+diff --git a/libyara/modules/dotnet.c b/libyara/modules/dotnet.c
+index 4a65c75..9648a36 100644
+--- a/libyara/modules/dotnet.c
++++ b/libyara/modules/dotnet.c
+@@ -223,17 +223,14 @@ void dotnet_parse_us(
+   {
+     blob_result = dotnet_parse_blob_entry(pe, offset);
+ 
+-    if (blob_result.size == 0 || !fits_in_pe(pe, offset, blob_result.length))
+-    {
+-      set_integer(i, pe->object, "number_of_user_strings");
+-      return;
+-    }
++    if (blob_result.size == 0)
++      break;
+ 
+     offset += blob_result.size;
+     // Avoid empty strings, which usually happen as padding at the end of the
+     // stream.
+ 
+-    if (blob_result.length > 0)
++    if (blob_result.length > 0 && fits_in_pe(pe, offset, blob_result.length))
+     {
+       set_sized_string(
+          (char*) offset,
+diff --git a/tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5105966966636544 b/tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5105966966636544
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f7cb1f5d3db7084ba13454d689336bb81719188
+GIT binary patch
+literal 907
+zcmeZ`QUC)+CI$uwOF`j3jDd#+sc~RnU<hz!U~rs((2GY4t)>1e{09PDw&0Y&ssTea
+z(5nnsRgxiyVK^CPP)&<du$L3uFp@n940CX(g9D!7KTv-+5G#iU!;QqkV1S6xG#H3A
+a9O@P<u7n8z{R09pE=4rLRY<`G%WnWFCyVF+
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

@@ -1,0 +1,39 @@
+From 83cb6ff625a403b6d505c3b2f0fc23cebbd479bd Mon Sep 17 00:00:00 2001
+From: Pascal Quantin <pascal.quantin@gmail.com>
+Date: Mon, 2 Oct 2017 22:32:23 +0200
+Subject: [PATCH] GTPv2: fix out of bounds access when decoding Private
+ Extension IE
+
+Bug: 14095
+Change-Id: I85e481be269ee3103209668e2c924faef6f5b1ec
+Reviewed-on: https://code.wireshark.org/review/23816
+Reviewed-by: Pascal Quantin <pascal.quantin@gmail.com>
+---
+ epan/dissectors/packet-gtpv2.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/epan/dissectors/packet-gtpv2.c b/epan/dissectors/packet-gtpv2.c
+index feec0e3..026fb36 100644
+--- a/epan/dissectors/packet-gtpv2.c
++++ b/epan/dissectors/packet-gtpv2.c
+@@ -843,7 +843,7 @@ static const value_string gtpv2_message_type_vals[] = {
+ };
+ static value_string_ext gtpv2_message_type_vals_ext = VALUE_STRING_EXT_INIT(gtpv2_message_type_vals);
+ 
+-#define NUM_GTPV2_IES 255
++#define NUM_GTPV2_IES 256
+ static gint ett_gtpv2_ies[NUM_GTPV2_IES];
+ 
+ #define GTPV2_IE_RESERVED                 0
+@@ -1175,7 +1175,7 @@ static const value_string gtpv2_element_type_vals[] = {
+     {197, "Extended Protocol Configuration Options(ePCO)"},                     /* Variable Length / 8.128 */
+     {198, "Serving PLMN Rate Control"},                                         /* Extendable / 8.129 */
+     {199, "Counter" },                                                          /* Extendable / 8.130 */
+-                                                                                /* 1200 to 254    Spare. For future use.    */
++                                                                                /* 200 to 254    Spare. For future use.    */
+     {255, "Private Extension"},                                                 /* Variable Length / 8.67 */
+     {0, NULL}
+ };
+-- 
+2.7.4
+

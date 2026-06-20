@@ -1,0 +1,39 @@
+From 156156a80affdc63b851fbf7fdc01e4d41849eb0 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Fri, 7 Feb 2025 12:06:59 -0800
+Subject: [PATCH] Fix for id: DW202502-001 fuzzer: oss fuzz 394644267
+ datereported: 2025-02-05 Heap buffer overflow in dwarf_macro5.c Has been a
+ bug since dwarf_macro5 was first written in 2021 or so. 	modified:  
+ src/lib/libdwarf/dwarf_macro5.c
+
+---
+ src/lib/libdwarf/dwarf_macro5.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/libdwarf/dwarf_macro5.c b/src/lib/libdwarf/dwarf_macro5.c
+index 89f21272..b2b0284e 100644
+--- a/src/lib/libdwarf/dwarf_macro5.c
++++ b/src/lib/libdwarf/dwarf_macro5.c
+@@ -1322,8 +1322,10 @@ _dwarf_internal_macro_context_by_offset(Dwarf_Debug dbg,
+ 
+     section_base = dbg->de_debug_macro.dss_data;
+     section_size = dbg->de_debug_macro.dss_size;
++    /* guarding against overflow */
+     /*  The '3'  ensures the header initial bytes present too. */
+-    if ((3+macro_offset) >= section_size) {
++    if ((macro_offset >= section_size) || 
++        ((3+macro_offset) >= section_size) ) {
+         dealloc_macro_srcfiles(srcfiles,srcfilescount);
+         _dwarf_error(dbg, error, DW_DLE_MACRO_OFFSET_BAD);
+         return DW_DLV_ERROR;
+@@ -1331,7 +1333,6 @@ _dwarf_internal_macro_context_by_offset(Dwarf_Debug dbg,
+     macro_header = macro_offset + section_base;
+     macro_data = macro_header;
+     section_end = section_base +section_size;
+-
+     macro_context = (Dwarf_Macro_Context)
+         _dwarf_get_alloc(dbg,DW_DLA_MACRO_CONTEXT,1);
+     if (!macro_context) {
+-- 
+2.25.1
+

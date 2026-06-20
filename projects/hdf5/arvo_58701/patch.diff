@@ -1,0 +1,546 @@
+From 7aed6abd527e88243a450c7809cde6003de1cb6f Mon Sep 17 00:00:00 2001
+From: Sean McBride <sean@rogue-research.com>
+Date: Tue, 20 Feb 2024 12:19:50 -0500
+Subject: [PATCH] Replaced last sprintf with snprintf (#4007)
+
+* Replaced last sprintf with snprintf
+
+To have the size of the buffer, it was required to change a function signature, and change all users of it.
+
+In most cases, determining the buffer size wasn't  trivial and so SIZE_MAX is passed. But at least this improves the infrastructure. Someone can later figure out the correct sizes.
+---
+ src/H5Oainfo.c       |  6 ++++--
+ src/H5Oattr.c        |  4 ++--
+ src/H5Obogus.c       |  7 ++++---
+ src/H5Obtreek.c      |  6 ++++--
+ src/H5Ocache_image.c |  6 ++++--
+ src/H5Ocont.c        |  6 ++++--
+ src/H5Odrvinfo.c     |  7 ++++---
+ src/H5Oefl.c         |  6 ++++--
+ src/H5Ofsinfo.c      |  6 ++++--
+ src/H5Oginfo.c       |  6 ++++--
+ src/H5Olayout.c      |  6 ++++--
+ src/H5Olinfo.c       |  6 ++++--
+ src/H5Olink.c        |  6 ++++--
+ src/H5Omessage.c     |  4 ++--
+ src/H5Omtime.c       | 16 +++++++++-------
+ src/H5Oname.c        |  6 ++++--
+ src/H5Opkg.h         |  2 +-
+ src/H5Orefcount.c    |  7 ++++---
+ src/H5Oshared.h      |  2 +-
+ src/H5Oshmesg.c      |  6 ++++--
+ src/H5Ostab.c        |  6 ++++--
+ 21 files changed, 79 insertions(+), 48 deletions(-)
+
+diff --git a/src/H5Oainfo.c b/src/H5Oainfo.c
+index 10502123cd..8b82e39e2a 100644
+--- a/src/H5Oainfo.c
++++ b/src/H5Oainfo.c
+@@ -31,7 +31,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__ainfo_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                 size_t p_size, const uint8_t *p);
+-static herr_t H5O__ainfo_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__ainfo_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                const void *_mesg);
+ static void  *H5O__ainfo_copy(const void *_mesg, void *_dest);
+ static size_t H5O__ainfo_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__ainfo_free(void *_mesg);
+@@ -175,7 +176,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__ainfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__ainfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                  const void *_mesg)
+ {
+     const H5O_ainfo_t *ainfo = (const H5O_ainfo_t *)_mesg;
+     unsigned char      flags; /* Flags for encoding attribute info */
+diff --git a/src/H5Oattr.c b/src/H5Oattr.c
+index e86ec39432..6852ebc979 100644
+--- a/src/H5Oattr.c
++++ b/src/H5Oattr.c
+@@ -380,7 +380,7 @@ H5O__attr_encode(H5F_t *f, uint8_t *p, const void *mesg)
+         p += name_len;
+ 
+     /* encode the attribute datatype */
+-    if ((H5O_MSG_DTYPE->encode)(f, false, p, attr->shared->dt) < 0)
++    if ((H5O_MSG_DTYPE->encode)(f, false, SIZE_MAX, p, attr->shared->dt) < 0)
+         HGOTO_ERROR(H5E_ATTR, H5E_CANTENCODE, FAIL, "can't encode attribute datatype");
+ 
+     if (attr->shared->version < H5O_ATTR_VERSION_2) {
+@@ -391,7 +391,7 @@ H5O__attr_encode(H5F_t *f, uint8_t *p, const void *mesg)
+         p += attr->shared->dt_size;
+ 
+     /* encode the attribute dataspace */
+-    if ((H5O_MSG_SDSPACE->encode)(f, false, p, &(attr->shared->ds->extent)) < 0)
++    if ((H5O_MSG_SDSPACE->encode)(f, false, SIZE_MAX, p, &(attr->shared->ds->extent)) < 0)
+         HGOTO_ERROR(H5E_ATTR, H5E_CANTENCODE, FAIL, "can't encode attribute dataspace");
+ 
+     if (attr->shared->version < H5O_ATTR_VERSION_2) {
+diff --git a/src/H5Obogus.c b/src/H5Obogus.c
+index c9c2196b0f..4948d61c96 100644
+--- a/src/H5Obogus.c
++++ b/src/H5Obogus.c
+@@ -35,7 +35,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__bogus_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                 size_t p_size, const uint8_t *p);
+-static herr_t H5O__bogus_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__bogus_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                const void *_mesg);
+ static size_t H5O__bogus_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__bogus_debug(H5F_t *f, const void *_mesg, FILE *stream, int indent, int fwidth);
+ 
+@@ -142,8 +143,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__bogus_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p,
+-                  const void H5_ATTR_UNUSED *mesg)
++H5O__bogus_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size,
++                  uint8_t *p, const void H5_ATTR_UNUSED *mesg)
+ {
+     FUNC_ENTER_PACKAGE_NOERR
+ 
+diff --git a/src/H5Obtreek.c b/src/H5Obtreek.c
+index 7f56b43245..42e1ce0c32 100644
+--- a/src/H5Obtreek.c
++++ b/src/H5Obtreek.c
+@@ -24,7 +24,8 @@
+ 
+ static void  *H5O__btreek_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                  size_t p_size, const uint8_t *p);
+-static herr_t H5O__btreek_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__btreek_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                 const void *_mesg);
+ static void  *H5O__btreek_copy(const void *_mesg, void *_dest);
+ static size_t H5O__btreek_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__btreek_debug(H5F_t *f, const void *_mesg, FILE *stream, int indent, int fwidth);
+@@ -120,7 +121,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__btreek_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__btreek_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size,
++                   uint8_t *p, const void *_mesg)
+ {
+     const H5O_btreek_t *mesg = (const H5O_btreek_t *)_mesg;
+ 
+diff --git a/src/H5Ocache_image.c b/src/H5Ocache_image.c
+index 7c71178cc1..d91b46341c 100644
+--- a/src/H5Ocache_image.c
++++ b/src/H5Ocache_image.c
+@@ -36,7 +36,8 @@
+ /* Callbacks for message class */
+ static void *H5O__mdci_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__mdci_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__mdci_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                               const void *_mesg);
+ static void  *H5O__mdci_copy(const void *_mesg, void *_dest);
+ static size_t H5O__mdci_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__mdci_free(void *mesg);
+@@ -135,7 +136,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__mdci_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__mdci_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                 const void *_mesg)
+ {
+     const H5O_mdci_t *mesg = (const H5O_mdci_t *)_mesg;
+ 
+diff --git a/src/H5Ocont.c b/src/H5Ocont.c
+index ff082181d4..6894eca211 100644
+--- a/src/H5Ocont.c
++++ b/src/H5Ocont.c
+@@ -33,7 +33,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void *H5O__cont_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__cont_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__cont_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                               const void *_mesg);
+ static size_t H5O__cont_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__cont_free(void *mesg);
+ static herr_t H5O__cont_delete(H5F_t *f, H5O_t *open_oh, void *_mesg);
+@@ -122,7 +123,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__cont_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__cont_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                 const void *_mesg)
+ {
+     const H5O_cont_t *cont = (const H5O_cont_t *)_mesg;
+ 
+diff --git a/src/H5Odrvinfo.c b/src/H5Odrvinfo.c
+index 4ff9873886..baec777d0f 100644
+--- a/src/H5Odrvinfo.c
++++ b/src/H5Odrvinfo.c
+@@ -23,7 +23,8 @@
+ 
+ static void  *H5O__drvinfo_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                   size_t p_size, const uint8_t *p);
+-static herr_t H5O__drvinfo_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__drvinfo_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                  const void *_mesg);
+ static void  *H5O__drvinfo_copy(const void *_mesg, void *_dest);
+ static size_t H5O__drvinfo_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__drvinfo_reset(void *_mesg);
+@@ -135,8 +136,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__drvinfo_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p,
+-                    const void *_mesg)
++H5O__drvinfo_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size,
++                    uint8_t *p, const void *_mesg)
+ {
+     const H5O_drvinfo_t *mesg = (const H5O_drvinfo_t *)_mesg;
+ 
+diff --git a/src/H5Oefl.c b/src/H5Oefl.c
+index c06ecf6869..ebd92a733b 100644
+--- a/src/H5Oefl.c
++++ b/src/H5Oefl.c
+@@ -22,7 +22,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__efl_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__efl_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__efl_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                              const void *_mesg);
+ static void  *H5O__efl_copy(const void *_mesg, void *_dest);
+ static size_t H5O__efl_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__efl_reset(void *_mesg);
+@@ -197,7 +198,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__efl_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__efl_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                const void *_mesg)
+ {
+     const H5O_efl_t *mesg = (const H5O_efl_t *)_mesg;
+     size_t           u; /* Local index variable */
+diff --git a/src/H5Ofsinfo.c b/src/H5Ofsinfo.c
+index 70f34fe7ad..f9cb8feb11 100644
+--- a/src/H5Ofsinfo.c
++++ b/src/H5Ofsinfo.c
+@@ -30,7 +30,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__fsinfo_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                  size_t p_size, const uint8_t *p);
+-static herr_t H5O__fsinfo_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__fsinfo_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                 const void *_mesg);
+ static void  *H5O__fsinfo_copy(const void *_mesg, void *_dest);
+ static size_t H5O__fsinfo_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__fsinfo_free(void *mesg);
+@@ -222,7 +223,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__fsinfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__fsinfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                   const void *_mesg)
+ {
+     const H5O_fsinfo_t *fsinfo = (const H5O_fsinfo_t *)_mesg;
+     H5F_mem_page_t      ptype; /* Memory type for iteration */
+diff --git a/src/H5Oginfo.c b/src/H5Oginfo.c
+index 72d15afd64..645c5ff81a 100644
+--- a/src/H5Oginfo.c
++++ b/src/H5Oginfo.c
+@@ -29,7 +29,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__ginfo_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                 size_t p_size, const uint8_t *p);
+-static herr_t H5O__ginfo_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__ginfo_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                const void *_mesg);
+ static void  *H5O__ginfo_copy(const void *_mesg, void *_dest);
+ static size_t H5O__ginfo_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__ginfo_free(void *_mesg);
+@@ -158,7 +159,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__ginfo_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__ginfo_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size,
++                  uint8_t *p, const void *_mesg)
+ {
+     const H5O_ginfo_t *ginfo = (const H5O_ginfo_t *)_mesg;
+     unsigned char      flags = 0; /* Flags for encoding group info */
+diff --git a/src/H5Olayout.c b/src/H5Olayout.c
+index 1f2b6862b6..75456d6e85 100644
+--- a/src/H5Olayout.c
++++ b/src/H5Olayout.c
+@@ -31,7 +31,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__layout_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                  size_t p_size, const uint8_t *p);
+-static herr_t H5O__layout_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__layout_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                 const void *_mesg);
+ static void  *H5O__layout_copy(const void *_mesg, void *_dest);
+ static size_t H5O__layout_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__layout_reset(void *_mesg);
+@@ -794,7 +795,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__layout_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__layout_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                   const void *_mesg)
+ {
+     const H5O_layout_t *mesg = (const H5O_layout_t *)_mesg;
+     unsigned            u;
+diff --git a/src/H5Olinfo.c b/src/H5Olinfo.c
+index 9d26483b17..830e4e3113 100644
+--- a/src/H5Olinfo.c
++++ b/src/H5Olinfo.c
+@@ -33,7 +33,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__linfo_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                 size_t p_size, const uint8_t *p);
+-static herr_t H5O__linfo_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__linfo_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                const void *_mesg);
+ static void  *H5O__linfo_copy(const void *_mesg, void *_dest);
+ static size_t H5O__linfo_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__linfo_free(void *_mesg);
+@@ -183,7 +184,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__linfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__linfo_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                  const void *_mesg)
+ {
+     const H5O_linfo_t *linfo = (const H5O_linfo_t *)_mesg;
+     unsigned char      index_flags; /* Flags for encoding link index info */
+diff --git a/src/H5Olink.c b/src/H5Olink.c
+index 9d4d6853b0..6657a500c1 100644
+--- a/src/H5Olink.c
++++ b/src/H5Olink.c
+@@ -35,7 +35,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void *H5O__link_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__link_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__link_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                               const void *_mesg);
+ static void  *H5O__link_copy(const void *_mesg, void *_dest);
+ static size_t H5O__link_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__link_reset(void *_mesg);
+@@ -289,7 +290,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__link_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__link_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                 const void *_mesg)
+ {
+     const H5O_link_t *lnk = (const H5O_link_t *)_mesg;
+     uint64_t          len;        /* Length of a string in the message */
+diff --git a/src/H5Omessage.c b/src/H5Omessage.c
+index f6cafdc89a..bc4381b2dd 100644
+--- a/src/H5Omessage.c
++++ b/src/H5Omessage.c
+@@ -1597,7 +1597,7 @@ H5O_msg_encode(H5F_t *f, unsigned type_id, bool disable_shared, unsigned char *b
+     assert(type);
+ 
+     /* Encode */
+-    if ((type->encode)(f, disable_shared, buf, mesg) < 0)
++    if ((type->encode)(f, disable_shared, SIZE_MAX, buf, mesg) < 0)
+         HGOTO_ERROR(H5E_OHDR, H5E_CANTENCODE, FAIL, "unable to encode message");
+ 
+ done:
+@@ -1972,7 +1972,7 @@ H5O_msg_flush(H5F_t *f, H5O_t *oh, H5O_mesg_t *mesg)
+         }
+ #endif /* NDEBUG */
+         assert(mesg->type->encode);
+-        if ((mesg->type->encode)(f, false, mesg->raw, mesg->native) < 0)
++        if ((mesg->type->encode)(f, false, mesg->raw_size, mesg->raw, mesg->native) < 0)
+             HGOTO_ERROR(H5E_OHDR, H5E_CANTENCODE, FAIL, "unable to encode object header message");
+     } /* end if */
+ 
+diff --git a/src/H5Omtime.c b/src/H5Omtime.c
+index 9cf9400f90..864af930b4 100644
+--- a/src/H5Omtime.c
++++ b/src/H5Omtime.c
+@@ -24,12 +24,13 @@
+ 
+ static void  *H5O__mtime_new_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                     size_t p_size, const uint8_t *p);
+-static herr_t H5O__mtime_new_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__mtime_new_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                    const void *_mesg);
+ static size_t H5O__mtime_new_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ 
+ static void  *H5O__mtime_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                 size_t p_size, const uint8_t *p);
+-static herr_t H5O__mtime_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__mtime_encode(H5F_t *f, bool disable_shared, size_t p_size, uint8_t *p, const void *_mesg);
+ static void  *H5O__mtime_copy(const void *_mesg, void *_dest);
+ static size_t H5O__mtime_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__mtime_free(void *_mesg);
+@@ -221,8 +222,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__mtime_new_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p,
+-                      const void *_mesg)
++H5O__mtime_new_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared,
++                      size_t H5_ATTR_UNUSED p_size, uint8_t *p, const void *_mesg)
+ {
+     const time_t *mesg = (const time_t *)_mesg;
+ 
+@@ -257,7 +258,8 @@ H5O__mtime_new_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_share
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__mtime_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__mtime_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t p_size, uint8_t *p,
++                  const void *_mesg)
+ {
+     const time_t *mesg = (const time_t *)_mesg;
+     struct tm    *tm;
+@@ -271,8 +273,8 @@ H5O__mtime_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, u
+ 
+     /* encode */
+     tm = HDgmtime(mesg);
+-    sprintf((char *)p, "%04d%02d%02d%02d%02d%02d", 1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday,
+-            tm->tm_hour, tm->tm_min, tm->tm_sec);
++    snprintf((char *)p, p_size, "%04d%02d%02d%02d%02d%02d", 1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday,
++             tm->tm_hour, tm->tm_min, tm->tm_sec);
+ 
+     FUNC_LEAVE_NOAPI(SUCCEED)
+ } /* end H5O__mtime_encode() */
+diff --git a/src/H5Oname.c b/src/H5Oname.c
+index d60013717b..fc85c0bb9e 100644
+--- a/src/H5Oname.c
++++ b/src/H5Oname.c
+@@ -29,7 +29,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void *H5O__name_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__name_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__name_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                               const void *_mesg);
+ static void  *H5O__name_copy(const void *_mesg, void *_dest);
+ static size_t H5O__name_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__name_reset(void *_mesg);
+@@ -110,7 +111,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__name_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__name_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size,
++                 uint8_t *p, const void *_mesg)
+ {
+     const H5O_name_t *mesg = (const H5O_name_t *)_mesg;
+ 
+diff --git a/src/H5Opkg.h b/src/H5Opkg.h
+index feca86f7d0..4c719bf340 100644
+--- a/src/H5Opkg.h
++++ b/src/H5Opkg.h
+@@ -211,7 +211,7 @@ struct H5O_msg_class_t {
+     size_t      native_size; /*size of native message    */
+     unsigned    share_flags; /* Message sharing settings */
+     void *(*decode)(H5F_t *, H5O_t *, unsigned, unsigned *, size_t, const uint8_t *);
+-    herr_t (*encode)(H5F_t *, bool, uint8_t *, const void *);
++    herr_t (*encode)(H5F_t *, bool, size_t, uint8_t *, const void *);
+     void *(*copy)(const void *, void *);                   /*copy native value         */
+     size_t (*raw_size)(const H5F_t *, bool, const void *); /*sizeof encoded message	*/
+     herr_t (*reset)(void *);                               /*free nested data structs  */
+diff --git a/src/H5Orefcount.c b/src/H5Orefcount.c
+index 426d2be475..a93f4295a8 100644
+--- a/src/H5Orefcount.c
++++ b/src/H5Orefcount.c
+@@ -29,7 +29,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void  *H5O__refcount_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                    size_t p_size, const uint8_t *p);
+-static herr_t H5O__refcount_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__refcount_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                   const void *_mesg);
+ static void  *H5O__refcount_copy(const void *_mesg, void *_dest);
+ static size_t H5O__refcount_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__refcount_free(void *_mesg);
+@@ -126,8 +127,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__refcount_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p,
+-                     const void *_mesg)
++H5O__refcount_encode(H5F_t H5_ATTR_UNUSED *f, bool H5_ATTR_UNUSED disable_shared,
++                     size_t H5_ATTR_UNUSED p_size, uint8_t *p, const void *_mesg)
+ {
+     const H5O_refcount_t *refcount = (const H5O_refcount_t *)_mesg;
+ 
+diff --git a/src/H5Oshared.h b/src/H5Oshared.h
+index 97539baae1..2813badd33 100644
+--- a/src/H5Oshared.h
++++ b/src/H5Oshared.h
+@@ -91,7 +91,7 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static inline herr_t
+-H5O_SHARED_ENCODE(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg)
++H5O_SHARED_ENCODE(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p, const void *_mesg)
+ {
+     const H5O_shared_t *sh_mesg =
+         (const H5O_shared_t *)_mesg; /* Pointer to shared message portion of actual message */
+diff --git a/src/H5Oshmesg.c b/src/H5Oshmesg.c
+index 50d6652f42..98f18292c9 100644
+--- a/src/H5Oshmesg.c
++++ b/src/H5Oshmesg.c
+@@ -24,7 +24,8 @@
+ 
+ static void  *H5O__shmesg_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags,
+                                  size_t p_size, const uint8_t *p);
+-static herr_t H5O__shmesg_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__shmesg_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                                 const void *_mesg);
+ static void  *H5O__shmesg_copy(const void *_mesg, void *_dest);
+ static size_t H5O__shmesg_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__shmesg_debug(H5F_t *f, const void *_mesg, FILE *stream, int indent, int fwidth);
+@@ -113,7 +114,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__shmesg_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__shmesg_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                   const void *_mesg)
+ {
+     const H5O_shmesg_table_t *mesg = (const H5O_shmesg_table_t *)_mesg;
+ 
+diff --git a/src/H5Ostab.c b/src/H5Ostab.c
+index a9c3dd118c..5000ca84d7 100644
+--- a/src/H5Ostab.c
++++ b/src/H5Ostab.c
+@@ -32,7 +32,8 @@
+ /* PRIVATE PROTOTYPES */
+ static void *H5O__stab_decode(H5F_t *f, H5O_t *open_oh, unsigned mesg_flags, unsigned *ioflags, size_t p_size,
+                               const uint8_t *p);
+-static herr_t H5O__stab_encode(H5F_t *f, bool disable_shared, uint8_t *p, const void *_mesg);
++static herr_t H5O__stab_encode(H5F_t *f, bool disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                               const void *_mesg);
+ static void  *H5O__stab_copy(const void *_mesg, void *_dest);
+ static size_t H5O__stab_size(const H5F_t *f, bool disable_shared, const void *_mesg);
+ static herr_t H5O__stab_free(void *_mesg);
+@@ -123,7 +124,8 @@ done:
+  *-------------------------------------------------------------------------
+  */
+ static herr_t
+-H5O__stab_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, uint8_t *p, const void *_mesg)
++H5O__stab_encode(H5F_t *f, bool H5_ATTR_UNUSED disable_shared, size_t H5_ATTR_UNUSED p_size, uint8_t *p,
++                 const void *_mesg)
+ {
+     const H5O_stab_t *stab = (const H5O_stab_t *)_mesg;
+ 
+-- 
+2.25.1
+

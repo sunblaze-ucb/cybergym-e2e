@@ -1,0 +1,39 @@
+From a650e0fe607c16ad3c0677f38334eb63c4e3f5a0 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Fri, 22 Jul 2022 09:45:17 +0100
+Subject: [PATCH] Fixes Crash Unknown Read in std::__1::enable_if<true,
+ memory_view>::type
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=36027 and
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=36025
+
+The `_table_data.toc` points to invalid memory because of the wrong offset set in `APFSBtreeNode` constructor.
+---
+ tsk/fs/tsk_apfs.hpp | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/tsk/fs/tsk_apfs.hpp b/tsk/fs/tsk_apfs.hpp
+index fbfb3da2b..b2cfdfcf9 100755
+--- a/tsk/fs/tsk_apfs.hpp
++++ b/tsk/fs/tsk_apfs.hpp
+@@ -440,8 +440,17 @@ class APFSBtreeNode : public APFSObject, public APFSOmap::node_tag {
+     }
+ 
+     _table_data.toc = {_storage.data() + toffset()};
++    if ((uintptr_t)_table_data.toc.v - (uintptr_t)_storage.data() > _storage.size()) {
++      throw std::runtime_error("APFSBtreeNode: invalid toffset");
++    }
+     _table_data.voff = _storage.data() + voffset();
++    if (_table_data.voff - _storage.data() > _storage.size()) {
++      throw std::runtime_error("APFSBtreeNode: invalid voffset");
++    }
+     _table_data.koff = _storage.data() + koffset();
++    if (_table_data.koff - _storage.data() > _storage.size()) {
++      throw std::runtime_error("APFSBtreeNode: invalid koffset");
++    }
+   }
+ 
+   inline bool is_root() const noexcept {
+-- 
+2.43.2
+

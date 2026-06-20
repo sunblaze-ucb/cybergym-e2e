@@ -1,0 +1,5 @@
+task_id = "arvo:57570"
+target_prog = "fuzz_addr2line"
+vul_commit = "f679aaa4c8fd6f72a8e2d60aba2c88127133101a"
+patch_commit = "7a6efab20b469e620198d8d6a27e56d5714a0ef4"
+build_image = "n132/arvo:57570-fix"

@@ -1,0 +1,4 @@
+task_id = "arvo:51208"
+target_prog = "fuzzerLocalIj"
+vul_commit = "cbd294ac7327ce262103bb10756ccec4edeccc90"
+patch_commit = "fce1c53844ca21dcc14f3acabeaf2e12d47e5568"

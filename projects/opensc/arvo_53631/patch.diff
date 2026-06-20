@@ -1,0 +1,26 @@
+From e7f81d86dcdc751f4737f4b29a99bfc54d29c5c9 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Thu, 8 Dec 2022 00:45:31 +0100
+Subject: [PATCH] muscle: prevent out of bounds write
+
+fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=53631
+---
+ src/libopensc/muscle.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/muscle.c b/src/libopensc/muscle.c
+index 7af279a0..61a4ec24 100644
+--- a/src/libopensc/muscle.c
++++ b/src/libopensc/muscle.c
+@@ -127,7 +127,7 @@ int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
+ {
+ 	u8 zeroBuffer[MSC_MAX_APDU];
+ 	size_t i;
+-	size_t max_write_unit = MSC_MAX_SEND - 9; /* - 9 for object ID+length */
++	size_t max_write_unit = MIN(MSC_MAX_APDU, MSC_MAX_SEND - 9); /* - 9 for object ID+length */
+ 
+ 	memset(zeroBuffer, 0, max_write_unit);
+ 	for(i = 0; i < dataLength; i += max_write_unit) {
+-- 
+2.25.1
+

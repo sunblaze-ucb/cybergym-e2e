@@ -1,0 +1,25 @@
+From 97b522d77874005adcc1c948bad0a137eb5f2bf5 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 22 Dec 2023 15:35:21 +0900
+Subject: [PATCH] src/fmt_fp.c: change condition order for memory safety
+
+---
+ src/fmt_fp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/fmt_fp.c b/src/fmt_fp.c
+index 3eed1177e..ae8020755 100644
+--- a/src/fmt_fp.c
++++ b/src/fmt_fp.c
+@@ -319,7 +319,7 @@ mrb_format_float(mrb_float f, char *buf, size_t buf_size, char fmt, int prec, ch
+     }
+     if (*rs == '0') {
+       // We need to insert a 1
+-      if (rs[1] == '.' && fmt != 'f') {
++      if (fmt != 'f' && rs[1] == '.') {
+         // We're going to round 9.99 to 10.00
+         // Move the decimal point
+         rs[0] = '.';
+-- 
+2.25.1
+

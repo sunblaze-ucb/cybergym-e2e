@@ -1,0 +1,7 @@
+name = "pcapplusplus"
+language = "c++"
+homepage = "https://github.com/seladb/PcapPlusPlus"
+main_repo = "https://github.com/seladb/PcapPlusPlus"
+repo_to_patch = "PcapPlusPlus"
+build_image = "n132/arvo:43408-fix"
+immutable_files = ["ci", "Tests"]

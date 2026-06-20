@@ -1,0 +1,26 @@
+From b7771a8e4c01851f7674146e47f7a460633f5e99 Mon Sep 17 00:00:00 2001
+From: Alex Tutubalin <lexa@lexa.ru>
+Date: Wed, 9 Nov 2022 19:32:12 +0300
+Subject: [PATCH] check for float data size in FP-dng decoder
+
+---
+ src/decoders/fp_dng.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/decoders/fp_dng.cpp b/src/decoders/fp_dng.cpp
+index 3f3048a3..0566ad2c 100644
+--- a/src/decoders/fp_dng.cpp
++++ b/src/decoders/fp_dng.cpp
+@@ -604,6 +604,9 @@ void LibRaw::uncompressed_fp_dng_load_raw()
+ 
+     int bytesps = (ifd->bps + 7) >> 3; // round to upper value
+ 
++	if(bytesps < 1 || bytesps > 4)
++      throw LIBRAW_EXCEPTION_DECODE_RAW;
++
+     tile_stripe_data_t tiles;
+     tiles.init(ifd, imgdata.sizes, libraw_internal_data.unpacker_data, libraw_internal_data.unpacker_data.order,
+         libraw_internal_data.internal_data.input);
+-- 
+2.25.1
+

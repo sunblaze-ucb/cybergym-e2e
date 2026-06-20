@@ -1,0 +1,4 @@
+task_id = "arvo:29125"
+target_prog = "decompress_chunk_fuzzer"
+vul_commit = "986aabad378ad0d819ddb0b6db7469e95ec21985"
+patch_commit = "61aae4f319ac801ead90d789cbd7f7e3f2efd133"

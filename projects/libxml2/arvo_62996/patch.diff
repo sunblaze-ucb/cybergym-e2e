@@ -1,0 +1,179 @@
+From 97e99f411228fe4f65ebb60e4f2c56f9ee9cdb1c Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Thu, 5 Oct 2023 17:11:24 +0200
+Subject: [PATCH] parser: Acknowledge that entities with namespaces are broken
+
+Entities which reference out-of-scope namespace have always been broken.
+xmlParseBalancedChunkMemoryInternal tried to reuse the namespaces
+currently in scope but these namespaces were ignored by the SAX handler.
+Besides, there could be different namespaces in scope when expanding the
+entity again. For example:
+
+    <!DOCTYPE doc [
+      <!ENTITY ent "<ns:elem/>">
+    ]>
+    <doc>
+      <decl1 xmlns:ns="urn:ns1">
+        &ent;
+      </decl1>
+      <decl2 xmlns:ns="urn:ns2">
+        &ent;
+      </decl2>
+    </doc>
+
+Add some comments outlining possible solutions to this problem.
+
+For now, we stop copying namespaces to the temporary parser context
+in xmlParseBalancedChunkMemoryInternal. This has never really worked
+and the recent changes contained a partial fix which uncovered other
+problems like a use-after-free with the XML Reader interface, found
+by OSS-Fuzz.
+---
+ parser.c | 86 ++++++++++++++++++++++++++++++++++++++++++--------------
+ tree.c   |  9 ++++--
+ 2 files changed, 71 insertions(+), 24 deletions(-)
+
+diff --git a/parser.c b/parser.c
+index 7de41a26..40972af9 100644
+--- a/parser.c
++++ b/parser.c
+@@ -7267,6 +7267,39 @@ xmlParseReference(xmlParserCtxtPtr ctxt) {
+      * of validating, or substituting entities were given. Doing so is
+      * far more secure as the parser will only process data coming from
+      * the document entity by default.
++     *
++     * FIXME: This doesn't work correctly since entities can be
++     * expanded with different namespace declarations in scope.
++     * For example:
++     *
++     * <!DOCTYPE doc [
++     *   <!ENTITY ent "<ns:elem/>">
++     * ]>
++     * <doc>
++     *   <decl1 xmlns:ns="urn:ns1">
++     *     &ent;
++     *   </decl1>
++     *   <decl2 xmlns:ns="urn:ns2">
++     *     &ent;
++     *   </decl2>
++     * </doc>
++     *
++     * Proposed fix:
++     *
++     * - Remove the ent->owner optimization which tries to avoid the
++     *   initial copy of the entity. Always make entities own the
++     *   subtree.
++     * - Ignore current namespace declarations when parsing the
++     *   entity. If a prefix can't be resolved, don't report an error
++     *   but mark it as unresolved.
++     * - Try to resolve these prefixes when expanding the entity.
++     *   This will require a specialized version of xmlStaticCopyNode
++     *   which can also make use of the namespace hash table to avoid
++     *   quadratic behavior.
++     *
++     * Alternatively, we could simply reparse the entity on each
++     * expansion like we already do with custom SAX callbacks.
++     * External entity content should be cached in this case.
+      */
+     if (((ent->flags & XML_ENT_PARSED) == 0) &&
+         ((ent->etype != XML_EXTERNAL_GENERAL_PARSED_ENTITY) ||
+@@ -12876,7 +12909,9 @@ xmlParseBalancedChunkMemoryInternal(xmlParserCtxtPtr oldctxt,
+     xmlNodePtr content = NULL;
+     xmlNodePtr last = NULL;
+     xmlParserErrors ret = XML_ERR_OK;
++#if 0
+     unsigned i;
++#endif
+ 
+     if (((oldctxt->depth > 40) && ((oldctxt->options & XML_PARSE_HUGE) == 0)) ||
+         (oldctxt->depth >  100)) {
+@@ -12906,29 +12941,38 @@ xmlParseBalancedChunkMemoryInternal(xmlParserCtxtPtr oldctxt,
+     ctxt->str_xmlns = xmlDictLookup(ctxt->dict, BAD_CAST "xmlns", 5);
+     ctxt->str_xml_ns = xmlDictLookup(ctxt->dict, XML_XML_NAMESPACE, 36);
+ 
+-    /* propagate namespaces down the entity */
+-    if (oldctxt->nsdb != NULL) {
+-        for (i = 0; i < oldctxt->nsdb->hashSize; i++) {
+-            xmlParserNsBucket *bucket = &oldctxt->nsdb->hash[i];
+-            xmlHashedString hprefix, huri;
+-            const xmlChar **ns;
+-            xmlParserNsExtra *extra;
+-            unsigned nsIndex;
+-
+-            if ((bucket->hashValue != 0) &&
+-                (bucket->index != INT_MAX)) {
+-                nsIndex = bucket->index;
+-                ns = &oldctxt->nsTab[nsIndex * 2];
+-                extra = &oldctxt->nsdb->extra[nsIndex];
+-
+-                hprefix.name = ns[0];
+-                hprefix.hashValue = bucket->hashValue;
+-                huri.name = ns[1];
+-                huri.hashValue = extra->uriHashValue;
+-                xmlParserNsPush(ctxt, &hprefix, &huri, extra->saxData, 0);
+-            }
++    /*
++     * Propagate namespaces down the entity
++     *
++     * This is disabled for now. The pre-2.12 code was already broken
++     * since the SAX handler was using xmlSearchNs which didn't see the
++     * namespaces added here.
++     *
++     * Making entities and namespaces work correctly requires additional
++     * changes, see xmlParseReference.
++     */
++#if 0
++    for (i = 0; i < oldctxt->nsdb->hashSize; i++) {
++        xmlParserNsBucket *bucket = &oldctxt->nsdb->hash[i];
++        xmlHashedString hprefix, huri;
++        const xmlChar **ns;
++        xmlParserNsExtra *extra;
++        unsigned nsIndex;
++
++        if ((bucket->hashValue != 0) &&
++            (bucket->index != INT_MAX)) {
++            nsIndex = bucket->index;
++            ns = &oldctxt->nsTab[nsIndex * 2];
++            extra = &oldctxt->nsdb->extra[nsIndex];
++
++            hprefix.name = ns[0];
++            hprefix.hashValue = bucket->hashValue;
++            huri.name = ns[1];
++            huri.hashValue = extra->uriHashValue;
++            xmlParserNsPush(ctxt, &hprefix, &huri, extra->saxData, 0);
+         }
+     }
++#endif
+ 
+     oldsax = ctxt->sax;
+     ctxt->sax = oldctxt->sax;
+diff --git a/tree.c b/tree.c
+index fe02b414..a6264e8b 100644
+--- a/tree.c
++++ b/tree.c
+@@ -4206,7 +4206,10 @@ xmlStaticCopyNode(xmlNodePtr node, xmlDocPtr doc, xmlNodePtr parent,
+ 	    /*
+ 	     * Humm, we are copying an element whose namespace is defined
+ 	     * out of the new tree scope. Search it in the original tree
+-	     * and add it at the top of the new tree
++	     * and add it at the top of the new tree.
++             *
++             * TODO: Searching the original tree seems unnecessary. We
++             * already have a namespace URI.
+ 	     */
+ 	    ns = xmlSearchNs(node->doc, node, node->ns->prefix);
+ 	    if (ns != NULL) {
+@@ -4214,8 +4217,8 @@ xmlStaticCopyNode(xmlNodePtr node, xmlDocPtr doc, xmlNodePtr parent,
+ 
+ 		while (root->parent != NULL) root = root->parent;
+ 		ret->ns = xmlNewNs(root, ns->href, ns->prefix);
+-		} else {
+-			ret->ns = xmlNewReconciledNs(doc, ret, node->ns);
++            } else {
++                ret->ns = xmlNewReconciledNs(doc, ret, node->ns);
+ 	    }
+ 	} else {
+ 	    /*
+-- 
+2.25.1
+

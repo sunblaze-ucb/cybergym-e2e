@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:378102638"
+target_prog = "ffmpeg_SWS_fuzzer"
+vul_commit = "b2da4c33e31f85b9c755f2cdb08f5db694e90ca9"
+patch_commit = "aeec39f3c1be82863efe64ce95242de58e075e8f"
+build_image = "cybergym/oss-fuzz:378102638-fix"

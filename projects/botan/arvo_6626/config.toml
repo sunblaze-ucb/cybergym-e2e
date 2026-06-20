@@ -1,0 +1,4 @@
+task_id = "arvo:6626"
+target_prog = "invert"
+vul_commit = "45eea5c4f3d5a582940cb488d660f3cb8ce189dc"
+patch_commit = "4361438987347d0f2507b7dcb3c4179b5e38d034"

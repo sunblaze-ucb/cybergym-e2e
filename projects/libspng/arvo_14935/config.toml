@@ -1,0 +1,4 @@
+task_id = "arvo:14935"
+target_prog = "spng_read_fuzzer_structure_aware"
+vul_commit = "cb18f38c1f2c62a70062d5d2d36b28e7384b954d"
+patch_commit = "94c6198a1bb93fa6cd209085b817c1e64272abb4"

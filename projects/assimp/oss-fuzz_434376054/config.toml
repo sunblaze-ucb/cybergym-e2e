@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:434376054"
+target_prog = "assimp_fuzzer"
+vul_commit = "7dcf6a89841953953fb245bbeb5827ecac0c9ab0"
+patch_commit = "5f7c06a71ee0c4a10550bbb31dc479c285637773"
+build_image = "cybergym/e2e:assimp"

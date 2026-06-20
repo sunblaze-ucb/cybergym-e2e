@@ -1,0 +1,62 @@
+From 4a0b793737ec1a118d2119a677fa17926def01bc Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 7 Aug 2025 19:56:53 +0200
+Subject: [PATCH] avcodec/dxv: Use av_fast_realloc() and clear all new space
+
+The code writing in the buffer has a wide range of error checks
+which simply leave it partly uninitialized.
+
+Initializing it on allocation ensures no sensitive data leaks and that
+bugs are more reliably reproduceable
+
+Fixes: use of uninitialized memory
+Fixes: 435225510/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_DXV_DEC_fuzzer-4521918634196992
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/dxv.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/libavcodec/dxv.c b/libavcodec/dxv.c
+index 0b8e077ad6..7e11bef733 100644
+--- a/libavcodec/dxv.c
++++ b/libavcodec/dxv.c
+@@ -38,6 +38,7 @@ typedef struct DXVContext {
+     GetByteContext gbc;
+ 
+     uint8_t *tex_data;   // Compressed texture
++    unsigned tex_data_size;
+     uint8_t *ctex_data;  // Compressed chroma texture
+ 
+     int64_t tex_size;    // Texture size
+@@ -969,9 +970,14 @@ static int dxv_decode(AVCodecContext *avctx, AVFrame *frame,
+     ctx->tex_size = avctx->coded_width  / (texdsp_ctx.raw_ratio / (avctx->pix_fmt == AV_PIX_FMT_RGBA ? 4 : 1)) *
+                     avctx->coded_height / TEXTURE_BLOCK_H *
+                     texdsp_ctx.tex_ratio;
+-    ret = av_reallocp(&ctx->tex_data, ctx->tex_size + AV_INPUT_BUFFER_PADDING_SIZE);
+-    if (ret < 0)
+-        return ret;
++    unsigned old_size = ctx->tex_data_size;
++    void *ptr = av_fast_realloc(ctx->tex_data, &ctx->tex_data_size, ctx->tex_size + AV_INPUT_BUFFER_PADDING_SIZE);
++    if (!ptr)
++        return AVERROR(ENOMEM);
++    ctx->tex_data = ptr;
++
++    if (ctx->tex_data_size > old_size)
++        memset(ctx->tex_data + old_size, 0, ctx->tex_data_size - old_size);
+ 
+     if (avctx->pix_fmt != AV_PIX_FMT_RGBA) {
+         int i;
+@@ -1078,6 +1084,8 @@ static av_cold int dxv_close(AVCodecContext *avctx)
+     DXVContext *ctx = avctx->priv_data;
+ 
+     av_freep(&ctx->tex_data);
++    ctx->tex_data_size = 0;
++
+     av_freep(&ctx->ctex_data);
+     av_freep(&ctx->op_data[0]);
+     av_freep(&ctx->op_data[1]);
+-- 
+2.25.1
+

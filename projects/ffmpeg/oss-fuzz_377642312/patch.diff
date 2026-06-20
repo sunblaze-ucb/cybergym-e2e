@@ -1,0 +1,40 @@
+From aec2933344b2b32fc931bdf0b46eef1bd42225ff Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 26 Dec 2024 03:28:53 +0100
+Subject: [PATCH] avformat/iamf_reader: Initialize padding and check read in
+ ff_iamf_read_packet()
+
+Fixes: Use of uninitialized memory
+Fixes: 377642312/clusterfuzz-testcase-minimized-ffmpeg_dem_IAMF_fuzzer-4554550985424896
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/iamf_reader.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/iamf_reader.c b/libavformat/iamf_reader.c
+index 9f3469b64f..d331e1315e 100644
+--- a/libavformat/iamf_reader.c
++++ b/libavformat/iamf_reader.c
+@@ -282,7 +282,7 @@ int ff_iamf_read_packet(AVFormatContext *s, IAMFDemuxContext *c,
+     int read = 0;
+ 
+     while (1) {
+-        uint8_t header[MAX_IAMF_OBU_HEADER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
++        uint8_t header[MAX_IAMF_OBU_HEADER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE] = {0};
+         enum IAMF_OBU_Type type;
+         unsigned obu_size;
+         unsigned skip_samples, discard_padding;
+@@ -294,6 +294,8 @@ int ff_iamf_read_packet(AVFormatContext *s, IAMFDemuxContext *c,
+         size = avio_read(pb, header, FFMIN(MAX_IAMF_OBU_HEADER_SIZE, max_size));
+         if (size < 0)
+             return size;
++        if (size != FFMIN(MAX_IAMF_OBU_HEADER_SIZE, max_size))
++            return AVERROR_INVALIDDATA;
+ 
+         len = ff_iamf_parse_obu_header(header, size, &obu_size, &start_pos, &type,
+                                        &skip_samples, &discard_padding);
+-- 
+2.25.1
+

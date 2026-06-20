@@ -1,0 +1,4 @@
+task_id = "arvo:21580"
+target_prog = "hb-subset-fuzzer"
+vul_commit = "c8cc1e378df500122d8082a2038d68179eec63d0"
+patch_commit = "57b7de032f60d0499ae2debb293d0f8456acfdfb"

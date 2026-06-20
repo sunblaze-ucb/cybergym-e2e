@@ -1,0 +1,5 @@
+task_id = "arvo:43307"
+target_prog = "fuzz-dwfl-core"
+vul_commit = "9f70a762ab88ceebb8a48a7c9c3ce39ff7f205af"
+patch_commit = "8b9d809568c37c4a6b9225f3c44cadabeb5fa1b0"
+build_image = "n132/arvo:43307-fix"

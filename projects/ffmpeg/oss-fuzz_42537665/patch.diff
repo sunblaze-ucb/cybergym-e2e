@@ -1,0 +1,30 @@
+From 7e5410eadb51645e67d91708494c7566771f9015 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 14 Aug 2024 16:34:19 +0200
+Subject: [PATCH] avformat/iamf_parse: clear padding
+
+Fixes: use of uninitialized value
+Fixes: 70929/clusterfuzz-testcase-minimized-ffmpeg_dem_IAMF_fuzzer-5931276639469568
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Reviewed-by: James Almer <jamrial@gmail.com>
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/iamf_parse.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libavformat/iamf_parse.c b/libavformat/iamf_parse.c
+index bc8d726b53..080c1a457a 100644
+--- a/libavformat/iamf_parse.c
++++ b/libavformat/iamf_parse.c
+@@ -1081,6 +1081,7 @@ int ff_iamfdec_read_descriptors(IAMFContext *c, AVIOContext *pb,
+         size = avio_read(pb, header, FFMIN(MAX_IAMF_OBU_HEADER_SIZE, max_size));
+         if (size < 0)
+             return size;
++        memset(header + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+ 
+         len = ff_iamf_parse_obu_header(header, size, &obu_size, &start_pos, &type, NULL, NULL);
+         if (len < 0 || obu_size > max_size) {
+-- 
+2.25.1
+

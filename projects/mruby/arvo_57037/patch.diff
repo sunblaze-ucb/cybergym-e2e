@@ -1,0 +1,74 @@
+From 62a8ea711329477ec0e22f17df77a37ceaff9322 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Wed, 15 Mar 2023 19:09:02 +0900
+Subject: [PATCH] mruby-bigint/bigint.c: mrb_bint_add_d, mrb_bint_sub_d only
+ take int
+
+Where mrb_bint_add and mrb_bint_sub may take float numbers.
+---
+ mrbgems/mruby-bigint/core/bigint.c | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/mrbgems/mruby-bigint/core/bigint.c b/mrbgems/mruby-bigint/core/bigint.c
+index 3af5b2da9..7e01d16a4 100644
+--- a/mrbgems/mruby-bigint/core/bigint.c
++++ b/mrbgems/mruby-bigint/core/bigint.c
+@@ -1183,13 +1183,6 @@ mrb_bint_as_uint64(mrb_state *mrb, mrb_value x)
+ mrb_value
+ mrb_bint_add_d(mrb_state *mrb, mrb_value x, mrb_value y)
+ {
+-#ifndef MRB_NO_FLOAT
+-  if (mrb_float_p(y)) {
+-    mrb_float v1 = mrb_bint_as_float(mrb, x);
+-    mrb_float v2 = mrb_float(y);
+-    return mrb_float_value(mrb,v1+v2);
+-  }
+-#endif
+   y = mrb_as_bint(mrb, y);
+   struct RBigint *b = RBIGINT(x);
+   struct RBigint *b2 = RBIGINT(y);
+@@ -1201,6 +1194,13 @@ mrb_bint_add_d(mrb_state *mrb, mrb_value x, mrb_value y)
+ mrb_value
+ mrb_bint_add(mrb_state *mrb, mrb_value x, mrb_value y)
+ {
++#ifndef MRB_NO_FLOAT
++  if (mrb_float_p(y)) {
++    mrb_float v1 = mrb_bint_as_float(mrb, x);
++    mrb_float v2 = mrb_float(y);
++    return mrb_float_value(mrb,v1+v2);
++  }
++#endif
+   x = mrb_bint_add_d(mrb, x, y);
+   return bint_norm(mrb, RBIGINT(x));
+ }
+@@ -1209,13 +1209,6 @@ mrb_bint_add(mrb_state *mrb, mrb_value x, mrb_value y)
+ mrb_value
+ mrb_bint_sub_d(mrb_state *mrb, mrb_value x, mrb_value y)
+ {
+-#ifndef MRB_NO_FLOAT
+-  if (mrb_float_p(y)) {
+-    mrb_float v1 = mrb_bint_as_float(mrb, x);
+-    mrb_float v2 = mrb_float(y);
+-    return mrb_float_value(mrb,v1-v2);
+-  }
+-#endif
+   y = mrb_as_bint(mrb, y);
+   struct RBigint *b = RBIGINT(x);
+   struct RBigint *b2 = RBIGINT(y);
+@@ -1227,6 +1220,13 @@ mrb_bint_sub_d(mrb_state *mrb, mrb_value x, mrb_value y)
+ mrb_value
+ mrb_bint_sub(mrb_state *mrb, mrb_value x, mrb_value y)
+ {
++#ifndef MRB_NO_FLOAT
++  if (mrb_float_p(y)) {
++    mrb_float v1 = mrb_bint_as_float(mrb, x);
++    mrb_float v2 = mrb_float(y);
++    return mrb_float_value(mrb,v1-v2);
++  }
++#endif
+   x = mrb_bint_sub_d(mrb, x, y);
+   return bint_norm(mrb, RBIGINT(x));
+ }
+-- 
+2.25.1
+

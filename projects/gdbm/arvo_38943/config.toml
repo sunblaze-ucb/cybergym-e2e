@@ -1,0 +1,5 @@
+task_id = "arvo:38943"
+target_prog = "gdbm_fuzzer"
+vul_commit = "8952f7fd7cebffbe4ecf8c232e4435c5de72678a"
+patch_commit = "ca7194987388a825f57fdebd73eb9c491a8749b0"
+build_image = "n132/arvo:38943-fix"

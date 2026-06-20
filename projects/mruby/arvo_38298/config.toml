@@ -1,0 +1,4 @@
+task_id = "arvo:38298"
+target_prog = "mruby_fuzzer"
+vul_commit = "cd0ffd6f1ca413f36b6239de7779ae7778e1a200"
+patch_commit = "da749d870f4a57df7a05ef4a9ae023602d48af86"

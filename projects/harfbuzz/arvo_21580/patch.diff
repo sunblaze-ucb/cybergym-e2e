@@ -1,0 +1,51 @@
+From 57b7de032f60d0499ae2debb293d0f8456acfdfb Mon Sep 17 00:00:00 2001
+From: Ebrahim Byagowi <ebrahim@gnu.org>
+Date: Sun, 5 Apr 2020 17:07:48 +0430
+Subject: [PATCH] [subset] Fail ClassDefFormat1 serialization if no space
+ available
+
+Fixes https://crbug.com/oss-fuzz/21580
+---
+ src/hb-ot-layout-common.hh                               |   2 +-
+ ...-testcase-minimized-hb-subset-fuzzer-5704307501694976 | Bin 0 -> 1062 bytes
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5704307501694976
+
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index fe49afb..0193709 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -1651,7 +1651,7 @@ struct ClassDefFormat1
+     unsigned glyph_count = glyph_max - glyph_min + 1;
+ 
+     startGlyph = glyph_min;
+-    classValue.serialize (c, glyph_count);
++    if (unlikely (!classValue.serialize (c, glyph_count))) return_trace (false);
+     for (const hb_pair_t<hb_codepoint_t, unsigned>& gid_klass_pair : + it)
+     {
+       unsigned idx = gid_klass_pair.first - glyph_min;
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5704307501694976 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5704307501694976
+new file mode 100644
+index 0000000000000000000000000000000000000000..f2f0ec9c9ecbcbbde49378457f1e92deec130123
+GIT binary patch
+literal 1062
+zcmb_aOKTHR7(I7pl1_t_nuTalh_-623RQ{~LFpq+kyb6XT|`_oH7_NT#$?jRMy*o1
+z(5h7z6{H|8L{!8VXbU3ZA8_TSpq6$aD2NJ{ko0<PvPqG+@`KBKuY1n--8m2dJO%UK
+zKh(}hl;cV#AkB7fn@@bw4l}hAF#WwBj&^sLfk%wHcv{-Kds~Kl$z?#hxh!+<pFFIW
+zQ?W~OQW)=u(|5uOB(A-vt^gc0z{x>dpYu4Ld7{AaTGmg86A|la@a!;f{x(ptHWElB
+zWEPc-Ro#rlM#6iJ_`d+<3_}aiP#~C1FUlsw7ns-^Wx{bw-vJD4U|bWm?BRjIZFP*B
+z0R2tO#|1{y^FWGaF>eKi6QZ6j;BKr8Anvh3cOw3j6KO*|1I_G>z4Zd?>1N!ICxQvz
+zf!WQ##B(O5pqf_k088|BVPlftI$5wq=&Yz77lsac`!pYVIybG3*>)UN(7&=E!PZ*U
+zUjF*QN4S}h`GJafwQpU?lDx#%QN)`eR55QOc`uaURkTICD=+?Y;CR~V4<%ElBKd)x
+zTtuzu!ZCb@=I!Y0F@D^b&f0Mg_gMmR5=IqFc2&CAC0d&sJXnW*NFf2kDBN#=22+#r
+zx8cIR+<rz)Xy!6};KCbLV>?7JY}tg$-@!J#l)t3>DJ4WQVTIu&e8B|f;2?$*L0%u(
+z%2l_N;V${GMs;u+q47JW3Izt0=Ct`VU8PmZuqKz0qvKMZqo1WDIg8q)6>Y@j#1uPR
+zYRkOF6b2j4tkhT``yWJJMx+%Y|4ZUCvoo*8(w{T(vef1B#_QALSJms$+`D#%?v+%x
+U+Pjp{g!%`ygt*A#hqq1s0aV)=pa1{>
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

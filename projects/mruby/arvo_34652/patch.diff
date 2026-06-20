@@ -1,0 +1,34 @@
+From 063b49ab8e6a10212c7f88e5b114b90fe59296f7 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Tue, 25 May 2021 13:32:29 +0900
+Subject: [PATCH] fmt_fp.c: truncate precision to prevent buffer overflow.
+
+---
+ src/fmt_fp.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/fmt_fp.c b/src/fmt_fp.c
+index 807debe11..8a156b3d9 100644
+--- a/src/fmt_fp.c
++++ b/src/fmt_fp.c
+@@ -180,13 +180,13 @@ mrb_format_float(mrb_float f, char *buf, size_t buf_size, char fmt, int prec, ch
+       dec = -1;
+       *s++ = first_dig;
+ 
+-      if (prec + e + 1 > buf_remaining) {
+-        prec = buf_remaining - e - 1;
+-      }
+-
+       if (org_fmt == 'g') {
+         prec += (e - 1);
+       }
++      // truncate precision to prevent buffer overflow
++      if (prec + 2 > buf_remaining) {
++        prec = buf_remaining - 2;
++      }
+       num_digits = prec;
+       if (num_digits || alt_form) {
+         *s++ = '.';
+-- 
+2.43.2
+

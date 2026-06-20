@@ -1,0 +1,5 @@
+task_id = "arvo:53149"
+target_prog = "test_blkid_fuzz"
+vul_commit = "9c82a8ca123a4e4028d51f4e38c7c3cfbdc74711"
+patch_commit = "32bd447fd7d0933c5aecac75cc1823b3ee897f11"
+build_image = "n132/arvo:53149-fix"

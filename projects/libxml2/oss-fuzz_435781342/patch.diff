@@ -1,0 +1,82 @@
+From 152fbb60a9e16cce502ce541f0fa63b2097d9a12 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sat, 2 Aug 2025 21:27:32 +0200
+Subject: [PATCH] parser: Make sure to stop parser before checking max errors
+
+Short-lived regression from 7a41b18c.
+---
+ parserInternals.c | 51 +++++++++++++++++++++++------------------------
+ 1 file changed, 25 insertions(+), 26 deletions(-)
+
+diff --git a/parserInternals.c b/parserInternals.c
+index e68af7a6..c3eec132 100644
+--- a/parserInternals.c
++++ b/parserInternals.c
+@@ -330,11 +330,31 @@ xmlCtxtVErr(xmlParserCtxt *ctxt, xmlNode *node, xmlErrorDomain domain,
+             return;
+         ctxt->nbWarnings += 1;
+     } else {
+-        /* Report at least one fatal error. */
+-        if ((ctxt->nbErrors >= XML_MAX_ERRORS) &&
+-            ((level < XML_ERR_FATAL) || (ctxt->wellFormed == 0)) &&
+-            (!xmlIsCatastrophicError(level, code)))
+-            return;
++        /*
++         * By long-standing design, the parser isn't completely
++         * stopped on well-formedness errors. Only SAX callbacks
++         * are disabled.
++         *
++         * In some situations, we really want to abort as fast
++         * as possible.
++         */
++        if (xmlIsCatastrophicError(level, code) ||
++            code == XML_ERR_RESOURCE_LIMIT ||
++            code == XML_ERR_ENTITY_LOOP) {
++            ctxt->disableSAX = 2; /* really stop parser */
++        } else {
++            /* Report at least one fatal error. */
++            if (ctxt->nbErrors >= XML_MAX_ERRORS &&
++                (level < XML_ERR_FATAL || ctxt->wellFormed == 0))
++                return;
++
++            if (level == XML_ERR_FATAL && ctxt->recovery == 0)
++                ctxt->disableSAX = 1;
++        }
++
++        if (level == XML_ERR_FATAL)
++            ctxt->wellFormed = 0;
++        ctxt->errNo = code;
+         ctxt->nbErrors += 1;
+     }
+ 
+@@ -384,27 +404,6 @@ xmlCtxtVErr(xmlParserCtxt *ctxt, xmlNode *node, xmlErrorDomain domain,
+         xmlCtxtErrMemory(ctxt);
+         return;
+     }
+-
+-    if (level >= XML_ERR_ERROR)
+-        ctxt->errNo = code;
+-    if (level == XML_ERR_FATAL) {
+-        ctxt->wellFormed = 0;
+-
+-        /*
+-         * By long-standing design, the parser isn't completely
+-         * stopped on well-formedness errors. Only SAX callbacks
+-         * are disabled.
+-         *
+-         * In some situations, we really want to abort as fast
+-         * as possible.
+-         */
+-        if (xmlCtxtIsCatastrophicError(ctxt) ||
+-            code == XML_ERR_RESOURCE_LIMIT ||
+-            code == XML_ERR_ENTITY_LOOP)
+-            ctxt->disableSAX = 2; /* really stop parser */
+-        else if (ctxt->recovery == 0)
+-            ctxt->disableSAX = 1;
+-    }
+ }
+ 
+ /**
+-- 
+2.25.1
+

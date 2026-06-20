@@ -1,0 +1,88 @@
+From db72c6ee38e5a87f4aaf255197eb49da2b1fa651 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matthias=20M=C3=B6ller?= <m_moeller@live.de>
+Date: Sat, 4 Feb 2023 15:16:22 +0100
+Subject: [PATCH] When "getNextBlock" was called after "getNextLine", the
+ pointer could still on the newline.
+
+The pointer to a newline could not advance enough, when the line ended with \r\n. The resulting buffer was correct, as the buffer range went from <start> until \r, but that the pointer increased by just 1 could lead to the problem that the next pointer points at \n, which is still part of the newline and therefore, "getNextBlock" got 1 byte too much.
+
+Refs Issue #4871
+---
+ code/AssetLib/Ply/PlyParser.cpp                 |   2 +-
+ include/assimp/IOStreamBuffer.h                 |   2 ++
+ .../PLY/cube_binary_header_with_RN_newline.ply  | Bin 0 -> 448 bytes
+ test/unit/utPLYImportExport.cpp                 |  16 ++++++++++++++++
+ 4 files changed, 19 insertions(+), 1 deletion(-)
+ create mode 100644 test/models/PLY/cube_binary_header_with_RN_newline.ply
+
+diff --git a/code/AssetLib/Ply/PlyParser.cpp b/code/AssetLib/Ply/PlyParser.cpp
+index a7cf92606..6edba71fc 100644
+--- a/code/AssetLib/Ply/PlyParser.cpp
++++ b/code/AssetLib/Ply/PlyParser.cpp
+@@ -420,7 +420,7 @@ bool PLY::DOM::ParseHeader(IOStreamBuffer<char> &streamBuffer, std::vector<char>
+         if (PLY::Element::ParseElement(streamBuffer, buffer, &out)) {
+             // add the element to the list of elements
+             alElements.push_back(out);
+-        } else if (TokenMatch(buffer, "end_header", 10)) { //checks for /n ending, if it doesn't end with /r/n
++        } else if (TokenMatch(buffer, "end_header", 10)) {
+             // we have reached the end of the header
+             break;
+         } else {
+diff --git a/include/assimp/IOStreamBuffer.h b/include/assimp/IOStreamBuffer.h
+index b34fc9ee1..abae1572c 100644
+--- a/include/assimp/IOStreamBuffer.h
++++ b/include/assimp/IOStreamBuffer.h
+@@ -323,7 +323,9 @@ AI_FORCE_INLINE bool IOStreamBuffer<T>::getNextLine(std::vector<T> &buffer) {
+         }
+     }
+     buffer[i] = '\n';
++    while (m_cachePos < m_cacheSize && (m_cache[m_cachePos] == '\r' || m_cache[m_cachePos] == '\n')) {
+     ++m_cachePos;
++    }
+ 
+     return true;
+ }
+diff --git a/test/models/PLY/cube_binary_header_with_RN_newline.ply b/test/models/PLY/cube_binary_header_with_RN_newline.ply
+new file mode 100644
+index 0000000000000000000000000000000000000000..bff3478608e03aa250ae359f10e43864f6825966
+GIT binary patch
+literal 448
+zcmZvW!D_=W5Ja6iX+Y3_*e?iiPrVhALn!pzt5NNBEs$j+tHtiApPn5VH^xM;(!AN#
+zNSz&3)%r#U`ZP}aF}EfJ%Q?H!Xh+%MsEW2}*aiAHU*6wN^u><74qPg>92-CE0}u3~
+zI^TApN2+WqiNo3$*T(OEMx_g;?D;leO&{pHsI?~}k56ypM!r>WujG4q&AMd&q>{Vq
+z?{%_qE;ZblmwKLCpGlHpY$Np`6=4?XUYtj%9XbGrEkG)Y*a1KwB*g~6y$BF75gPzO
+PDIf{};s7xk0D*M{J^E0f
+
+literal 0
+HcmV?d00001
+
+diff --git a/test/unit/utPLYImportExport.cpp b/test/unit/utPLYImportExport.cpp
+index 2edbdd71f..1f733c0e7 100644
+--- a/test/unit/utPLYImportExport.cpp
++++ b/test/unit/utPLYImportExport.cpp
+@@ -125,6 +125,22 @@ TEST_F(utPLYImportExport, importBinaryPLY) {
+     EXPECT_EQ(12u, scene->mMeshes[0]->mNumFaces);
+ }
+ 
++// Tests of a PLY file gets read with \r\n as newlines instead of just \n (i.e. solidwork exported ply files)
++TEST_F(utPLYImportExport, importBinaryPLYWithRNNewline) {
++    Assimp::Importer importer;
++    const aiScene *scene = importer.ReadFile(ASSIMP_TEST_MODELS_DIR "/PLY/cube_binary_header_with_RN_newline.ply", aiProcess_ValidateDataStructure);
++
++    ASSERT_NE(nullptr, scene);
++    ASSERT_NE(nullptr, scene->mMeshes[0]);
++    // This test model is double sided, so 12 faces instead of 6
++    ASSERT_EQ(12u, scene->mMeshes[0]->mNumFaces);
++    // Also check if the indices were parsed correctly
++    ASSERT_EQ(3u, scene->mMeshes[0]->mFaces[0].mNumIndices);
++    EXPECT_EQ(0u, scene->mMeshes[0]->mFaces[0].mIndices[0]);
++    EXPECT_EQ(1u, scene->mMeshes[0]->mFaces[0].mIndices[1]);
++    EXPECT_EQ(2u, scene->mMeshes[0]->mFaces[0].mIndices[2]);
++}
++
+ TEST_F(utPLYImportExport, vertexColorTest) {
+     Assimp::Importer importer;
+     const aiScene *scene = importer.ReadFile(ASSIMP_TEST_MODELS_DIR "/PLY/float-color.ply", aiProcess_ValidateDataStructure);
+-- 
+2.25.1
+

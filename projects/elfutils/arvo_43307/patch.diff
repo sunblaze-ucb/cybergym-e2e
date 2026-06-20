@@ -1,0 +1,45 @@
+From 8b9d809568c37c4a6b9225f3c44cadabeb5fa1b0 Mon Sep 17 00:00:00 2001
+From: Mark Wielaard <mark@klomp.org>
+Date: Thu, 6 Jan 2022 16:44:56 +0100
+Subject: [PATCH] libdwfl: Fix overflow check in link_map.c read_addrs
+
+The buffer_available overflow check wasn't complete. Also check nb
+isn't too big.
+
+https://sourceware.org/bugzilla/show_bug.cgi?id=28720
+
+Signed-off-by: Mark Wielaard <mark@klomp.org>
+---
+ libdwfl/ChangeLog  | 4 ++++
+ libdwfl/link_map.c | 3 ++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/libdwfl/ChangeLog b/libdwfl/ChangeLog
+index 149383ad..f8319f44 100644
+--- a/libdwfl/ChangeLog
++++ b/libdwfl/ChangeLog
+@@ -1,3 +1,7 @@
++2022-01-03  Mark Wielaard  <mark@klomp.org>
++
++	* link_map.c (read_addrs): Fix buffer_available nb overflow.
++
+ 2021-12-23  Mark Wielaard  <mark@klomp.org>
+ 
+ 	* link_map.c (read_addrs): Calculate addr to read by hand.
+diff --git a/libdwfl/link_map.c b/libdwfl/link_map.c
+index cd9c5042..99222bb9 100644
+--- a/libdwfl/link_map.c
++++ b/libdwfl/link_map.c
+@@ -257,7 +257,8 @@ read_addrs (struct memory_closure *closure,
+   /* Read a new buffer if the old one doesn't cover these words.  */
+   if (*buffer == NULL
+       || vaddr < *read_vaddr
+-      || vaddr - (*read_vaddr) + nb > *buffer_available)
++      || nb > *buffer_available
++      || vaddr - (*read_vaddr) > *buffer_available - nb)
+     {
+       release_buffer (closure, buffer, buffer_available, 0);
+ 
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "arvo:57880"
+target_prog = "gs_device_psdcmyk_fuzzer"
+vul_commit = "91943811904f562b101b0ac410da60974b4186f2"
+patch_commit = "acaa21f68ede3ae8fca48136fa95ee32de6533b2"
+build_image = "n132/arvo:57880-fix"

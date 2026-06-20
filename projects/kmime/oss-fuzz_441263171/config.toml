@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:441263171"
+target_prog = "kmime_fuzzer"
+vul_commit = "deaeaadbda36546f064dc7f915bd4d489622acf2"
+patch_commit = "d389149dbbfecc2ff18e45d16c9b9b19c85afd38"
+build_image = "cybergym/e2e:kmime"

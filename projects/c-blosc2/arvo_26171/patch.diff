@@ -1,0 +1,52 @@
+From d314d790853799ac4db940c852dd673dfde8d3cf Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Sat, 10 Oct 2020 20:18:04 -0700
+Subject: [PATCH] Fixed heap-buffer-overflow asan read error on 32-bit arch
+
+---
+ blosc/blosc2.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/blosc/blosc2.c b/blosc/blosc2.c
+index 91fc0503..fda00881 100644
+--- a/blosc/blosc2.c
++++ b/blosc/blosc2.c
+@@ -970,7 +970,6 @@ static int blosc_d(
+   uint8_t* filters = context->filters;
+   uint8_t *tmp3 = thread_context->tmp4;
+   int32_t compformat = (context->header_flags & 0xe0) >> 5;
+-  uint8_t *src_end = (uint8_t *)src + srcsize;
+   int dont_split = (context->header_flags & 0x10) >> 4;
+   //uint8_t blosc_version_format = src[0];
+   int nstreams;
+@@ -995,6 +994,7 @@ static int blosc_d(
+   }
+ 
+   src += src_offset;
++  srcsize -= src_offset;
+ 
+   int last_filter_index = last_filter(filters, 'd');
+ 
+@@ -1018,14 +1018,16 @@ static int blosc_d(
+ 
+   neblock = bsize / nstreams;
+   for (int j = 0; j < nstreams; j++) {
+-    if (src + sizeof(int32_t) > src_end) {
++    srcsize -= sizeof(int32_t);
++    if (srcsize < 0) {
+       /* Not enough input to read compressed size */
+       return -1;
+     }
+     cbytes = sw32_(src);      /* amount of compressed bytes */
+     src += sizeof(int32_t);
+-    if (src + cbytes > src_end) {
+-      /* Not enough input to read compressed size */
++    srcsize -= cbytes;
++    if (srcsize < 0) {
++      /* Not enough input to read compressed bytes */
+       return -1;
+     }
+     ctbytes += (int32_t)sizeof(int32_t);
+-- 
+2.43.2
+

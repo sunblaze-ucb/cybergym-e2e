@@ -1,0 +1,5 @@
+task_id = "arvo:49801"
+target_prog = "fuzz_addr2line"
+vul_commit = "431d48ef288983b62df2afb435dc8c6101a34cf8"
+patch_commit = "45c8663b92cc29eb330dbcc6c500fa798f05ae37"
+build_image = "n132/arvo:49801-fix"

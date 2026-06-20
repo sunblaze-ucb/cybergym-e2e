@@ -1,0 +1,24 @@
+From 96b65713528476eed35dbab690be837967cedb93 Mon Sep 17 00:00:00 2001
+From: Benoit Blanchon <git@benoitblanchon.fr>
+Date: Mon, 3 Aug 2020 09:44:17 +0200
+Subject: [PATCH] Fixed use-of-uninitialized-value in encodeCodepoint()
+
+---
+ src/ArduinoJson/Json/Utf16.hpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/ArduinoJson/Json/Utf16.hpp b/src/ArduinoJson/Json/Utf16.hpp
+index 33721a63..67fb5bae 100644
+--- a/src/ArduinoJson/Json/Utf16.hpp
++++ b/src/ArduinoJson/Json/Utf16.hpp
+@@ -31,6 +31,8 @@ inline bool isLowSurrogate(uint16_t codeunit) {
+
+ class Codepoint {
+  public:
++  Codepoint() : _highSurrogate(0) {}
++
+   bool append(uint16_t codeunit) {
+     if (isHighSurrogate(codeunit)) {
+       _highSurrogate = codeunit & 0x3FF;
+-- 
+2.43.2

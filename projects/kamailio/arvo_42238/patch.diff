@@ -1,0 +1,32 @@
+From b83810eb1eb70f326698db874a1f67cf6a8d06cf Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Sun, 12 Dec 2021 13:29:00 +0100
+Subject: [PATCH] core: parser/sdp - check for delimiter size done before
+ comparison
+
+---
+ src/core/parser/sdp/sdp_helpr_funcs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/core/parser/sdp/sdp_helpr_funcs.c b/src/core/parser/sdp/sdp_helpr_funcs.c
+index 144d63b537..c62a347ddc 100644
+--- a/src/core/parser/sdp/sdp_helpr_funcs.c
++++ b/src/core/parser/sdp/sdp_helpr_funcs.c
+@@ -794,12 +794,12 @@ char *find_sdp_line_delimiter(char* p, char* plimit, str delimiter)
+ 				return NULL;
+ 			/* We matched '--',
+ 			 * now let's match the boundary delimiter */
++			if(cp1+2+delimiter.len >= plimit)
++				return NULL;
+ 			if (strncmp(cp1+2, delimiter.s, delimiter.len) == 0)
+ 				break;
+ 			else
+ 				cp = cp1 + 2 + delimiter.len;
+-			if (cp >= plimit)
+-				return NULL;
+ 		}
+ 		if (cp1[-1] == '\n' || cp1[-1] == '\r')
+ 			return cp1;
+-- 
+2.43.2
+

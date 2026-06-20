@@ -1,0 +1,36 @@
+From 3198b66aa5dbda1c6a03f46a610073671cbd5157 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Thu, 23 Jan 2025 11:51:07 +0100
+Subject: [PATCH] core: more checks for extract_candidate()
+
+---
+ src/core/parser/sdp/sdp_helpr_funcs.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/core/parser/sdp/sdp_helpr_funcs.c b/src/core/parser/sdp/sdp_helpr_funcs.c
+index 483cfdec70..61022b6148 100644
+--- a/src/core/parser/sdp/sdp_helpr_funcs.c
++++ b/src/core/parser/sdp/sdp_helpr_funcs.c
+@@ -314,7 +314,7 @@ int extract_candidate(str *body, sdp_stream_cell_t *stream)
+ 	int len, fl;
+ 	sdp_ice_attr_t *ice_attr;
+ 
+-	if((body->len < 12) || (strncasecmp(body->s, "a=candidate:", 12) != 0)) {
++	if((body->len <= 12) || (strncasecmp(body->s, "a=candidate:", 12) != 0)) {
+ 		/*LM_DBG("We are not pointing to an a=candidate: attribute =>`%.*s'\n", body->len, body->s); */
+ 		return -1;
+ 	}
+@@ -332,6 +332,10 @@ int extract_candidate(str *body, sdp_stream_cell_t *stream)
+ 
+ 	start = space + 1;
+ 	len = len - (space - start + 1);
++	if(start + len > body->s + body->len) {
++		LM_ERR("no component in `a=candidate'\n");
++		return -1;
++	}
+ 	space = memchr(start, 32, len);
+ 	if(space == NULL) {
+ 		LM_ERR("no component in `a=candidate'\n");
+-- 
+2.25.1
+

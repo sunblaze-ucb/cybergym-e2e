@@ -1,0 +1,29 @@
+From e411d87705c65db2aafb0e774092fe57647fb31c Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Thu, 18 Feb 2021 18:15:49 -0800
+Subject: [PATCH] Fixed ASAN heap-buffer-overflow reading chunk outside of
+ frame boundary. https://oss-fuzz.com/testcase-detail/6462229769748480
+
+---
+ blosc/frame.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index d81bfa01..077e398b 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -1743,7 +1743,11 @@ int get_coffset(blosc2_frame_s* frame, int32_t header_len, int64_t cbytes, int32
+   int rc = blosc_getitem(coffsets, nchunk, 1, offset);
+   if (rc < 0) {
+     BLOSC_TRACE_ERROR("Problems retrieving a chunk offset.");
++  } else if (*offset > frame->len) {
++    BLOSC_TRACE_ERROR("Cannot read chunk %d outside of frame boundary.", nchunk);
++    rc = BLOSC2_ERROR_READ_BUFFER;
+   }
++
+   return rc;
+ }
+ 
+-- 
+2.43.2
+

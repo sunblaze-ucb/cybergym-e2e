@@ -1,0 +1,7 @@
+name = "php"
+language = "c++"
+homepage = "http://php.net/"
+main_repo = "https://github.com/php/php-src.git"
+repo_to_patch = "php-src"
+build_image = "n132/arvo:39283-fix"
+immutable_files = ["tests", "travis"]

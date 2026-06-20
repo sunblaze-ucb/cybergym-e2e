@@ -1,0 +1,74 @@
+From 0cf759b0d4c8c1252347f2d92dd10202672d4191 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Sun, 2 Jul 2023 12:15:43 -0600
+Subject: [PATCH] [Glyph] Don't shift anchored Composite if phantom_only
+
+Fixes https://oss-fuzz.com/testcase-detail/5114131137822720
+---
+ src/OT/glyf/Glyph.hh                             |   2 +-
+ ...se-minimized-hb-shape-fuzzer-5114131137822720 | Bin 0 -> 5119 bytes
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5114131137822720
+
+diff --git a/src/OT/glyf/Glyph.hh b/src/OT/glyf/Glyph.hh
+index a0c92b04b..6db14f408 100644
+--- a/src/OT/glyf/Glyph.hh
++++ b/src/OT/glyf/Glyph.hh
+@@ -428,7 +428,7 @@ struct Glyph
+ 	/* Apply component transformation & translation (with deltas applied) */
+ 	item.transform_points (comp_points, matrix, points[comp_index]);
+ 
+-	if (item.is_anchored ())
++	if (item.is_anchored () && !phantom_only)
+ 	{
+ 	  unsigned int p1, p2;
+ 	  item.get_anchor_points (p1, p2);
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5114131137822720 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5114131137822720
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a37e988eef3987165a71370f1d93b32635c3590
+GIT binary patch
+literal 5119
+zcmeHKeQ;D)6+idBw;$O}!Uh7N5bdTeglRqqn=)YvZI+NUT4^^D`EdFnkKIicX1}^D
+zDKHLg2dEY8Xc?yMOc_MS=}f=W8Epwvr*y_Y?1xsZqZMUHXH+_+)tG7n$!4#=^Y*<E
+zVWmtPoH}}T-n-|Xd+ynD@A=(x&m%!ZvqS}5jaD|75miz5rtr$c!smiy9@Q(QD#=6D
+z_{oHkOOcx-VOIGV(U_ofq(dSglhAkY{Ca{JqKGkIWUomEcCMhpGV;^HNYcpA{qk2t
+z+D7yfeHedW_s`!(|5fO3>`(0IQ@&+j%VCyw^<(_IzdrRzm>s6S46TjFjOdJCHt$D&
+z5K66a2yOvmlAu65ncM!?a(aTuouEF$mq<qp(M3-}|7qGto}{ro1J}AR{w2(LD`g~O
+z-+KAs*NGlKNaQ`*lir$Bzc|}URQ-93`v+j(y`^ZLzD9uo*!K?V-GuERdV@${8=Tk|
+zqD(BiIUS9}uFb`=v1qxmDG^%}>))0zvccw}ft8&dO__9JM=qT@Q5Yf0k2=GC65qsV
+zK>S`FLhC1u3fM|Fk;=m?2cVYZ-Thl~f;%JXq<V>NraLK1_nX_z9{iN34iCq|l4+um
+z`*?a`ZJ~Ddk7rh)1JXy|9dmk`3?rMq)vf+Ed~V!#^|cN4SIw+gB=380_Uy9p(OGk&
+zfj~n`Gs13CKA(5ZtX{BSLA7@R{{Sk!9VeI_9twWh6w*Vxzp`iFgAeRG_;qrq7oMTP
+zIb@r-sBJ$lnZl}hu%wi4e(sLP2EWR|^*rL>l|h*OL#{ra+??JOiEX)Pi<dO3B`wRb
+z!Qth->229atQXPfTW4f9a~zu1q?1Mp!{Lsub+PPLbCdkA+JKeFSLk@tn<KG-WYho*
+zAr*966;*=4ZsF%ZfH@929+?i2@A~cyy=yzDvI9{9@n*Q)Z~pAW9J9AhetTZu=&prI
+zp&KGPi-xT-)q-R7PP97#@J`b2UBs4$*o-8DBIYzWLaB649X7Sm!Es=ME|brXR{$7f
+zy#hAppi)1C-Lj%}-`E7^Rl{x1-Tm<#!$a)dP^ayIHU=27kZCVU0lye1LKir-7=a5c
+zVuyvB)x?kRc!U>V-9u881NJ=>lr8d*Yd1E<OMrH(Xf;ieLrATvuBu0TXGLK>ziwYq
+z7cV@zLO&%BO>B~ff(PXF69<@Qm^Q!gp7@72O@3NM)YjV8w)95XHrwfRRm#rbJ;Hk)
+zASNfb#WRu5>2M0Er@a^z_Oukl-h%j2#M9&}_0s2hl@n4^@DmFmY52*`-Hn_e0*+d9
+zcJR~pqHSz{?1=;1;(2z%YT39P4AJ|qt8sP=@_KaNKwE?i!ec7n^|;9tw&V;jnC~Y5
+zqT!vz=xwExP5sDeioSrw=+6QRKW5y3e-8X}7Jmf%5sM!rJ^v@Du+CA)k6Q9$;E!4S
+z^A6IV2j6trG>aOKGr;LJr3z(>x;wjW8lU0Jl77#-YP)*q8+4|EM@_O|VqzI_e4qbx
+z3QZ_g782(Pj&jg6TBKKZ_k?>-ToBpP-Ei-Q@1On*W`+Rp)!jI7N$J%zP1j`U2_Ho&
+zdFj?6z3Z-Yf^<Xsdtr*j2uE<APR9_%DPoHya`_RDgY0Ghb!+0t2YhY{;oimTRq$ec
+zQ}SW6F0QhVN#4~L>pBu-6}ATCH{aOAVJt7cBNLCM?3Ld>mGb9)2S7|Hjb0l)?e#6u
+zsD}YmTU+~Q#<Zr?h!UA->b<l*9c?idb8G7AYCJbA8*rXUbcJk6bQMz?aun=*3fi1<
+zrR9+6)d#;;ucTEyL=_)MS|@#$W+A)Ira4qYbLlEnNb`M~iEu`_^~l1hd;tqJ-6-ah
+znP&B4uWFUeDAkNyA0-h+66W%WJZrsl<24nWkUe%X5uW|~71sbh@`McJj|gROU-+p5
+zrGP;LLou{*a9o2GX@-qe-u}H)V*nnW>S2wxYg7TFF6+47XSEys=g+SYT;4FnvRwKR
+zeetZ*hx*6mLMHwVf_50e<bqH$m(MM1+F63H&@p9Sp`5twg_|}@z4#h4Zz5O{WXJj6
+zw7;bvD0SfhesQ^Zg!4)@^`%oO168LJCgF=k(*fO<X@u^K>n1ni|0uqE6kh=9%jja8
+zt1h9|mAIj1nbF>Eyd15(HP;R8cknDlDSC(NC7S||+K0@(6kGV%9cfc2d{3ed;4h(4
+zc++*M>uWm{a8041c32MKXVSPTkvMTuM5b>t6&BTxTj%Ezw@z@qea1d~Yke%$3arc#
+zg^zyzSb8Mf{uC#vIXIXCEoV53H<tosvWka0!QMPVw-I0ZSKu<A5Bp4$OZ;99(JjT^
+z=B+eLQsQEfjVN#VYt*eO-d0Nq4i@7?l_$|D9jA|WrTzEh1&$u5YVy{bw%ctoD5aSz
+z0*KOob>Y=;>DumpsD8U5wOi;vS&dB_TBolTv$7H2FndY=mx~5T|6@>bT~rwT6aEUT
+Ai~s-t
+
+literal 0
+HcmV?d00001
+
+-- 
+2.25.1
+

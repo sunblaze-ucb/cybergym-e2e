@@ -1,0 +1,26 @@
+From 075cee9e9f1bedb6b2ca87e73a952fb2e92da3c1 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sat, 29 Oct 2022 15:38:16 +0200
+Subject: [PATCH] xinclude: Fix memory leak when fuzzing
+
+This only affects the fuzzing build mode.
+---
+ xinclude.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xinclude.c b/xinclude.c
+index 57970e03..d0386f53 100644
+--- a/xinclude.c
++++ b/xinclude.c
+@@ -2247,7 +2247,7 @@ xmlXIncludeDoProcess(xmlXIncludeCtxtPtr ctxt, xmlNodePtr tree) {
+              * of replacements.
+              */
+             if (ctxt->incTotal >= 20)
+-                return(-1);
++                break;
+ #endif
+             ctxt->incTotal++;
+             ref = xmlXIncludeExpandNode(ctxt, cur);
+-- 
+2.25.1
+

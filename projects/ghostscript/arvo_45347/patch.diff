@@ -1,0 +1,57 @@
+From a9c7640b90bc583e04be7b1eebccd5c07e79c063 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 8 Mar 2022 10:38:47 +0000
+Subject: [PATCH] OSS_fuzz #45347 - validate image parameters
+
+The file has an inline image with a /H (height) of -19. The interpreter
+was simply passing that to the image rendering code which, not
+unreasonably did nothing, but reported it had consumed -19 rows.
+
+We then used that to try and skip over the image data, but treating
+a negative number as an unsigned integer led to us trying to skip
+ridiculously large amounts of data and eventually caused a crash in the
+file handling.
+
+This commit sets negative values to 0 (which then causes us to skip
+the image) unless STOPONWARNING is set in which case we return an error.
+---
+ pdf/pdf_image.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/pdf/pdf_image.c b/pdf/pdf_image.c
+index fa2e5362f..554cc3448 100644
+--- a/pdf/pdf_image.c
++++ b/pdf/pdf_image.c
+@@ -471,6 +471,14 @@ pdfi_get_image_info(pdf_context *ctx, pdf_stream *image_obj,
+             goto errorExit;
+         }
+     }
++    if (info->Height < 0) {
++        pdfi_set_warning(ctx, 0, NULL, W_PDF_BAD_IMAGEDICT, "pdfi_get_image_info", NULL);
++        if (ctx->args.pdfstoponwarning) {
++            code = gs_note_error(gs_error_rangecheck);
++            goto errorExit;
++        }
++        info->Height = 0;
++    }
+ 
+     /* Required */
+     code = pdfi_dict_get_number2(ctx, image_dict, "Width", "W", &temp_f);
+@@ -484,6 +492,14 @@ pdfi_get_image_info(pdf_context *ctx, pdf_stream *image_obj,
+             goto errorExit;
+         }
+     }
++    if (info->Width < 0) {
++        pdfi_set_warning(ctx, 0, NULL, W_PDF_BAD_IMAGEDICT, "pdfi_get_image_info", NULL);
++        if (ctx->args.pdfstoponwarning) {
++            code = gs_note_error(gs_error_rangecheck);
++            goto errorExit;
++        }
++        info->Width = 0;
++    }
+ 
+     /* Optional, default false */
+     code = pdfi_dict_get_bool2(ctx, image_dict, "ImageMask", "IM", &info->ImageMask);
+-- 
+2.43.2
+

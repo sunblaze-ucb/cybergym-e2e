@@ -1,0 +1,85 @@
+From 8c8145a43ee4815b8851f8da7091c04f551dff6e Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Tue, 22 Aug 2023 21:13:41 +0930
+Subject: [PATCH] bfd_get_symbol_leading_char vs. ""
+
+Some places matching the first char of a string against
+bfd_get_symbol_leading_char, which may be zero, didn't check for the
+string being "".  This patch adds the check to stop accesses past the
+end of the string and potential buffer overruns.
+The dlltool one was found by oss-fuzz quite a while ago.
+
+bfd/
+	* cofflink.c (_bfd_coff_link_input_bfd): Ensure a zero
+	bfd_get_symbol_leading_char doesn't lead to accessing past the
+	zero string terminator.
+	* linker.c (bfd_wrapped_link_hash_lookup): Likewise.
+	(unwrap_hash_lookup): Likewise.
+binutils/
+	* dlltool.c (scan_filtered_symbols): Ensure a zero
+	bfd_get_symbol_leading_char doesn't lead to accessing past the
+	zero string terminator.
+---
+ bfd/cofflink.c     | 3 ++-
+ bfd/linker.c       | 9 ++++++---
+ binutils/dlltool.c | 3 ++-
+ 3 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/bfd/cofflink.c b/bfd/cofflink.c
+index aea5c4c38a5..221f6e8183a 100644
+--- a/bfd/cofflink.c
++++ b/bfd/cofflink.c
+@@ -1618,7 +1618,8 @@ _bfd_coff_link_input_bfd (struct coff_final_link_info *flaginfo, bfd *input_bfd)
+ 	  /* Ignore fake names invented by compiler; treat them all as
+ 	     the same name.  */
+ 	  if (*name == '~' || *name == '.' || *name == '$'
+-	      || (*name == bfd_get_symbol_leading_char (input_bfd)
++	      || (*name
++		  && *name == bfd_get_symbol_leading_char (input_bfd)
+ 		  && (name[1] == '~' || name[1] == '.' || name[1] == '$')))
+ 	    name = "";
+ 
+diff --git a/bfd/linker.c b/bfd/linker.c
+index 0f4f9a1776c..28fffc3ad63 100644
+--- a/bfd/linker.c
++++ b/bfd/linker.c
+@@ -544,7 +544,9 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
+       char prefix = '\0';
+ 
+       l = string;
+-      if (*l == bfd_get_symbol_leading_char (abfd) || *l == info->wrap_char)
++      if (*l
++	  && (*l == bfd_get_symbol_leading_char (abfd)
++	      || *l == info->wrap_char))
+ 	{
+ 	  prefix = *l;
+ 	  ++l;
+@@ -621,8 +623,9 @@ unwrap_hash_lookup (struct bfd_link_info *info,
+ {
+   const char *l = h->root.string;
+ 
+-  if (*l == bfd_get_symbol_leading_char (input_bfd)
+-      || *l == info->wrap_char)
++  if (*l
++      && (*l == bfd_get_symbol_leading_char (input_bfd)
++	  || *l == info->wrap_char))
+     ++l;
+ 
+   if (startswith (l, WRAP))
+diff --git a/binutils/dlltool.c b/binutils/dlltool.c
+index 085d4c2ce41..6d63e11e084 100644
+--- a/binutils/dlltool.c
++++ b/binutils/dlltool.c
+@@ -1500,7 +1500,8 @@ scan_filtered_symbols (bfd *abfd, void *minisyms, long symcount,
+ 	bfd_fatal (bfd_get_filename (abfd));
+ 
+       symbol_name = bfd_asymbol_name (sym);
+-      if (bfd_get_symbol_leading_char (abfd) == symbol_name[0])
++      if (*symbol_name
++	  && *symbol_name == bfd_get_symbol_leading_char (abfd))
+ 	++symbol_name;
+ 
+       def_exports (xstrdup (symbol_name) , 0, -1, 0, 0,
+-- 
+2.25.1
+

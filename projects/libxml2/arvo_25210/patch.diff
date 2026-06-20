@@ -1,0 +1,29 @@
+From ba589adc2f86c6be9ad7e0d771d4c9b09d059b89 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Tue, 25 Aug 2020 23:50:39 +0200
+Subject: [PATCH] Fix double free in XML reader with XIncludes
+
+An XInclude with empty fallback could lead to a double free in
+xmlTextReaderRead.
+
+Found by OSS-Fuzz.
+---
+ xmlreader.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/xmlreader.c b/xmlreader.c
+index 6ae6e922..1ab15ba7 100644
+--- a/xmlreader.c
++++ b/xmlreader.c
+@@ -1491,6 +1491,8 @@ get_next_node:
+             (reader->node->prev->type != XML_DTD_NODE)) {
+ 	    xmlNodePtr tmp = reader->node->prev;
+ 	    if ((tmp->extra & NODE_IS_PRESERVED) == 0) {
++                if (oldnode == tmp)
++                    oldnode = NULL;
+ 		xmlUnlinkNode(tmp);
+ 		xmlTextReaderFreeNode(reader, tmp);
+ 	    }
+-- 
+2.43.2
+

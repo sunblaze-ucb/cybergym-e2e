@@ -1,0 +1,4 @@
+task_id = "arvo:6796"
+target_prog = "TiffDecoderFuzzer-DngDecoder"
+vul_commit = "f7a38ac971815aa215d62284812fb0144f273be8"
+patch_commit = "98d3ec824f0b4e498b175fb937b4217319d01450"

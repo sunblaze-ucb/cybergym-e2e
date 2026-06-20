@@ -1,0 +1,38 @@
+From f6a8de0a8ca7caf4d857d20e35420e4f0ade96f9 Mon Sep 17 00:00:00 2001
+From: davkor <david@adalogics.com>
+Date: Sat, 31 Oct 2020 18:11:13 +0000
+Subject: [PATCH] parser: ensure proper string null-termination (oss-fuzz
+ 26327)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_parser.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/flb_parser.c b/src/flb_parser.c
+index 0a756f27c..f0089e4ab 100644
+--- a/src/flb_parser.c
++++ b/src/flb_parser.c
+@@ -765,6 +765,19 @@ int flb_parser_time_lookup(const char *time_str, size_t tsize,
+         p = flb_strptime(time_ptr, parser->time_fmt_year, tm);
+     }
+     else {
++        /*
++         * We must ensure string passed to flb_strptime is
++         * null-terminated, which time_ptr is not guaranteed
++         * to be. So we use tmp to hold our string.
++         */
++        if (time_len >= sizeof(tmp)) {
++            return -1;
++        }
++        memcpy(tmp, time_ptr, time_len);
++        tmp[time_len] = '\0';
++        time_ptr = tmp;
++        time_len = strlen(tmp);
++
+         p = flb_strptime(time_ptr, parser->time_fmt, tm);
+     }
+ 
+-- 
+2.43.2
+

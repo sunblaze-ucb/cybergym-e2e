@@ -1,0 +1,38 @@
+From c156093ffd99b0689af3826f3aa04e7db97cc543 Mon Sep 17 00:00:00 2001
+From: Victor Zverovich <viz@fb.com>
+Date: Fri, 25 Sep 2020 08:19:21 -0700
+Subject: [PATCH] Fix carry in fallback_format
+
+---
+ include/fmt/format-inl.h | 2 +-
+ test/format-test.cc      | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/fmt/format-inl.h b/include/fmt/format-inl.h
+index ee5ac889..788dafb8 100644
+--- a/include/fmt/format-inl.h
++++ b/include/fmt/format-inl.h
+@@ -2545,7 +2545,7 @@ void fallback_format(Double d, int num_digits, bool binary32, buffer<char>& buf,
+         ++buf[i - 1];
+       }
+       if (buf[0] == overflow) {
+-        buf[0] = '0';
++        buf[0] = '1';
+         ++exp10;
+       }
+       return;
+diff --git a/test/format-test.cc b/test/format-test.cc
+index 86128ed1..8d33f056 100644
+--- a/test/format-test.cc
++++ b/test/format-test.cc
+@@ -957,6 +957,7 @@ TEST(FormatterTest, Precision) {
+   EXPECT_EQ("1.23", format("{:.02f}", 1.234));
+   EXPECT_EQ("0.001", format("{:.1g}", 0.001));
+   EXPECT_EQ("1019666400", format("{}", 1019666432.0f));
++  EXPECT_EQ("1e+01", format("{:.0e}", 9.5));
+ 
+   EXPECT_THROW_MSG(format("{0:.2}", reinterpret_cast<void*>(0xcafe)),
+                    format_error,
+-- 
+2.43.2
+

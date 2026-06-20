@@ -1,0 +1,64 @@
+From d7aa650f3c04aa344ab236d784394c8f6d8d59ee Mon Sep 17 00:00:00 2001
+From: Eugene Kliuchnikov <eustas.ru@gmail.com>
+Date: Tue, 2 May 2023 17:06:18 +0200
+Subject: [PATCH] Fix: Use-of-uninitialized-value in lt_update_state (#123)
+
+In some cases spec1/spec2 are only transformed, but never filled.
+Calming down MSAN, as it is the safest way to fix the problem.
+Unfortuantely, there is not enough evidence to reject streams
+with `num_swb == 0`.
+---
+ fuzz/build_fuzz.sh | 4 ++++
+ libfaad/specrec.c  | 7 +++++++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/fuzz/build_fuzz.sh b/fuzz/build_fuzz.sh
+index f51d6dc..41a7bf5 100644
+--- a/fuzz/build_fuzz.sh
++++ b/fuzz/build_fuzz.sh
+@@ -29,6 +29,9 @@
+ # ASAN:
+ export SANITIZER=address
+ export SANITIZER_FLAGS="-fsanitize=$SANITIZER -fsanitize-address-use-after-scope"
++# MSAN:
++#export SANITIZER=memory
++#export SANITIZER_FLAGS="-fsanitize=$SANITIZER -fsanitize-memory-track-origins=2"
+ # UBSAN:
+ #export SANITIZER=array-bounds,bool,builtin,enum,float-divide-by-zero,function,integer-divide-by-zero,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,unsigned-integer-overflow,unreachable,vla-bound,vptr
+ #export SANITIZER_FLAGS="-fsanitize=$SANITIZER -fno-sanitize-recover=$SANITIZER"
+@@ -43,6 +46,7 @@ export CXXFLAGS="${BASE_FLAGS} -stdlib=libc++"
+ ./bootstrap
+ ./configure
+ cd libfaad
++make clean -j `nproc`
+ make -j `nproc`
+ cd ../
+ for fname in config decode; do
+diff --git a/libfaad/specrec.c b/libfaad/specrec.c
+index 41c3507..ae4887b 100644
+--- a/libfaad/specrec.c
++++ b/libfaad/specrec.c
+@@ -40,6 +40,7 @@
+ 
+ #include <string.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include "specrec.h"
+ #include "filtbank.h"
+ #include "syntax.h"
+@@ -572,6 +573,12 @@ static uint8_t quant_to_spec(NeAACDecStruct *hDecoder,
+     k = 0;
+     gindex = 0;
+ 
++    /* In this case quant_to_spec is no-op and spec_data remains undefined.
++     * Without peeking into AAC specification, there is no strong evidence if
++     * such streams are invalid -> just calm down MSAN. */
++    if (ics->num_swb == 0)
++        memset(spec_data, 0, frame_len * sizeof(real_t));
++
+     for (g = 0; g < ics->num_window_groups; g++)
+     {
+         uint16_t j = 0;
+-- 
+2.25.1
+

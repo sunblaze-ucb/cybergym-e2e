@@ -1,0 +1,201 @@
+From d89db70436643b27cdd995a3cd2d8385112f6953 Mon Sep 17 00:00:00 2001
+From: Even Rouault <even.rouault@mines-paris.org>
+Date: Mon, 6 Nov 2017 12:27:13 +0000
+Subject: [PATCH 1/2] GDALResampleChunk32R_ConvolutionT: avoid buffer overflow.
+ Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4071. Credit to
+ OSS Fuzz
+
+git-svn-id: https://svn.osgeo.org/gdal/trunk@40653 f0d54148-0727-0410-94bb-9a71ac55c965
+---
+ gdal/gcore/overview.cpp | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/gdal/gcore/overview.cpp b/gdal/gcore/overview.cpp
+index 863dab6..a021492 100644
+--- a/gdal/gcore/overview.cpp
++++ b/gdal/gcore/overview.cpp
+@@ -1776,11 +1776,11 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+     const double dfYScaledRadius = nKernelRadius / dfYScaleWeight;
+ 
+     float* pafDstScanline = static_cast<float *>(
+-        VSI_MALLOC_VERBOSE(nDstXSize * sizeof(float)) );
++        VSI_MALLOC2_VERBOSE(nDstXSize, sizeof(float)) );
+ 
+     // Temporary array to store result of horizontal filter.
+     double* padfHorizontalFiltered = static_cast<double*>(
+-        VSI_MALLOC_VERBOSE(nChunkYSize * nDstXSize * sizeof(double) * nBands) );
++        VSI_MALLOC3_VERBOSE(nChunkYSize, nDstXSize, sizeof(double) * nBands) );
+ 
+     // To store convolution coefficients.
+     double* padfWeights = static_cast<double *>(
+@@ -1886,11 +1886,11 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                         pChunk + j, pChunk + j + nChunkXSize,
+                         pChunk + j + 2 * nChunkXSize,
+                         padfWeights, dfVal1, dfVal2, dfVal3);
+-                    padfHorizontalFiltered[iSrcLineOff * nDstXSize +
++                    padfHorizontalFiltered[static_cast<size_t>(iSrcLineOff) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal1;
+-                    padfHorizontalFiltered[(iSrcLineOff + 1) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 1) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal2;
+-                    padfHorizontalFiltered[(iSrcLineOff + 2) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 2) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal3;
+                 }
+             }
+@@ -1908,11 +1908,11 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                         pChunk + j, pChunk + j + nChunkXSize,
+                         pChunk + j + 2 * nChunkXSize,
+                         padfWeights, nSrcPixelCount, dfVal1, dfVal2, dfVal3);
+-                    padfHorizontalFiltered[iSrcLineOff * nDstXSize +
++                    padfHorizontalFiltered[static_cast<size_t>(iSrcLineOff) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal1;
+-                    padfHorizontalFiltered[(iSrcLineOff + 1) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 1) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal2;
+-                    padfHorizontalFiltered[(iSrcLineOff + 2) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 2) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal3;
+                 }
+             }
+@@ -1932,11 +1932,11 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                         pChunk + j + nChunkXSize,
+                         pChunk + j + 2 * nChunkXSize,
+                         padfWeights, nSrcPixelCount, dfVal1, dfVal2, dfVal3);
+-                    padfHorizontalFiltered[iSrcLineOff * nDstXSize +
++                    padfHorizontalFiltered[static_cast<size_t>(iSrcLineOff) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal1;
+-                    padfHorizontalFiltered[(iSrcLineOff + 1) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 1) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal2;
+-                    padfHorizontalFiltered[(iSrcLineOff + 2) * nDstXSize +
++                    padfHorizontalFiltered[(static_cast<size_t>(iSrcLineOff) + 2) * nDstXSize +
+                                            iDstPixel - nDstXOff] = dfVal3;
+                 }
+             }
+@@ -1947,7 +1947,7 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                 const double dfVal =
+                     GDALResampleConvolutionHorizontal(pChunk + j,
+                                                 padfWeights, nSrcPixelCount);
+-                padfHorizontalFiltered[iSrcLineOff * nDstXSize +
++                padfHorizontalFiltered[static_cast<size_t>(iSrcLineOff) * nDstXSize +
+                                        iDstPixel - nDstXOff] = dfVal;
+             }
+         }
+@@ -1962,8 +1962,8 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                     pChunk + j, pabyChunkNodataMask + j,
+                     padfWeights, nSrcPixelCount,
+                     dfVal, dfWeightSum );
+-                const int nTempOffset =
+-                    iSrcLineOff * nDstXSize + iDstPixel - nDstXOff;
++                const size_t nTempOffset =
++                    static_cast<size_t>(iSrcLineOff) * nDstXSize + iDstPixel - nDstXOff;
+                 if( dfWeightSum > 0.0 )
+                 {
+                     padfHorizontalFiltered[nTempOffset] = dfVal / dfWeightSum;
+@@ -2049,7 +2049,7 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+         {
+             int iFilteredPixelOff = 0;  // Used after for.
+             // j used after for.
+-            int j = (nSrcLineStart - nChunkYOff) * nDstXSize;
++            size_t j = (nSrcLineStart - nChunkYOff) * static_cast<size_t>(nDstXSize);
+ #ifdef USE_SSE2
+ 
+ #ifdef __AVX__
+@@ -2113,7 +2113,7 @@ GDALResampleChunk32R_ConvolutionT( double dfXRatioDstToSrc,
+                 double dfVal = 0.0;
+                 dfWeightSum = 0.0;
+                 for( int i = 0,
+-                         j = (nSrcLineStart - nChunkYOff) * nDstXSize
++                         j = (nSrcLineStart - nChunkYOff) * static_cast<size_t>(nDstXSize)
+                              + iFilteredPixelOff;
+                     i < nSrcLineCount;
+                     ++i, j += nDstXSize)
+-- 
+2.7.4
+
+
+From c272d0842c43b5bbde4ccce5189fd196b5359ed9 Mon Sep 17 00:00:00 2001
+From: Even Rouault <even.rouault@mines-paris.org>
+Date: Mon, 6 Nov 2017 12:27:30 +0000
+Subject: [PATCH 2/2] gdal_translate_fuzzer: avoid situations with excessive
+ memory allocation. Fixes
+ https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4071. Credit to OSS
+ Fuzz
+
+git-svn-id: https://svn.osgeo.org/gdal/trunk@40654 f0d54148-0727-0410-94bb-9a71ac55c965
+---
+ gdal/fuzzers/gdal_translate_fuzzer.cpp | 50 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/gdal/fuzzers/gdal_translate_fuzzer.cpp b/gdal/fuzzers/gdal_translate_fuzzer.cpp
+index a3b7079..2fe6c4d 100644
+--- a/gdal/fuzzers/gdal_translate_fuzzer.cpp
++++ b/gdal/fuzzers/gdal_translate_fuzzer.cpp
+@@ -81,6 +81,32 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
+         VSIFCloseL(fp);
+     }
+ 
++    int nXDim = -1;
++    int nYDim = -1;
++    bool bXDimPct = false;
++    bool bYDimPct = false;
++    bool bNonNearestResampling = false;
++    if( papszArgv != NULL )
++    {
++        int nCount = CSLCount(papszArgv);
++        for( int i = 0; i < nCount; i++ )
++        {
++            if( EQUAL(papszArgv[i], "-outsize") && i + 2 < nCount )
++            {
++                nXDim = atoi(papszArgv[i+1]);
++                bXDimPct = (papszArgv[i+1][0] != '\0' &&
++                            papszArgv[i+1][strlen(papszArgv[i+1])-1] == '%');
++                nYDim = atoi(papszArgv[i+2]);
++                bYDimPct = (papszArgv[i+2][0] != '\0' &&
++                            papszArgv[i+2][strlen(papszArgv[i+2])-1] == '%');
++            }
++            else if( EQUAL(papszArgv[i], "-r") && i + 1 < nCount )
++            {
++                bNonNearestResampling = !STARTS_WITH_CI(papszArgv[i+1], "NEAR");
++            }
++        }
++    }
++
+     if( papszArgv != NULL )
+     {
+         GDALTranslateOptions* psOptions = GDALTranslateOptionsNew(papszArgv, NULL);
+@@ -102,7 +128,29 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
+                     if( nBands )
+                         nSize *= GDALGetDataTypeSizeBytes(
+                                 poSrcDS->GetRasterBand(1)->GetRasterDataType() );
+-                    if( nSize < 10 * 1024 * 1024 )
++
++                    // Prevent excessive downsampling which might require huge
++                    // memory allocation
++                    bool bOKForResampling = true;
++                    if( bNonNearestResampling && nXDim >= 0 && nYDim >= 0 )
++                    {
++                        if( bXDimPct && nXDim > 0 )
++                        {
++                            nXDim = static_cast<int>(
++                                poSrcDS->GetRasterXSize() / 100.0 * nXDim);
++                        }
++                        if( bYDimPct && nYDim > 0 )
++                        {
++                            nYDim = static_cast<int>(
++                                poSrcDS->GetRasterYSize() / 100.0 * nYDim);
++                        }
++                        if( nXDim > 0 && poSrcDS->GetRasterXSize() / nXDim > 100 )
++                            bOKForResampling = false;
++                        if( nYDim > 0 && poSrcDS->GetRasterYSize() / nYDim > 100 )
++                            bOKForResampling = false;
++                    }
++
++                    if( nSize < 10 * 1024 * 1024 && bOKForResampling )
+                     {
+                         GDALDatasetH hOutDS = GDALTranslate("/vsimem/out", hSrcDS,
+                                                             psOptions, NULL);
+-- 
+2.7.4
+

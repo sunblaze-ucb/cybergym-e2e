@@ -1,0 +1,134 @@
+From 33d1f32136f950520dcca278b77acff430dc8dca Mon Sep 17 00:00:00 2001
+From: Antoine Pitrou <antoine@python.org>
+Date: Wed, 8 Oct 2025 08:43:12 +0200
+Subject: [PATCH] GH-47740: [C++][Parquet] Fix undefined behavior when reading
+ invalid Parquet data (#47741)
+
+### Rationale for this change
+
+Fix issues found by OSS-Fuzz when invalid Parquet data is fed to the Parquet reader:
+* https://issues.oss-fuzz.com/issues/447262173
+* https://issues.oss-fuzz.com/issues/447480433
+* https://issues.oss-fuzz.com/issues/447490896
+* https://issues.oss-fuzz.com/issues/447693724
+* https://issues.oss-fuzz.com/issues/447693728
+* https://issues.oss-fuzz.com/issues/449498800
+
+### Are these changes tested?
+
+Yes, using the updated fuzz regression files from https://github.com/apache/arrow-testing/pull/115
+
+### Are there any user-facing changes?
+
+No.
+
+**This PR contains a "Critical Fix".** (If the changes fix either (a) a security vulnerability, (b) a bug that caused incorrect or invalid data to be produced, or (c) a bug that causes a crash (even when the API contract is upheld), please provide explanation. If not, you can remove this.)
+
+* GitHub Issue: #47740
+
+Authored-by: Antoine Pitrou <antoine@python.org>
+Signed-off-by: Antoine Pitrou <antoine@python.org>
+---
+ cpp/CMakePresets.json                      |  3 ++-
+ cpp/src/arrow/util/rle_encoding_internal.h | 16 ++++++++++------
+ cpp/src/parquet/decoder.cc                 |  7 +++++--
+ testing                                    |  2 +-
+ 4 files changed, 18 insertions(+), 10 deletions(-)
+
+diff --git a/cpp/CMakePresets.json b/cpp/CMakePresets.json
+index c9e2444389..0c3f85d091 100644
+--- a/cpp/CMakePresets.json
++++ b/cpp/CMakePresets.json
+@@ -444,7 +444,8 @@
+         "CMAKE_CXX_COMPILER": "clang++",
+         "ARROW_IPC": "ON",
+         "ARROW_PARQUET": "ON",
+-        "ARROW_FUZZING": "ON"
++        "ARROW_FUZZING": "ON",
++        "ARROW_WITH_SNAPPY": "ON"
+       }
+     },
+     {
+diff --git a/cpp/src/arrow/util/rle_encoding_internal.h b/cpp/src/arrow/util/rle_encoding_internal.h
+index c231c9a63e..a7917483bb 100644
+--- a/cpp/src/arrow/util/rle_encoding_internal.h
++++ b/cpp/src/arrow/util/rle_encoding_internal.h
+@@ -657,13 +657,14 @@ auto RleBitPackedParser::PeekImpl(Handler&& handler) const
+   const auto header_bytes = bit_util::ParseLeadingLEB128(data_, kMaxSize, &run_len_type);
+ 
+   if (ARROW_PREDICT_FALSE(header_bytes == 0)) {
+-    // Malfomrmed LEB128 data
++    // Malformed LEB128 data
+     return {0, ControlFlow::Break};
+   }
+ 
+   const bool is_bit_packed = run_len_type & 1;
+   const uint32_t count = run_len_type >> 1;
+   if (is_bit_packed) {
++    // Bit-packed run
+     constexpr auto kMaxCount = bit_util::CeilDiv(internal::max_size_for_v<rle_size_t>, 8);
+     if (ARROW_PREDICT_FALSE(count == 0 || count > kMaxCount)) {
+       // Illegal number of encoded values
+@@ -672,17 +673,21 @@ auto RleBitPackedParser::PeekImpl(Handler&& handler) const
+ 
+     ARROW_DCHECK_LT(static_cast<uint64_t>(count) * 8,
+                     internal::max_size_for_v<rle_size_t>);
++    // Count Already divided by 8 for byte size calculations
++    const auto bytes_read = header_bytes + static_cast<int64_t>(count) * value_bit_width_;
++    if (ARROW_PREDICT_FALSE(bytes_read > data_size_)) {
++      // Bit-packed run would overflow data buffer
++      return {0, ControlFlow::Break};
++    }
+     const auto values_count = static_cast<rle_size_t>(count * 8);
+-    // Count Already divided by 8
+-    const auto bytes_read =
+-        header_bytes + static_cast<rle_size_t>(count) * value_bit_width_;
+ 
+     auto control = handler.OnBitPackedRun(
+         BitPackedRun(data_ + header_bytes, values_count, value_bit_width_));
+ 
+-    return {bytes_read, control};
++    return {static_cast<rle_size_t>(bytes_read), control};
+   }
+ 
++  // RLE run
+   if (ARROW_PREDICT_FALSE(count == 0)) {
+     // Illegal number of encoded values
+     return {0, ControlFlow::Break};
+@@ -1079,7 +1084,6 @@ auto RleBitPackedDecoder<T>::GetSpaced(Converter converter,
+   // There may be remaining null if they are not greedily filled by either decoder calls
+   check_and_handle_fully_null_remaining();
+ 
+-  ARROW_DCHECK(batch.is_done() || exhausted());
+   return batch.total_read();
+ }
+ 
+diff --git a/cpp/src/parquet/decoder.cc b/cpp/src/parquet/decoder.cc
+index 46d1c201e9..b6d7966562 100644
+--- a/cpp/src/parquet/decoder.cc
++++ b/cpp/src/parquet/decoder.cc
+@@ -2082,9 +2082,12 @@ class DeltaByteArrayDecoderImpl : public TypedDecoderImpl<DType> {
+                           int64_t valid_bits_offset,
+                           typename EncodingTraits<DType>::Accumulator* out,
+                           int* out_num_values) {
+-    std::vector<ByteArray> values(num_values);
++    std::vector<ByteArray> values(num_values - null_count);
+     const int num_valid_values = GetInternal(values.data(), num_values - null_count);
+-    DCHECK_EQ(num_values - null_count, num_valid_values);
++    if (ARROW_PREDICT_FALSE(num_values - null_count != num_valid_values)) {
++      throw ParquetException("Expected to decode ", num_values - null_count,
++                             " values, but decoded ", num_valid_values, " values.");
++    }
+ 
+     auto visit_binary_helper = [&](auto* helper) {
+       auto values_ptr = reinterpret_cast<const ByteArray*>(values.data());
+diff --git a/testing b/testing
+index 6a7b02fac9..abf6d7ebde 160000
+--- a/testing
++++ b/testing
+@@ -1 +1 @@
+-Subproject commit 6a7b02fac93d8addbcdbb213264e58bfdc3068e4
++Subproject commit abf6d7ebde7ab70b541c51859dad2bef71a0151e
+-- 
+2.25.1
+

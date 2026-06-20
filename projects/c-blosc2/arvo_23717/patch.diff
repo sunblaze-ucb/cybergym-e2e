@@ -1,0 +1,31 @@
+From db309703091a85ad93e0658f24926bcb474309c0 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Thu, 25 Jun 2020 18:50:57 -0700
+Subject: [PATCH] Fixed asan error and check for validate header sizes in
+ decompress_fuzzer.
+
+---
+ tests/fuzz/fuzz_decompress.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/tests/fuzz/fuzz_decompress.c b/tests/fuzz/fuzz_decompress.c
+index 04b97afc..b89f70a2 100644
+--- a/tests/fuzz/fuzz_decompress.c
++++ b/tests/fuzz/fuzz_decompress.c
+@@ -22,7 +22,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+   if (nbytes == 0) {
+     return 0;
+   }
+-  
++
++  if (blosc_cbuffer_validate(data, size, &nbytes) != 0) {
++    /* Unexpected `nbytes` specified in blosc header */
++    return 0;
++  }
++
+   output = malloc(cbytes);
+   if (output != NULL) {
+     blosc_decompress(data, output, cbytes);
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:431665305"
+target_prog = "ffmpeg_AV_CODEC_ID_DXV_DEC_fuzzer"
+vul_commit = "4a0b793737ec1a118d2119a677fa17926def01bc"
+patch_commit = "6a8c41dcacbba011e553fbf35518577321d1aadb"
+build_image = "cybergym/e2e:ffmpeg"

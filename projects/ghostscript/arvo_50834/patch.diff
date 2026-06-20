@@ -1,0 +1,29 @@
+From 00897ae3a48a4f36b84fe61a1e3aa6252bf418e5 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Thu, 1 Sep 2022 09:00:35 +0100
+Subject: [PATCH] oss-fuzz 50834: Add code buffer bounds check in Ins_NPUSHW()
+
+The wrinkle is that for each arg pushed, it reads two values from the code
+buffer.
+---
+ base/ttinterp.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/base/ttinterp.c b/base/ttinterp.c
+index 23a7c949e..722369fb6 100644
+--- a/base/ttinterp.c
++++ b/base/ttinterp.c
+@@ -2350,7 +2350,9 @@ static int nInstrCount=0;
+ 
+     L = (Int)CUR.code[CUR.IP + 1];
+ 
+-    if ( BOUNDS( L, CUR.stackSize+1-CUR.top ) )
++    /* GET_ShortIns() reads two values from the execution stream */
++    if ( BOUNDS( L, CUR.stackSize+1-CUR.top )
++      || BOUNDS( L * 2, CUR.codeSize+1-CUR.IP))
+     {
+       CUR.error = TT_Err_Stack_Overflow;
+       return;
+-- 
+2.43.2
+

@@ -1,0 +1,31 @@
+From 59db32b433ea9e7766ec7fac994860ed15d7ed7d Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sat, 8 Nov 2025 23:22:56 +0100
+Subject: [PATCH] avcodec/utvideodec: Set B for the width= 1 case in
+ restore_median_planar_il()
+
+Fixes: use of uninitialized memory
+Fixes: 439878388/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_UTVIDEO_DEC_fuzzer-5635866203848704
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/utvideodec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/utvideodec.c b/libavcodec/utvideodec.c
+index bc02ac44d5..098706b705 100644
+--- a/libavcodec/utvideodec.c
++++ b/libavcodec/utvideodec.c
+@@ -457,7 +457,7 @@ static void restore_median_planar_il(UtvideoContext *c, uint8_t *src, ptrdiff_t
+         // second line - first element has top prediction, the rest uses median
+         C        = bsrc[-stride2];
+         bsrc[0] += C;
+-        A        = bsrc[0];
++        A = B    = bsrc[0];
+         for (i = 1; i < FFMIN(width, 16); i++) { /* scalar loop (DSP need align 16) */
+             B        = bsrc[i - stride2];
+             bsrc[i] += mid_pred(A, B, (uint8_t)(A + B - C));
+-- 
+2.25.1
+

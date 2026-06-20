@@ -1,0 +1,61 @@
+From ebb19fb367e301869dd9a3ee7ea03e9c975ede0b Mon Sep 17 00:00:00 2001
+From: Willy Tarreau <w@1wt.eu>
+Date: Fri, 9 May 2025 09:55:39 +0200
+Subject: [PATCH] BUG/MINOR: cfgparse: consider the special case of empty arg
+ caused by \x00
+
+The reporting of the empty arg location added with commit 08d3caf30
+("MINOR: cfgparse: visually show the input line on empty args") falls
+victim of a special case detected by OSS Fuzz:
+
+     https://issues.oss-fuzz.com/issues/415850462
+
+In short, making an argument start with "\x00" doesn't make it empty for
+the parser, but still emits an empty string which is detected and
+displayed. Unfortunately in this case the error pointer is not set so
+the sanitization function crashes.
+
+What we're doing in this case is that we fall back to the position of
+the output argument as an estimate of where it was located in the input.
+It's clearly inexact (quoting etc) but will still help the user locate
+the problem.
+
+No backport is needed unless the commit above is backported.
+---
+ src/cfgparse.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/cfgparse.c b/src/cfgparse.c
+index 3421a0997..1fea15915 100644
+--- a/src/cfgparse.c
++++ b/src/cfgparse.c
+@@ -1981,7 +1981,7 @@ int parse_cfg(const struct cfgfile *cfg)
+ 
+ 		while (1) {
+ 			uint32_t err;
+-			const char *errptr;
++			const char *errptr = NULL;
+ 			int check_arg;
+ 
+ 			arg = sizeof(args) / sizeof(*args);
+@@ -2067,9 +2067,16 @@ int parse_cfg(const struct cfgfile *cfg)
+ 
+ 			for (check_arg = 0; check_arg < arg; check_arg++) {
+ 				if (!*args[check_arg]) {
+-					/* if an empty arg was found, its pointer is in <errptr> */
+ 					size_t newpos;
+ 
++					/* if an empty arg was found, its pointer should be in <errptr>, except
++					 * for rare cases such as '\x00' etc. We need to check errptr in any case
++					 * and if it's not set, we'll fall back to args's position in the output
++					 * string instead (less accurate but still useful).
++					 */
++					if (!errptr)
++						errptr = args[check_arg] - outline + line;
++
+ 					/* sanitize input line in-place */
+ 					newpos = sanitize_for_printing(line, errptr - line, 80);
+ 					ha_warning("parsing [%s:%d]: argument number %d at position %d is empty and marks the end of the "
+-- 
+2.25.1
+

@@ -1,0 +1,24 @@
+From da749d870f4a57df7a05ef4a9ae023602d48af86 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 10 Sep 2021 17:34:40 +0900
+Subject: [PATCH] array.c: forgot to adjust tail position in `mrb_ary_splice`.
+
+---
+ src/array.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/array.c b/src/array.c
+index fc3b0a087..c100591eb 100644
+--- a/src/array.c
++++ b/src/array.c
+@@ -751,6 +751,7 @@ mrb_ary_splice(mrb_state *mrb, mrb_value ary, mrb_int head, mrb_int len, mrb_val
+   tail = head + len;
+   if (alen < len || alen < tail) {
+     len = alen - head;
++    tail = head + len;
+   }
+ 
+   /* size check */
+-- 
+2.43.2
+

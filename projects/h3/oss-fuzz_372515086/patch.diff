@@ -1,0 +1,27 @@
+From a99f03e4d7b30169eb835db9844aba3a7c2e2827 Mon Sep 17 00:00:00 2001
+From: Isaac Brodsky <isaac@isaacbrodsky.com>
+Date: Tue, 22 Oct 2024 16:17:41 -0700
+Subject: [PATCH] fix potential heap overflow in polygonToCellsExperimental due
+ to under-estimation (#934)
+
+---
+ src/h3lib/lib/polyfill.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/h3lib/lib/polyfill.c b/src/h3lib/lib/polyfill.c
+index 6269aaef..5b8220f8 100644
+--- a/src/h3lib/lib/polyfill.c
++++ b/src/h3lib/lib/polyfill.c
+@@ -508,7 +508,8 @@ void iterStepPolygonCompact(IterCellsPolygonCompact *iter) {
+                 // For overlap, we've already checked for center point inclusion
+                 // above; if that failed, we only need to check for line
+                 // intersection
+-                else if (mode == CONTAINMENT_OVERLAPPING &&
++                else if ((mode == CONTAINMENT_OVERLAPPING ||
++                          mode == CONTAINMENT_OVERLAPPING_BBOX) &&
+                          cellBoundaryCrossesPolygon(
+                              iter->_polygon, iter->_bboxes, &boundary, &bbox)) {
+                     // Set to next output
+-- 
+2.25.1
+

@@ -1,0 +1,25 @@
+From 7357713ba5d529f3ff70c654b703429fc9cb55a4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Caol=C3=A1n=20McNamara?= <caolanm@redhat.com>
+Date: Mon, 3 Oct 2022 21:02:13 +0100
+Subject: [PATCH] ofz#51988 avoid going past start of invalid utf-8 sequence
+
+---
+ src/hunspell/affixmgr.cxx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hunspell/affixmgr.cxx b/src/hunspell/affixmgr.cxx
+index f32a456..0793b67 100644
+--- a/src/hunspell/affixmgr.cxx
++++ b/src/hunspell/affixmgr.cxx
+@@ -1353,7 +1353,7 @@ int AffixMgr::cpdpat_check(const char* word,
+ int AffixMgr::cpdcase_check(const char* word, int pos) {
+   if (utf8) {
+     const char* p;
+-    for (p = word + pos - 1; (*p & 0xc0) == 0x80; p--)
++    for (p = word + pos - 1; p > word && (*p & 0xc0) == 0x80; p--)
+       ;
+     std::string pair(p);
+     std::vector<w_char> pair_u;
+-- 
+2.25.1
+

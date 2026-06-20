@@ -1,0 +1,27 @@
+From ffbff25ec6c6d0ad3f8df76f57210698f7947fc3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Veronika=20Hanul=C3=ADkov=C3=A1?= <vhanulik@redhat.com>
+Date: Fri, 11 Aug 2023 09:44:57 +0200
+Subject: [PATCH] fuzz_pkcs11.c: Use valid data for verify
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=60971
+---
+ src/tests/fuzzing/fuzz_pkcs11.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/tests/fuzzing/fuzz_pkcs11.c b/src/tests/fuzzing/fuzz_pkcs11.c
+index b6e05c9a..fdc163b4 100644
+--- a/src/tests/fuzzing/fuzz_pkcs11.c
++++ b/src/tests/fuzzing/fuzz_pkcs11.c
+@@ -512,7 +512,7 @@ static void test_verify(const uint8_t *data, size_t size)
+ 		while (verify_data_size > 0) {
+ 			to_process = verify_data_size < sizeof(in_buffer) ? verify_data_size : sizeof(in_buffer);
+ 			verify_data_size -= to_process;
+-			memcpy(in_buffer, data, to_process);
++			memcpy(in_buffer, verify_data, to_process);
+ 			verify_data += to_process;
+ 
+ 			if (p11->C_VerifyUpdate(session, in_buffer, to_process) != CKR_OK)
+-- 
+2.25.1
+

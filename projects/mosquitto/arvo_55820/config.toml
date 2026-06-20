@@ -1,0 +1,5 @@
+task_id = "arvo:55820"
+target_prog = "broker_fuzz_test_config"
+vul_commit = "1df253e4e3c48079a196788dbacc9c1364c92162"
+patch_commit = "7adf77e9664a7099c747071bbde3e40718450e67"
+build_image = "n132/arvo:55820-fix"

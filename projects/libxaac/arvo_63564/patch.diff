@@ -1,0 +1,72 @@
+From 60b65345813bfd0c07f9646e4924ec18e15aa8a9 Mon Sep 17 00:00:00 2001
+From: Shashank Pathmudi <shashank.pathmudi@ittiam.com>
+Date: Thu, 26 Oct 2023 09:40:36 +0530
+Subject: [PATCH] Fix for index-out-of-bounds in ixheaacd_smooth_m1m2
+
+These changes handle the index-out-of-bounds runtime error reported
+when the value of arbitrary downmix residual bands is greater than or equal
+to the number of parameter bands.
+
+Bug: ossFuzz:63564
+Test: poc in bug
+---
+ decoder/ixheaacd_config.h        | 2 +-
+ decoder/ixheaacd_ld_mps_config.c | 4 ++++
+ decoder/ixheaacd_mps_bitdec.c    | 6 ++++++
+ 3 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/decoder/ixheaacd_config.h b/decoder/ixheaacd_config.h
+index 5c7bd59..aa3a871 100644
+--- a/decoder/ixheaacd_config.h
++++ b/decoder/ixheaacd_config.h
+@@ -146,7 +146,7 @@ typedef struct {
+ 
+   UINT32 bs_arbitrary_downmix_residual_sampling_freq_index;
+   UINT32 bs_arbitrary_downmix_residual_frames_per_spatial_frame;
+-  UINT32 bs_arbitrary_downmix_residual_bands;
++  WORD32 bs_arbitrary_downmix_residual_bands;
+ 
+   UINT32 num_out_chan_AT;
+   UINT32 num_ott_boxes_AT;
+diff --git a/decoder/ixheaacd_ld_mps_config.c b/decoder/ixheaacd_ld_mps_config.c
+index 850b128..162b876 100644
+--- a/decoder/ixheaacd_ld_mps_config.c
++++ b/decoder/ixheaacd_ld_mps_config.c
+@@ -120,6 +120,10 @@ static IA_ERRORCODE ixheaacd_ld_spatial_extension_config(
+               ixheaacd_read_bits_buf(it_bit_buff, 2);
+           config->bs_arbitrary_downmix_residual_bands =
+               ixheaacd_read_bits_buf(it_bit_buff, 5);
++          if (config->bs_arbitrary_downmix_residual_bands >=
++              ixheaacd_freq_res_table[config->bs_freq_res]) {
++            return IA_FATAL_ERROR;
++          }
+ 
+           break;
+ 
+diff --git a/decoder/ixheaacd_mps_bitdec.c b/decoder/ixheaacd_mps_bitdec.c
+index 4d9e1ce..d8a10e4 100644
+--- a/decoder/ixheaacd_mps_bitdec.c
++++ b/decoder/ixheaacd_mps_bitdec.c
+@@ -47,6 +47,8 @@
+ #include "ixheaacd_mps_mdct_2_qmf.h"
+ #include "ixheaac_sbr_const.h"
+ 
++static const WORD32 ixheaacd_freq_res_table[] = {0, 28, 20, 14, 10, 7, 5, 4};
++
+ static WORD32 ixheaacd_bound_check(WORD32 var, WORD32 lower_bound, WORD32 upper_bound) {
+   var = min(var, upper_bound);
+   var = max(var, lower_bound);
+@@ -130,6 +132,10 @@ static IA_ERRORCODE ixheaacd_parse_extension_config(
+         config->bs_arbitrary_downmix_residual_frames_per_spatial_frame =
+             (temp >> 5) & TWO_BIT_MASK;
+         config->bs_arbitrary_downmix_residual_bands = temp & FIVE_BIT_MASK;
++        if (config->bs_arbitrary_downmix_residual_bands >=
++            ixheaacd_freq_res_table[config->bs_freq_res]) {
++          return IA_FATAL_ERROR;
++        }
+ 
+         break;
+ 
+-- 
+2.25.1
+

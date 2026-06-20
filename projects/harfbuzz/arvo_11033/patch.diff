@@ -1,0 +1,36 @@
+From 68b705076808d4b0a4ac3bfa945b8f9ae23db1df Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Sat, 20 Oct 2018 12:09:41 -0700
+Subject: [PATCH] [kerx] Fix sanitize of KerxSubtableFormat2::array read
+
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=11033
+---
+ src/hb-aat-layout-kerx-table.hh | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/hb-aat-layout-kerx-table.hh b/src/hb-aat-layout-kerx-table.hh
+index 6425780..e8eb43b 100644
+--- a/src/hb-aat-layout-kerx-table.hh
++++ b/src/hb-aat-layout-kerx-table.hh
+@@ -103,7 +103,8 @@ struct KerxSubTableFormat0
+   inline bool sanitize (hb_sanitize_context_t *c) const
+   {
+     TRACE_SANITIZE (this);
+-    return_trace (likely (pairs.sanitize (c)));
++    return_trace (likely (c->check_struct (this) &&
++			  pairs.sanitize (c)));
+   }
+ 
+   protected:
+@@ -275,7 +276,7 @@ struct KerxSubTableFormat2
+   inline bool sanitize (hb_sanitize_context_t *c) const
+   {
+     TRACE_SANITIZE (this);
+-    return_trace (likely (rowWidth.sanitize (c) &&
++    return_trace (likely (c->check_struct (this) &&
+ 			  leftClassTable.sanitize (c, this) &&
+ 			  rightClassTable.sanitize (c, this) &&
+ 			  c->check_range (this, array)));
+-- 
+2.7.4
+

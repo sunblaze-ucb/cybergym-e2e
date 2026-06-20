@@ -1,0 +1,52 @@
+From 340f3ac8082771ecc473ab938fc3d7cbf607ddaa Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Fri, 20 Mar 2020 10:55:58 +1030
+Subject: [PATCH] metag uninitialized memory read
+
+	* metag-dis.c (print_insn_metag): Don't ignore status from
+	read_memory_func.
+---
+ opcodes/ChangeLog   |  5 +++++
+ opcodes/metag-dis.c | 10 ++++++++--
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/opcodes/ChangeLog b/opcodes/ChangeLog
+index 2d6af2b..5f92296 100644
+--- a/opcodes/ChangeLog
++++ b/opcodes/ChangeLog
+@@ -1,5 +1,10 @@
+ 2020-03-20  Alan Modra  <amodra@gmail.com>
+ 
++	* metag-dis.c (print_insn_metag): Don't ignore status from
++	read_memory_func.
++
++2020-03-20  Alan Modra  <amodra@gmail.com>
++
+ 	* nds32-dis.c (print_insn_nds32): Remove unnecessary casts.
+ 	Initialize parts of buffer not written when handling a possible
+ 	2-byte insn at end of section.  Don't attempt decoding of such
+diff --git a/opcodes/metag-dis.c b/opcodes/metag-dis.c
+index f01dcba..b1cf633 100644
+--- a/opcodes/metag-dis.c
++++ b/opcodes/metag-dis.c
+@@ -3364,9 +3364,15 @@ print_insn_metag (bfd_vma pc, disassemble_info *outf)
+   bfd_byte buf[4];
+   unsigned int insn_word;
+   size_t i;
+-  outf->bytes_per_chunk = 4;
++  int status;
+ 
+-  (*outf->read_memory_func) (pc & ~0x03, buf, 4, outf);
++  outf->bytes_per_chunk = 4;
++  status = (*outf->read_memory_func) (pc & ~0x03, buf, 4, outf);
++  if (status)
++    {
++      (*outf->memory_error_func) (status, pc, outf);
++      return -1;
++    }
+   insn_word = bfd_getl32 (buf);
+ 
+   for (i = 0; i < sizeof(metag_optab)/sizeof(metag_optab[0]); i++)
+-- 
+2.7.4
+

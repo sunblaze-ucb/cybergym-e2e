@@ -1,0 +1,59 @@
+From f83b301c17b3fbef6d320fcee2355336a163bd1a Mon Sep 17 00:00:00 2001
+From: Antoine Pitrou <antoine@python.org>
+Date: Tue, 14 Oct 2025 08:44:19 +0200
+Subject: [PATCH] GH-47803: [C++][Parquet] Fix read out of bounds on invalid
+ RLE data (#47804)
+
+### Rationale for this change
+
+Found by OSS-Fuzz, should fix https://issues.oss-fuzz.com/issues/451150486.
+
+### What changes are included in this PR?
+
+Ensure RLE run is within bounds before reading it.
+
+### Are these changes tested?
+
+Yes, by fuzz regression test in ASAN/UBSAN build.
+
+### Are there any user-facing changes?
+
+No.
+
+**This PR contains a "Critical Fix".** (If the changes fix either (a) a security vulnerability, (b) a bug that caused incorrect or invalid data to be produced, or (c) a bug that causes a crash (even when the API contract is upheld), please provide explanation. If not, you can remove this.)
+
+* GitHub Issue: #47803
+
+Authored-by: Antoine Pitrou <antoine@python.org>
+Signed-off-by: Antoine Pitrou <antoine@python.org>
+---
+ cpp/src/arrow/util/rle_encoding_internal.h | 5 +++++
+ testing                                    | 2 +-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/cpp/src/arrow/util/rle_encoding_internal.h b/cpp/src/arrow/util/rle_encoding_internal.h
+index a7917483bb..2420270f3a 100644
+--- a/cpp/src/arrow/util/rle_encoding_internal.h
++++ b/cpp/src/arrow/util/rle_encoding_internal.h
+@@ -699,6 +699,11 @@ auto RleBitPackedParser::PeekImpl(Handler&& handler) const
+   ARROW_DCHECK_LT(value_bytes, internal::max_size_for_v<rle_size_t>);
+   const auto bytes_read = header_bytes + static_cast<rle_size_t>(value_bytes);
+ 
++  if (ARROW_PREDICT_FALSE(bytes_read > data_size_)) {
++    // RLE run would overflow data buffer
++    return {0, ControlFlow::Break};
++  }
++
+   auto control =
+       handler.OnRleRun(RleRun(data_ + header_bytes, values_count, value_bit_width_));
+ 
+diff --git a/testing b/testing
+index da65f4f1b8..9a02925d1b 160000
+--- a/testing
++++ b/testing
+@@ -1 +1 @@
+-Subproject commit da65f4f1b8f255abbf51a461dffd595f2cfd8b2a
++Subproject commit 9a02925d1ba80bd493b6d4da6e8a777588d57ac4
+-- 
+2.25.1
+

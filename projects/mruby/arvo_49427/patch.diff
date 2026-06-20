@@ -1,0 +1,26 @@
+From a107b850eb7ad72d45aca19035da35d8af071acc Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Mon, 25 Jul 2022 15:31:43 +0900
+Subject: [PATCH] codegen.c (new_bitbn): fixed wrong packing of integer radix.
+
+---
+ mrbgems/mruby-compiler/core/codegen.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-compiler/core/codegen.c b/mrbgems/mruby-compiler/core/codegen.c
+index bf91a9c41..6c586ad9b 100644
+--- a/mrbgems/mruby-compiler/core/codegen.c
++++ b/mrbgems/mruby-compiler/core/codegen.c
+@@ -1027,8 +1027,8 @@ new_litbn(codegen_scope *s, const char *p, int base, mrb_bool neg)
+     pv->tt = IREP_TT_BIGINT;
+     buf = (char*)codegen_realloc(s, NULL, plen+3);
+     buf[0] = (char)plen;
++    if (neg) buf[1] = -base;
+     buf[1] = base;
+-    if (neg) buf[1] = 0x80;
+     memcpy(buf+2, p, plen);
+     buf[plen+2] = '\0';
+     pv->u.str = buf;
+-- 
+2.43.2
+

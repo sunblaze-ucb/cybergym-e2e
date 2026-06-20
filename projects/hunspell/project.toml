@@ -1,0 +1,7 @@
+name = "hunspell"
+language = "c++"
+homepage = "https://hunspell.github.io/"
+main_repo = "https://github.com/hunspell/hunspell"
+repo_to_patch = "hunspell"
+immutable_files = ["tests/", "oss-fuzz-build.sh"]
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

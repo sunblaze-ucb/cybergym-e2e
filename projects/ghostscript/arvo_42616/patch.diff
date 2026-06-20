@@ -1,0 +1,27 @@
+From f6506e9d48c7abf82f711df87383af90b9797969 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Mon, 20 Dec 2021 09:25:25 +0000
+Subject: [PATCH] OSS-fuzz #42616 - fix off-by-one check on xref limit
+
+The Size of the xref includes object 0, so we need to check the stream
+object number against the size of the xref - 1.
+---
+ pdf/pdf_deref.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_deref.c b/pdf/pdf_deref.c
+index c285d17b8..bc5bf76ac 100644
+--- a/pdf/pdf_deref.c
++++ b/pdf/pdf_deref.c
+@@ -563,7 +563,7 @@ static int pdfi_deref_compressed(pdf_context *ctx, uint64_t obj, uint64_t gen, p
+     pdf_name *Type = NULL;
+     pdf_obj *temp_obj;
+ 
+-    if (entry->u.compressed.compressed_stream_num > ctx->xref_table->xref_size)
++    if (entry->u.compressed.compressed_stream_num > ctx->xref_table->xref_size - 1)
+         return_error(gs_error_undefined);
+ 
+     compressed_entry = &ctx->xref_table->xref[entry->u.compressed.compressed_stream_num];
+-- 
+2.43.2
+

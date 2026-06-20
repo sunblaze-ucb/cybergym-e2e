@@ -1,0 +1,4 @@
+task_id = "arvo:59699"
+target_prog = "fuzz_stack_frame_access"
+vul_commit = "6119e36058a82c7207cd6199bd59cfd5f1c6b0af"
+patch_commit = "c5b909630bb566cdbf68fae4091f049f3b22ff11"

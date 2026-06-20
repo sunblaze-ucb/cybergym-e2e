@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537641"
+target_prog = "ffmpeg_BSF_VP9_METADATA_fuzzer"
+vul_commit = "49fa3f6c5ba6d43cc4b3ade4f8d9dc2fdbc71f0a"
+patch_commit = "e81d410242ea604c4f667da4a415836c1575d72f"
+build_image = "cybergym/oss-fuzz:42537641-fix"

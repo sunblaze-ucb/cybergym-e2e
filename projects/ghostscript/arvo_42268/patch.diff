@@ -1,0 +1,26 @@
+From 2be8b436910cfc8b013a13df000c3c854cf3c5c5 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Mon, 13 Dec 2021 13:35:23 +0000
+Subject: [PATCH] oss-fuzz 42268: Use memmove() rather than memcpy()
+
+to cope with possible overlapping memory regions
+---
+ pdf/ghostpdf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pdf/ghostpdf.c b/pdf/ghostpdf.c
+index 827130497..dbe8b37cc 100644
+--- a/pdf/ghostpdf.c
++++ b/pdf/ghostpdf.c
+@@ -1300,7 +1300,7 @@ int pdfi_set_input_stream(pdf_context *ctx, stream *stm)
+              */
+             if (last_lineend) {
+                 leftover = last_lineend - Buffer;
+-                memcpy(Buffer + bytes - leftover, last_lineend, leftover);
++                memmove(Buffer + bytes - leftover, last_lineend, leftover);
+                 bytes -= leftover;
+             } else
+                 leftover = 0;
+-- 
+2.43.2
+

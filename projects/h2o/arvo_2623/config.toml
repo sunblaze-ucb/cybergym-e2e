@@ -1,0 +1,4 @@
+task_id = "arvo:2623"
+target_prog = "h2o-fuzzer-http2"
+vul_commit = "b808e2809377cf8ca34a491f3f9280c7a1815ce3"
+patch_commit = "56204921b666cfb237f0579a603a946756a1559b"

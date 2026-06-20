@@ -1,0 +1,26 @@
+From 0b40d3b999d1e9feddbd9ebd144cf7b11ab81020 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Wed, 30 Sep 2020 23:44:00 +0200
+Subject: [PATCH] idprime: check max. buffer length
+
+fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25998
+---
+ src/libopensc/card-idprime.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-idprime.c b/src/libopensc/card-idprime.c
+index 70d18112..6ebd7189 100644
+--- a/src/libopensc/card-idprime.c
++++ b/src/libopensc/card-idprime.c
+@@ -539,7 +539,7 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
+ 
+ 		// this function is called to read and uncompress the certificate
+ 		u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
+-		if (sizeof(buffer) < count) {
++		if (sizeof(buffer) < count || sizeof(buffer) < priv->file_size) {
+ 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+ 		}
+ 		while (left > 0) {
+-- 
+2.43.2
+

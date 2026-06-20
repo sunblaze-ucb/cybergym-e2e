@@ -1,0 +1,33 @@
+From 354226037646d44701f0f2a84749fb2ea303f043 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Fri, 8 Aug 2025 23:19:03 +0200
+Subject: [PATCH] avcodec/scpr3: Clear clr
+
+clr is passing into decode_run_p() its not used when not set
+but this possibly triggers msan (it doesnt locally)
+
+Fixes?: use of uninintialized memory
+Fixes?: 436997807/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_SCPR_fuzzer-6253316466606080
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/scpr3.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/scpr3.c b/libavcodec/scpr3.c
+index e91c198308..369d2653c2 100644
+--- a/libavcodec/scpr3.c
++++ b/libavcodec/scpr3.c
+@@ -1167,7 +1167,7 @@ static int decompress_p3(AVCodecContext *avctx,
+                 }
+             } else {
+                 int run, bx = x * 16 + sx1, by = y * 16 + sy1;
+-                uint32_t clr, ptype = 0, r, g, b;
++                uint32_t clr = 0, ptype = 0, r, g, b;
+ 
+                 if (bx >= avctx->width)
+                     return AVERROR_INVALIDDATA;
+-- 
+2.25.1
+

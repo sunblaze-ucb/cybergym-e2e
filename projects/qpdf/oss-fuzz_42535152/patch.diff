@@ -1,0 +1,312 @@
+From 02e89bbe47853a59f40de27e997dbdb67712586b Mon Sep 17 00:00:00 2001
+From: m-holger <m-holger@kubitscheck.org>
+Date: Sat, 4 May 2024 10:08:03 +0100
+Subject: [PATCH] Fix bug in QPDFWriter::preserveObjectStreams
+
+Code failed to allow for QPDF::getCompressibleObjSet deleting objects
+from the object cache in case of multiple entries for the same object id.
+
+Add fuzz test case 68668.
+---
+ fuzz/CMakeLists.txt        |   1 +
+ fuzz/qpdf_extra/68668.fuzz | Bin 0 -> 33453 bytes
+ fuzz/qtest/fuzz.test       |   2 +-
+ libqpdf/QPDFWriter.cc      |  46 ++++++++++++++++++-------------------
+ qpdf/qpdf.testcov          |   3 ++-
+ 5 files changed, 27 insertions(+), 25 deletions(-)
+ create mode 100644 fuzz/qpdf_extra/68668.fuzz
+
+diff --git a/fuzz/CMakeLists.txt b/fuzz/CMakeLists.txt
+index 233a4571..ec33caa4 100644
+--- a/fuzz/CMakeLists.txt
++++ b/fuzz/CMakeLists.txt
+@@ -116,6 +116,7 @@ set(CORPUS_OTHER
+   65777.fuzz
+   68374.fuzz
+   68377.fuzz
++  68668.fuzz
+ )
+ 
+ set(CORPUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/qpdf_corpus)
+diff --git a/fuzz/qpdf_extra/68668.fuzz b/fuzz/qpdf_extra/68668.fuzz
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee9ecb7fb2e65f31be3f4a4face8ef181ceafc78
+GIT binary patch
+literal 33453
+zcmeHw2|U!>`@b#ANZb~sq@l<*X5VBTV@o6y(qcACnHi0drBqT;(Mqebl+ubqqAVq%
+z1&JhCOQnU1wELe~L^s{I-+TY}cfa46*UOkW^L);E&U2n~KIgp8`|})4N3s<RX@FDE
+zY;CKkR)8S!Pz01sU8Z1U1fS!}Vo*4~p$s|{37-Q+BCrSqd@dA8gj+(f7%UR*0McDR
+zI+BQj+dw^_7#tFc#3L7*m?$t<bY3pdA72U(6n3BtGK0pZGaM-#W&kMBg6$W`WCcJm
+za7PY<?n~pcIZ!0Z!~|~T>&Inq;8uPVE<<n$+?MQNWJN||@Kyu_f<QtcEigC|iHx>D
+zlkgZ6iG;N@$D0_TElFfN-U5w6pzs(RhG>o>SRoN)k`<anv?35tCX3;=EIK3D15_M^
+z;C=C8Ly<V3pc8x!gXPWjfno_fZC3K@iH19|*<2`+z!z`^wt=GYaF-B&2Heew;RSc~
+zKtfSao&^H990rA{0P)e}TNsZ(VvtAz8iPY%a6}XuiAN)G1Uwpn#v`!=0tOftd@;a4
+zG+P^~RJxL<C)KlDZ0zV7v-Pj#qC8}0xaEfzcbHLUo3%c`NNZVb+6YBTTP1Jqi=LG)
+zDK$y#(q!593J_p*VYx#42XHAIZZL=8r2s)FKr}Ti=UOR1`rAYSg636J*xEyx7>Y!K
+zmKT_TfCO!iN5P$;Xaalzlt36%$408Brzg$R^NpvNM3StuOQBS;{%BQ&>r_9-n}v?0
+zg;)1<-M<tbe&eliRK@ke#E>y0bfy`1`6%-bZwpr+lQY{A7haS*T6eV~v{3A&j$HQ;
+zHQ}3FsH!=Q!?t2`m{63Uq3ju43Z25GK+*hWaiB060Z<grlbzsm1G#>{j{~5BuZ|RN
+z@R=xRK7U_2gCl5ho=Z9j8qxyf<j3|NaAG7+yuWA`i_Ha@3mm|L&EhgxyzeOf^%fkq
+zKZzaefiOTod4D)03cTZq;C(UNn!^tChoS{K+LEDY4F4K?;OLZ}UgWqCiZnpLK?ecl
+z2=#Vi1h4}+G={LpusP2D6dHrqeVh?cG+z@F@B*&N1>FUT5LAm-bGSd<i@SU&@1sK?
+z6N((DBMK<oUq{klZID=AMNs@24B;ZYX5hI$Z-fx|2@(tp_7pD17xXEi8F)Di`n(uE
+zxCU0hhCp{4hTlpknx};mP~DNkra3dX9&pfk;Ba#=mM|QB*j#pi58K~`5zGZ04DK9A
+z<?=cnPX%EYoJ(ECpm7Hr(`K`NG*UhSF@8gDuO7>9@4kt<Qcr2DT;U_fRX&;Gq><(H
+z`9s)mimVU$ZJBSzK1rJYs?hE5(WIhmmlUZIPZgi>*VnUQzK?g5XA_j;m6w)Z*>v)h
+z`82A^`CE!<y9=CSw{shvCTQo4?wnQ!jh=<;D!(t$VtzdEstQE|S1x~N)(cwvy)|LC
+zRs`86>R}h#uN9XTlQY%T8N$6$$N~EgWoBPa0GHSMghnPJ3B1u)*tDS9&Rpg|wS5{F
+z&A-KJ!ztzW5QFD9LTR>N=dIf)e$Dhu6;ri%<<^H#nT3<f$l6tQJAE7M5|XxOJPF&R
+z_HoSR-gAmo>b}c2PR_o*|3m)%7V9nBO8p93<+dhoxTdpp6aC?x9p~tUW6$l1Qqb8`
+ztUo#Bk-Zy6En0_6Ls7e9N{(!}yh`Tn3&<MshuLx$G>vsvD!jFZ=pR@#A^C*QN5s<G
+z^Vh7%c_jIcaOjE?cGH!^4jaqlrhQmlaYrdgHvF7VLMri%(cI%3mfXVYLz*A9tvZl!
+zezBQUncCA86|F@V9q!S_Cmg)ANps2-j{F1s`wufoO}7q9<0X}=wwHM4d<uVo46~Y1
+zbBq2+!)2P9+oKzW)7#s1wz0G#Fx1^qh@&;d5Bzo&(@n0Hyt?%)s_T@tE++kQeXExr
+zo6U)Luhy0<ShOEs@-TKv(t+g##j_fdt4r`PR*zJ_&Qxo7J2@;zuXUG|dRE&<a=^Sj
+zsTpNEF{)RVwCRy<XDx$HG`tX~^I8F-d-#b>&zS5JIoVl{YS*1~iGU}b(4C|%PcMV5
+zK3DE(XR!Ij%F%J{X*TDMrC)HmGg*Gg{L~7IjJ@lew$Stz7Unj;6i<I`p))~qlhfOV
+zGgEZ+j?UG~z%=Q@PDX?;#AI)rzAV5o`?39R^@-i9oKB*RdZ<#zF64h$<&e-=9n(Il
+zc2R+uPAWXOY4*LAQ1OG%nn==)D3-#shzP0Ob=ea1b-EjH<Tbq!tK2;)S;=KeoKp{#
+z<F8MuR!*Jh_ioYdIMQB%YpJu3!?R@a!gL>-d$yyU=4bZZITSY~biCX8lG&M=lk^kY
+zFS2FzVq~p-A0)<ou+Q2fHEwnU(ed>8V3q=j=^m@q9JcX6XacO1WK$OY?($V<Q!G0`
+zFU-QXV|{}Dy<-1r$-RtJ|CQO@>x*}Mh!A&A-P1G1qka2W;9Kamh37`yG<ZBQ{F3Y=
+z%k7t*x}93*KI-PlNcX^f8;ONs+84%j1+Gh5)zza?nXybShEP84^wsuP5`hy_^V9<G
+ztuWcp{4NnQm2nq)sOqv`xQu}!rLpae<DMX$oW0@I&qH>KOR7k!tfIeg)9@r0MyXkG
+zC(Tef;OH<a2jX87aSEMCo6tI+V69Xnovc89Fui`;3W#}|C1G(xMa%5mhNaxOSC`=e
+z@QaFCA8}|ExL2mv7W+-9Th^Fq{i<pIv+j<(2d1WduX}sfetFyTytN5_qb1O^sB-4}
+zx$DHmG!`v*HB_(X4c5Xti?C<oaRdE$1%x*$fcXRzhBm-p&<GS759NJA5s6@&r!gV?
+zA)giiB%lE_76b{#e;gD`L>l0+V6-6e{&5%(FUUN|P^I&3MZ(gD7;}UQp^!M<P&1&F
+z&1P`7k8gR}`lx(HVd0L0u1=5C9!*mDO(msp&EfEv@crVW$L`)LuPQ0A+U&)p&zD@J
+zM|ZuPEIB<Y|Fk?x-dPRqX>XvdD}G02U7faO7D2^kt$6FrH@hSf2{efvuwAhVUJ-XU
+z(<7yblJ}>Y;g;Gi8)Xw+L@Y==r;Ro~LN2PjbH}L&scEV+Up?ns&J64Yw<0v0Sda=W
+z(9W2F9hIuQOh&dVZ=&V`-JF^2?OM8%o~i77%Fz(h)>l7Wq27$3j-Rz%$zt83JIN^R
+z-8;+ng^PnphiwS~K9q%cw`ie-%y~0V7Pz6p$&8i0G=`HkX{c#wztymK3@{sdu-W4G
+zgt#~dDVMHgmmS^_mwuI|;IS@UdI#2zvU94`JXu>=@v$VEx>4rjQR6Mi8&1ZdYMETC
+zxt50v&eG0|sSWG6BiV!KcuL4rzPIhrM1u7p2k&FmozpsdiM>Icoe!HX_a1sHmN+xz
+zWL6DAUM!|Iv0`@gHRTE8sYm6+Bq30V-^5TMXAEGo)Mc7?mDr^(Y>@lB_3#pz9ln<}
+z=9CvAy81T5?mbfwGgBeRXvb!8;%BWmdlLV2&O4R(kd!#BP4mV*e=W5l8<Vl@@Z~3~
+z+llqXkeCJG=XJafk&Yl<`^LN8Q;8!?KS2npIT6=GSbFV#N_pzMw$BaYPt7Y|CT{jj
+zE6-d9UV2~AJJ)2U-TJo@V%NDfvle|EGbL6*x;kY>O|I4Dh4Wd34Ug6KX=7ZXHFch!
+zij|H)SZJliKAW)b=)xnreW!@;D|j1EI95*$-Wg$;R8&M-JFRNg#*b+S3mlI%-mcz#
+z^WtIi&+=@h=@VCD$hu(Vv|Ar9WZ!{_MW;y>zG?S3c;k~8;&uMi{P(xR-X9Cm!B65+
+z^7DIodQ6t3G?cnj;y)&gDKP82R8h)pIQYhMMLBAJM)|t^9a?E;PvSZ<79N^&ws?c-
+z)Yhd_-@gqB_SU%(8=9iL{rc78bI#0fd0DG_S2{3D*?D=N^SHH)y15wBdpS9@H1V`L
+znRJ6UVs9?Ui#@(0=9H<>6yDeki`ylG>cTd)G=6TVko(x{++tFFWWkvOTX)kRdvcEC
+zv({8}yGuwUN@z8U>v<~1htE=ySgRy)#T*kQQwE*-Xq`m*`0M7xN-^V98Cc>}Zn#>y
+znxDi~&smcs^NQB^D@8|aFOuuB_E%dicQ)L^bL^amNKa{_QE5<F4fD}a^6uticIZ7C
+z^}&LwJ$6f^Q<8qFm~Obs4rLSxRtZU!>4@BvG_{iTw6}8JQz`D4T&b{8_U4L-or!x9
+z64ewnKbgFu{PaoN!kwE{gXK=IU*4>hGj55DV$qQ<llO?#5+;gEBWAWlcIitfO}=8S
+z`kT6j)eIX$r>I!<(4!NcSxN7lM>pk+CT?A1uC>$px_oRDXWr-u$t^x(4{R;3nw&Y|
+zrDbH*;-{2uOz5aXB=5?5Qqo0xnk{9g+sJK|)g>7xZAIAB*}jkR-{c>Iun(R+W9$dA
+zIC8^2vOaWy(!tG_i_a8G7Pl4K73USZkKIhSe4}Bx<BlzASNL7adQ!dh$7t?;jD4uX
+zv7J+|e|;pyQFpg{1y$VDyTep-saDhUg5-4Vv$2TThL+~ON4w{hXqReF)Txejb-~Ry
+zi%D#E)JuJNSG{9Rhe`*tW8CDJcCvg5<Idg8$C>K&ojwWG$9&*V$K}pkOoAs*dG`G2
+zv^(3Y3zAJKh)JwyA1n2%g>I#Fw+PqXA9&pmy}X^Kg>~MSwLfOxR9v3lyM4BlToi4e
+z-G2L<=I!e3mhID(H$E=el}<mspjP&|_H*gwdu}nd);;r6$lH54GHhE|f<<f2idG`T
+zVdfLb+d8)w8(ax&pPj>b1$i~8cXZGJ>qm0IPD@6mMfQ3$O0i4gX=*-)y&FAEs9!gK
+zm@%y-?{&&&-8IwtpnZmYDH{)2MsK`Bjk&gF>kZ`!eWv~qSlph6dt~&}-19T9oNhg%
+zdj{tg<MA-V>WuLj^qJ>pF1ROTtf5~$FLz<*1MUOW%!|JA4?^p`?&BV;@my83vi5eP
+zL6w8|g=?>3A5LGDAC?)m@yog|$KNTc=8V}nW?7_oWQFS2E&FLmw+Xlnhf2IunNxSG
+z#%!CVI#YEiQ7)cy$S{5k;o*v7hFcHah?j|<Ygmy($T@m3Gv`I%#b>iuOvu}l$69Ip
+z{Nqjg<~^O+<;;ec`Gro<2^hI|5LO<#;Yh>s2J44up-RTZYH?~F#`)bFj3bP07+V{`
+zLyMLaEm@X!X35@5a*aui3p?j^P9fzYtlVZc=*7Qj`E>Ln_kHvyqj!O?Vcid#SJn1r
+zE#0v+u4!Kr>^JLJ{SKw6<HDYFK7;p8dtETOP}WA)N1iaYi<#(}i1PPnPKd}c_ccGY
+z-a-1ybixd`X_rjjn@8E%*j`_yjxRP^u_?#(bBMM&2A2uzZmXO~DWYsjkD#nooVdw#
+zQ>R=(fmyoQMNhw?hqA|I-HW$HmD%W@oAKt$^)ldt?st9e;;U{~ZFzdAs+Vd+)uq0>
+zX0)wmYfb5z@t@|5)pFM&sznxSmIRjC7YDQkv_-ZRIQY+Y)O=yT&vx`|KL?}3WSiNx
+z^*gv0%Vx&e1=)G;ve>m(Gr=M0IQ{tO<EwXf>_0izc#rgP&Ew2Dd6z2#lUB9_8`|tW
+z#-3BKTm5=!*?S8uBzk(ljJI(2<kNdjpTFPmqV<LG{kZ|ufR7y3<J>2c1Ln3P-)?!c
+z@`>?{?Ke6r5*9tm^SPh=c2w=Cj`h<w9=&qu%At+tx3*1WFEm;_-sSFmZrEl|+pD_*
+z?9S|60Q+)upS!-Ei3>@)41VAFO@#hpobEy3g88n7)AwG--<YPGJVA1cOt~zh;LQ?u
+zvisWmVe>aEJJMku;_|`s!}Kh&@#(MG8Yif$uAMLME?3lBd%8T$Fj0N^Y>ai5Dl_FB
+zH!CdAqDS-4-m`Xi_i+o(pYXCuNN#eMuQ51bOl@v4b)FdgswA%DMDF$6ow-kXLV6-6
+z*D2I*l8-qYvwU(VRul8(m<n?bKEZE=pD%m=Lgn**)_Qjr)`y<Eb@9x3W@t$3o5e5h
+zzAJxc8u&i2J7{%*#@cHc4tcj99}05SI@|DoQJd14o1we9=3ULxWj!66vEs|KPlr4_
+z^Ym+SX_|NXlgK3@ofDT^E|0AJnse6gA$h5PQ+7{rPkqllJegTnQ}K%3QILmZwzY`+
+zC9Z1zWPk18Z3XEutfn~+{Thsju^;D(9ToTZx-Vz{jQu<Ie?H)IpynXyU|PIt{O0)H
+zL-a#;4x1f5n=mzDYr@Aw-^98k>!j>tt>isNq>rpT(tdQo(b5z`%86r>k8M5n<v8nj
+zbE;En@d^Bi6DL(qZa*b)D)7{^(~C}5o*|#fISV_Rl%|}vHC-${FufzgGo$vL-MK60
+z3FpsdYG%e~jmz4SEuI~c-F3m|LUWFLPSwTP7q8^b%FW6%$UA;X{nEk96E1JhhvaX_
+z?<)u`=qdCsd{N|G)OKa*l?PYduHG%4SA6@L-L>l_RwY+U%}Wce8(+UvW>|KyoKSw@
+z2JS}oP3+CATi9D!w{f?#EASOLmBh;2Dx<3WJEnJvs>#(QcWv+9sBx&Ns-0h3cW=?X
+z<~n-a)BAq+U)Qg!|MXy8!>EQW50xJ7X;f`YZqjK=YsNKSZXvhaY;|sZ&_-)}{wUzl
+z=f@k`725YanfBzwQ`FN-&#azRc6f9=e(wML(~C_ne|s7KO8Zr2r&;ICF1N17uQ{*#
+z-bBAud3(GY(|x7Kv8VAJ^WCT3E$>y{r+y%ODE;XA@yVy4&oZC)ebM=n`_=AiLm#uR
+zPhzxK?}oRZhL~&)2LZtJ0{|F=0Da{FAU`huQLYHb^o**Y+wfa@^AMGaC-iM<df~9L
+zvYU3W?DLYc2(gHlazR7rFlaq8#EQU*k3xLY0mok$2%wiAbvWlJ&|$W|L*R`Hy{hfA
+z^=$%x0&{2U>(utz-LxOIC1=JnnY~(ZF3LwcBE{q^5GNF!Sl%*9o?<7gCgcyH-Jtb~
+zaGDL!Q}j0=$jyF^K$(6#aA5LnWEu=GvgHgel*;h-Wf^O9<`rl_ed)#;u2_47y}t#+
+z$JZv5!*C9DaG`}RrxEEIrX~=hV8dXhKNFyf&|sz?E5I<=ScAgDq71=jUNT$*$`|1-
+zH`d^TR8Tj2N2mpx!+>H8PzFdC4S_*Ju_yyH9)(8{^Z~?-Ai@zyIFbNEVhs@lLj<ND
+zjny#W0kcLNx|g97*-BU-_-3r(!{z!L!r?(dK?Xr+12)GSjwBL6HYhj>1p^YWfDjg!
+z5)5MnOc!L*pAVT4K;!uObA8z?C@)_Ml^w`6*3kHd0Q1Tg){N=@tsqu_0l$_8G&U0+
+zO!0^F5Xf&i^D+lkF|=pXeZ4}+U_oSpLLkvF1P+EqxS&vmXrdtktA_yZ2qXCKBnL|7
+z=V1XbascQL<bj2uh%QKw2i_2gh4Jho%wv$`@ABwx>_NHwToWNs%$NOLKKv5c92Yj*
+z&qUCcJeZkE0cbzKF9kIjEF-+!2+p(YAWQR`@lUh>o%XE(`~x|D{C1|(;0!+olLs+_
+zMnHbw2y~jE7l1w~Toa1Fzn?FS!fR(9!fON{_-RljK_b_e>&NI<kk|M^hXZTd?^FAK
+z@bl&QhoK*Z<!!7H45Kr=D1m-l4fyxc0vmjv315lt%KOVK1$@fh{+qFe^j0SGdt31@
+zF(k8Tfjnc{l1%~wed&fs28D`8Q7|wpo<@Wbs2B>2i1)(7kTe<{O-Ilu3><^s@b>nD
+zuN`DlLB6&uu+PGxG5YgGVKH<hj!uOUPy`$dLqmd3Gz1Msp?hJd3>*$cpa>ia<U8ov
+zzuKdKD-3NV@B?rs^!FwLiG~1nrw7s)9Fu<6cV$qa78HMOAQ;gE-QYX1zglAo-G@yJ
+z`ia&;oy>VMu58Y70Ne)sI5Y{fFa#|EMkb^Y{QHDKZP)+9N(LtY^c)k=!3L!J6aTP=
+z0*?lxHMmv4zuhao?;HG1_BXr@ROD~Sygy4(A^nyZ)_;+?hGnLHA(6TIEitVBB6AJP
+zO#MP4bM;$dSpP-l8kU**h5pD~kb%`Epy3#61c9~W5UbfidrLoGYoq%Y{D3(GR{TP)
+z(T}U`)sAHjSItKE9Dl!WQHT4kvZE(8=65@(n_EiCC`D@9#l5oMq}$ylKGRaxAewRO
+z{pBYN)gxv)j#FaC#*j}`zVSE`EfFg&t!t%1^(4j5dD`BU9i;s%+n|1;O2DhDdMTZy
+zyOi&r^xM4w8+8Ay-%@Vn?y#gKZ?`r}ua!+ZdExQCsN3!qH589nd%I+fRVzOx+fPhQ
+zPp#d%h&g$FeDb0$_m?^;zKt8KR8mgIL=bkBAGqGJ^TAZ>vjJ;NnH?9;1#la@dK!;^
+z7@g)^^`+v4-9m%9CtqAwY4w<xB(0yE?RaI9Pdb`j*|oSR{Pp_%(hIkZnl7~`L}s$V
+z3u!}HGxO^wA+^zuRhe#SlZfWU8Sk?vydchEB%td3w^8PIZdtxC>Y~$46;6~wfqu}W
+z6=_pdBl9GmIOleI(KL@LCvAzV+!=lN3#F;r`jWw?X}89e?}Y4rWCu2Fr^*Ff8lv3>
+zvDbduZrJ{2L!yX(1k}vAnE?Ux6ss23GB1+vm)%MaqGXeoCs`x~P+vh~8^^YO@~BMu
+z^kExIihQqzcFa-v>zt$=@e3uHEz$Q%mSoLpTOb}+uXmecqiQ=kpncMo${e$rAcwx3
+z3`9w2&bZIprtPmbte!jVmF2wX7LVFFrEM2u@wPR+2gM}CFpau1hN#^jM%aJG&HE+u
+z?$_+Sq3L)-aPW}7;NSsDotT7{)jYPemh>iNXc0ltrYk`*W97Q2Rc7}ON<-bPl!~M@
+zCQW+%TXcaKK<H3X(z-*~W)PbWiNt;5(}`fIe*-Lq#T%mV|0paa#K(SA<nKkLSib)3
+zZ}1KuUmS#14Febab6CqDT!W9b(2z6+mWuR(G0;RT48y<>VN^igg;Bk*cnTd!M^aJf
+zeynBCwcp)m1yJS4V2$A+Kgf|HKVTjp(B{v;cHhBbf*A$BT?Qd&!)d3V0&4w}6akw2
+zD-3TqMS&cR20+DM<Bfl)T0b>fL~jz&n?&>`5xq%7ZxYd)MD!*Rz3JagZ-QIclAS{W
+zxC|!miK4%g-t=vHH{1{3O`?Z;(MaV)g^b8zB6Eq%H6ja)NLb`uB6E$%0wWUs-|#Nc
+zHjZc;N3@M2+Qtz+W-ekE|DRwN|G0ZHz(XFmFa4eDV$n8^Xd8#W8}dKCjRUrX_}uqF
+zyH;Qp`6KU}m-roP_`jN5+&6-kVA5^$-%dn^J98;a{}HV)elI*Qvj6^<zwo=LkP#VE
+zWG<1pMr45z35&c-WUdieU_`?I8{Rcc1Zx=a?LgciUVOZNZ+ts`1=zy4mV!WaKSo*t
+zQR@DlNK0s5xIkg)-$mC0p&t#1cq9~00M83!(Tn-P?7okuheD$M;&^%^2%v{Bz=0PQ
+zkb-%kq>xaKH-s0WPpCFZs5c0;$d59`vmbC1YY4&skfgyMmVoC~k0*x)^%KYiK;SOH
+zP?Eg`6vAVGA%PUGUkde2$`!%_Me&NWhLBt!g7|<SCl@b%G73bY#2es%QZ96eHa8fm
+z19e#j0pS*L7@n<pi4<O_M*c&w{NF5HKol%XdyAnWVW9^_cpL_&8;|`XPWO0wd-?Td
+zN?-H>?ruGw*O9wk--lv8o@zI>IHE?2<P!;d(S)CcnAUkY1g#+>Z5ht6cr2BnQMWAS
+z0jltFSXj6`Vy;H1(sG-0oX-LyHJ`kCu0FL;=R~jDOIf=uE@OA5EP3|KMY6%vHzO<P
+zo}3zE&I<Ot^|oitIOiBdy6)yy!pqm6FJ5eV&>9#TU7I8qz4(x9Rq(m^C)Zju{q;t#
+zQEkY)nN-UQMY!=Q`p6J0XUw2bki#&>a0u>7>jVV%%XvyiETyWlDw8USNW5%{D`|C~
+zGWY4%wWc_TOVd5)cE<%F6-nub)1-Wg=0(ztbJ3X-%oy)xpHtgSUeLBnb5pXCfoI3T
+zqiY-7pq#^><#MMsoj=NKNib>HedNHE<9_?Mm(pPHTCYj@fW(c>)zu!VdV}ID49##y
+z4>S7guc1+t1=$jf!DC341Pc)O)trbR;z8V5D-;%Qj>A|GzD1u!gKhw#&Vn~0cti2t
+zz=(w%k^qn4>j&b|g1~G)M5D!^grP78qR}D-N23Ky_`7rp_0riZ-A$_}jB6`%Jl3cD
+zWzOj6K(k9?Q6b^)P0YZP5AhRam4-0gVE#K6i$#eT@c*j73|OKe2KkRN;QIqJ3}^y^
+zPV<8tf}0~0Vq^q?+xgN1pdS1nwu`}yf)`pAM85?=dqJ#2b|8p>3qyl&$wUGX0WmS*
+z1w7_oDU4ep$imf^4#GAgA#jo}H^7m>v0yX(*(@LmB|zZ3;J{G$il8-pV#(osVzKA@
+z#7a~9#5M-CDSp(R_QB5dbLbXrF@8dBf5P_nu4@p3<&)Pb{yu5wEWYLW^DJ72(gHT1
+z#kVZ_)l&RuEL8NnOhb7U;Vaf3cH{4TtbiX@r2kp>VRFd99R1I;=0(9S;PC&0!7gxU
+zIu!|?PK2STXa)#&LGgl7DFieOMWE5}bR-B>L&yC5!H%CkC@@lw8rf4J|2ufJU|IZM
+zk1>yE^*^-m{{|*7blv|%s>oa;GMdO-B6E$%0wWR@d6&psBeKAVg#XC9hKn%|iY#e9
+z^cgA`{-W<+j4|^o@Q-24AkgH{7&Dr8cngLI&a6Qg5D2(`3&t!|8zs~mOZ*AOj7EX*
+zlo%qA!xKUM1ad!M%-{g1eksB?sb6BuNHo@fNJRc67&B%#@m>bvhVYLM0LN<$9pH6*
+z3?F0O)K{+BbMAb?La6*gH>HhrPBO1Ovo<T$Q{+GO#z?+>ZGyh3cdt<W1|lsr-b`;-
+zR#wif=?$OmP23>WJEN`?9O-c<>EP?&#OKs%{}OXYCw4~NP6zEdBq;XAu@u({QP+-^
+z)Hhj7pW$3KduR0l6{eZatxOyBxOiX9g+^;xExqr8r>b36e5&!}36#c_zgfBh61@4!
+z=!dA4lzk<2^#vfvh(1^u4gn-${^}SiR}g%NxmK#GQS%tq36ipSluQxPm!%ywv*qJg
+z$jfE{#0+AnBx%bR9M?X2{M0CJGt=z(!fxvv7qPhex(1=w<82fITE<(d#~0qk-|ov<
+z;dw^U+sLf0>$3k6?~l(O8ta?@$83l=PyKWyL4?JDd&7VI8uRbxF+CjaYecv2p9&AO
+z-A_gS^B+WojL3!}a|z7_5O?!mA@tv{aUK#5L!<CG{9g~#s|@q?Cw2sgC=?om21lTA
+z1S|%R#}W`D(0`~sg8m(WHQzQB1X~rz!DjjWR)yrrE_h^MjO5FL2TPz|@4tN)vh?Y(
+zX?m;|ePUC*iE8^wL$#CFnfBd>44f|s{kHQW+&LHQyzn<_z}_Vw0rc<PfYTI*=l>$d
+zAD*3rQX+GS%rznl3?<Av=XB6ED(|3Jz^*|eAP7r0EEbK0dO;xw;R^}o?7SD0B}^MC
+zLw?#n?wZ5JBnGj5eu7E-yLoTmTx0|oj0LR*xNm<i3GS!<FpMAmahDl}j>8lA$7?cN
+z=l?GR<e(66_%L9v2^_wE=tBPftYZ;QH*mJ{f6fIJ;dJ11R1r?cV_f~33i|&Gr&~jZ
+zWtysOy<~GRzYl^C!@B5d4FyB~GT8BOsh|WhhGb!hx3V-x;ISACkz_%@k}zZ(35Uj!
+zEr}!(qhFFmd0bCABiLgIDkvDR22nxr1RfP%cmS4w3<}u!-;a4{1P;)k`_lkdlt<Sb
+zf-U-E+~nW0MKi}ys75o&x|_W9#<eNKkM-rB-#2N}^L4@EN^iwphphu3Z^8@NZy+zl
+z*N?%0@R@wz_<3-=6H`IJ(NhRu3(v2Iz@2?VxfBjKnjXwF0g11lR?3@xDnL+P5Hu1&
+T#Gt>iOOXVKrl#dwE6D!?MRpGj
+
+literal 0
+HcmV?d00001
+
+diff --git a/fuzz/qtest/fuzz.test b/fuzz/qtest/fuzz.test
+index 38590d4c..13285f1a 100644
+--- a/fuzz/qtest/fuzz.test
++++ b/fuzz/qtest/fuzz.test
+@@ -21,7 +21,7 @@ my @fuzzers = (
+     ['pngpredictor' => 1],
+     ['runlength' => 6],
+     ['tiffpredictor' => 2],
+-    ['qpdf' => 58],             # increment when adding new files
++    ['qpdf' => 59],             # increment when adding new files
+     );
+ 
+ my $n_tests = 0;
+diff --git a/libqpdf/QPDFWriter.cc b/libqpdf/QPDFWriter.cc
+index f66e1615..c2d988bd 100644
+--- a/libqpdf/QPDFWriter.cc
++++ b/libqpdf/QPDFWriter.cc
+@@ -1944,28 +1944,30 @@ QPDFWriter::preserveObjectStreams()
+     // that are not allowed to be in object streams. In addition to removing objects that were
+     // erroneously included in object streams in the source PDF, it also prevents unreferenced
+     // objects from being included.
+-    auto iter = xref.cbegin();
+     auto end = xref.cend();
+-
+-    // Start by scanning for first compressed object in case we don't have any object streams to
+-    // process.
+-    for (; iter != end; ++iter) {
+-        if (iter->second.getType() == 2) {
+-            // Pdf contains object streams.
+-            QTC::TC(
+-                "qpdf",
+-                "QPDFWriter preserve object streams",
+-                m->preserve_unreferenced_objects ? 0 : 1);
+-
+-            if (m->preserve_unreferenced_objects) {
+-                for (; iter != end; ++iter) {
+-                    if (iter->second.getType() == 2) {
+-                        m->obj[iter->first].object_stream = iter->second.getObjStreamNumber();
+-                    }
+-                }
+-            } else {
++    m->obj.streams_empty = true;
++    if (m->preserve_unreferenced_objects) {
++        for (auto iter = xref.cbegin(); iter != end; ++iter) {
++            if (iter->second.getType() == 2) {
++                // Pdf contains object streams.
++                QTC::TC("qpdf", "QPDFWriter preserve object streams preserve unreferenced");
++                m->obj.streams_empty = false;
++                m->obj[iter->first].object_stream = iter->second.getObjStreamNumber();
++            }
++        }
++    } else {
++        // Start by scanning for first compressed object in case we don't have any object streams to
++        // process.
++        for (auto iter = xref.cbegin(); iter != end; ++iter) {
++            if (iter->second.getType() == 2) {
++                // Pdf contains object streams.
++                QTC::TC("qpdf", "QPDFWriter preserve object streams");
++                m->obj.streams_empty = false;
+                 auto eligible = QPDF::Writer::getCompressibleObjSet(m->pdf);
+-                for (; iter != end; ++iter) {
++                // The object pointed to by iter may be a previous generation, in which case it is
++                // removed by getCompressibleObjSet. We need to restart the loop (while the object
++                // table may contain multiple generations of an object).
++                for (iter = xref.cbegin(); iter != end; ++iter) {
+                     if (iter->second.getType() == 2) {
+                         auto id = static_cast<size_t>(iter->first.getObj());
+                         if (id < eligible.size() && eligible[id]) {
+@@ -1975,12 +1977,10 @@ QPDFWriter::preserveObjectStreams()
+                         }
+                     }
+                 }
++                return;
+             }
+-            return;
+         }
+     }
+-    // No compressed objects found.
+-    m->obj.streams_empty = true;
+ }
+ 
+ void
+diff --git a/qpdf/qpdf.testcov b/qpdf/qpdf.testcov
+index 7501a4b5..fe7eb38a 100644
+--- a/qpdf/qpdf.testcov
++++ b/qpdf/qpdf.testcov
+@@ -600,7 +600,8 @@ QPDFAcroFormDocumentHelper AP parse error 0
+ QPDFJob copy fields not this file 0
+ QPDFJob copy fields non-first from orig 0
+ QPDF resolve duplicated page in insert 0
+-QPDFWriter preserve object streams 1
++QPDFWriter preserve object streams 0
++QPDFWriter preserve object streams preserve unreferenced 0
+ QPDFWriter exclude from object stream 0
+ QPDF_pages findPage not found 0
+ QPDFObjectHandle check ownership 0
+-- 
+2.25.1
+

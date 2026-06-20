@@ -1,0 +1,26 @@
+From f0a703dac85ad9398f208d3237ca19c483368834 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sat, 30 Sep 2023 17:05:47 +0200
+Subject: [PATCH] dict: Fix null-deref with empty subdict
+
+Short lived regression found by OSS-Fuzz.
+---
+ dict.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dict.c b/dict.c
+index 863d8e21..36b49541 100644
+--- a/dict.c
++++ b/dict.c
+@@ -679,7 +679,7 @@ xmlDictLookupInternal(xmlDictPtr dict, const xmlChar *prefix,
+     if (found)
+         return(entry);
+ 
+-    if (dict->subdict != NULL) {
++    if ((dict->subdict != NULL) && (dict->subdict->size > 0)) {
+         xmlDictEntry *subEntry;
+         unsigned subHashValue;
+ 
+-- 
+2.25.1
+

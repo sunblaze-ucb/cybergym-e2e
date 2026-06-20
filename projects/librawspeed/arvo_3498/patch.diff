@@ -1,0 +1,38 @@
+From 8cfad9ca0d21986594ef2a9c05ff286a3377f001 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Thu, 28 Sep 2017 16:16:45 +0300
+Subject: [PATCH] SamsungV2Decompressor::decompressRow(): "complex case": last
+ 16 pix: check
+
+For last 16 pixels of the row, motion (thus slideOffset) may
+result in refpixel pointing out of the row bounds.
+---
+ src/librawspeed/decompressors/SamsungV2Decompressor.cpp | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/librawspeed/decompressors/SamsungV2Decompressor.cpp b/src/librawspeed/decompressors/SamsungV2Decompressor.cpp
+index 9a24197..5ec06be 100644
+--- a/src/librawspeed/decompressors/SamsungV2Decompressor.cpp
++++ b/src/librawspeed/decompressors/SamsungV2Decompressor.cpp
+@@ -190,6 +190,7 @@ void SamsungV2Decompressor::decompressRow(uint32 row) {
+     i[0] = i[1] = (row == 0 || row == 1) ? 7 : 4;
+ 
+   assert(width >= 16);
++  assert(width % 16 == 0);
+   for (uint32 col = 0; col < width; col += 16) {
+     if (!(optflags & OptFlags::QP) && !(col & 63)) {
+       static constexpr int32 scalevals[] = {0, -2, 2};
+@@ -233,6 +234,10 @@ void SamsungV2Decompressor::decompressRow(uint32 row) {
+ 
+           if (col == 0 && img_up2 > refpixel)
+             ThrowRDE("Bad motion %u at the beginning of the row", motion);
++          if (col + 16 == width &&
++              ((refpixel >= img_up2 + 16) ||
++               (doAverage && (refpixel + 2 >= img_up2 + 16))))
++            ThrowRDE("Bad motion %u at the end of the row", motion);
+         } else {
+           // Green pixel N uses Green pixel N from row above
+           // (top left or top right)
+-- 
+2.7.4
+

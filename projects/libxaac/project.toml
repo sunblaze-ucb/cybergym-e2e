@@ -1,0 +1,7 @@
+name = "libxaac"
+language = "c++"
+homepage = "https://github.com/ittiam-systems/libxaac"
+main_repo = "https://github.com/ittiam-systems/libxaac.git"
+repo_to_patch = "libxaac"
+build_image = "n132/arvo:61691-fix"
+immutable_files = ["test", "fuzzer"]

@@ -1,0 +1,7 @@
+name = "quickjs"
+language = "c"
+homepage = "https://bellard.org/quickjs/"
+main_repo = "https://github.com/bellard/quickjs"
+repo_to_patch = "quickjs"
+build_image = "n132/arvo:46957-fix"
+immutable_files = ["tests"]

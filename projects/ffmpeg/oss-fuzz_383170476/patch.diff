@@ -1,0 +1,40 @@
+From bb85423142103d694d97bad1967bd3dc55440e71 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 25 Dec 2024 05:13:02 +0100
+Subject: [PATCH] avformat/mlvdec: Check avio_read()
+
+Fixes: use-of-uninitialized-value
+Fixes: 383170476/clusterfuzz-testcase-minimized-ffmpeg_dem_MLV_fuzzer-4696002884337664
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Reviewed-by: Peter Ross <pross@xvid.org>
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/mlvdec.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/libavformat/mlvdec.c b/libavformat/mlvdec.c
+index 1a6d38f37c..985365326e 100644
+--- a/libavformat/mlvdec.c
++++ b/libavformat/mlvdec.c
+@@ -82,13 +82,15 @@ static int check_file_header(AVIOContext *pb, uint64_t guid)
+ static void read_string(AVFormatContext *avctx, AVIOContext *pb, const char *tag, unsigned size)
+ {
+     char * value = av_malloc(size + 1);
++    int ret;
++
+     if (!value) {
+         avio_skip(pb, size);
+         return;
+     }
+ 
+-    avio_read(pb, value, size);
+-    if (!value[0]) {
++    ret = avio_read(pb, value, size);
++    if (ret != size || !value[0]) {
+         av_free(value);
+         return;
+     }
+-- 
+2.25.1
+

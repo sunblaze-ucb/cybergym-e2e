@@ -1,0 +1,79 @@
+From 924bee3c416b50bfdfdb53a3058eac1d7d859ef0 Mon Sep 17 00:00:00 2001
+From: Mark Wielaard <mark@klomp.org>
+Date: Mon, 20 Feb 2023 16:32:57 +0100
+Subject: [PATCH] libelf: memmove any extra bytes left by elf_cvt_gnuhash
+ conversion
+
+Otherwise some undefined bytes might be left in the buffer. Now they
+might still be not useful, but at least they are as defined in the
+file.
+
+Signed-off-by: Mark Wielaard <mark@klomp.org>
+---
+ libelf/ChangeLog       |  4 ++++
+ libelf/gnuhash_xlate.h | 12 ++++++++++--
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/libelf/ChangeLog b/libelf/ChangeLog
+index 3ae3afe3..bfd6b82d 100644
+--- a/libelf/ChangeLog
++++ b/libelf/ChangeLog
+@@ -1,3 +1,7 @@
++2023-02-20  Mark Wielaard  <mark@klomp.org>
++
++	* gnuhash_xlate.h (elf_cvt_gnuhash): memmove any left over bytes.
++
+ 2022-11-30  Mark Wielaard  <mark@klomp.org>
+ 
+ 	* elf.h: Update from glibc.
+diff --git a/libelf/gnuhash_xlate.h b/libelf/gnuhash_xlate.h
+index 6faf1136..3a00ae0a 100644
+--- a/libelf/gnuhash_xlate.h
++++ b/libelf/gnuhash_xlate.h
+@@ -1,5 +1,6 @@
+ /* Conversion functions for versioning information.
+    Copyright (C) 2006, 2007 Red Hat, Inc.
++   Copyright (C) 2023, Mark J. Wielaard <mark@klomp.org>
+    This file is part of elfutils.
+    Written by Ulrich Drepper <drepper@redhat.com>, 2006.
+ 
+@@ -36,6 +37,7 @@
+ static void
+ elf_cvt_gnuhash (void *dest, const void *src, size_t len, int encode)
+ {
++  size_t size = len;
+   /* The GNU hash table format on 64 bit machines mixes 32 bit and 64 bit
+      words.  We must detangle them here.   */
+   Elf32_Word *dest32 = dest;
+@@ -45,7 +47,7 @@ elf_cvt_gnuhash (void *dest, const void *src, size_t len, int encode)
+   for (unsigned int cnt = 0; cnt < 4; ++cnt)
+     {
+       if (len < 4)
+-	return;
++	goto done;
+       dest32[cnt] = bswap_32 (src32[cnt]);
+       len -= 4;
+     }
+@@ -58,7 +60,7 @@ elf_cvt_gnuhash (void *dest, const void *src, size_t len, int encode)
+   for (unsigned int cnt = 0; cnt < bitmask_words; ++cnt)
+     {
+       if (len < 8)
+-	return;
++	goto done;
+       dest64[cnt] = bswap_64 (src64[cnt]);
+       len -= 8;
+     }
+@@ -71,4 +73,10 @@ elf_cvt_gnuhash (void *dest, const void *src, size_t len, int encode)
+       *dest32++ = bswap_32 (*src32++);
+       len -= 4;
+     }
++
++ done:
++  /* If there are any bytes left, we weren't able to convert the
++     partial structures, just copy them over. */
++  if (len > 0)
++    memmove (dest + size - len, src + size - len, len);
+ }
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:44089"
+target_prog = "jplist_fuzzer"
+vul_commit = "7ddb1bd9e1d8bba58295d2e7e4872bcc6386968c"
+patch_commit = "8ea84caa3cba801c4f240648a6b7919e9b3e0b0d"

@@ -1,0 +1,71 @@
+From ac72c027937ff7c39b8b2c060fc7df1e1fdee489 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Sat, 27 Jan 2024 11:42:25 -0800
+Subject: [PATCH] check nbucket earlier in DT_HASH on ELF
+
+https://github.com/upx/upx/issues/780
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=66079
+	modified:   p_lx_elf.cpp
+---
+ src/p_lx_elf.cpp | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/src/p_lx_elf.cpp b/src/p_lx_elf.cpp
+index bd2fe4a3..462c54ad 100644
+--- a/src/p_lx_elf.cpp
++++ b/src/p_lx_elf.cpp
+@@ -2135,6 +2135,12 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+         unsigned const nbucket = get_te32(&hashtab[0]);
+         unsigned const *const buckets = &hashtab[2];
+         unsigned const *const chains = &buckets[nbucket]; (void)chains;
++        if ((unsigned)(file_size - ((char const *)buckets - (char const *)(void const *)file_image))
++                <= sizeof(unsigned)*nbucket ) {
++            char msg[80]; snprintf(msg, sizeof(msg),
++                "bad nbucket %#x\n", nbucket);
++            throwCantPack(msg);
++        }
+ 
+         unsigned const v_sym = !x_sym ? 0 : get_te32(&dynp0[-1+ x_sym].d_val);
+         if ((unsigned)(hashend - buckets) < nbucket
+@@ -8041,6 +8047,12 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+         unsigned const nbucket = get_te32(&hashtab[0]);
+         unsigned const *const buckets = &hashtab[2];
+         unsigned const *const chains = &buckets[nbucket]; (void)chains;
++        if ((unsigned)(file_size - ((char const *)buckets - (char const *)(void const *)file_image))
++                <= sizeof(unsigned)*nbucket ) {
++            char msg[80]; snprintf(msg, sizeof(msg),
++                "bad nbucket %#x\n", nbucket);
++            throwCantPack(msg);
++        }
+ 
+         unsigned const v_sym = !x_sym ? 0 : get_te64(&dynp0[-1+ x_sym].d_val);  // UPX_RSIZE_MAX_MEM
+         if ((unsigned)(hashend - buckets) < nbucket
+@@ -8183,12 +8195,6 @@ Elf32_Sym const *PackLinuxElf32::elf_lookup(char const *name) const
+         unsigned const nbucket = get_te32(&hashtab[0]);
+         unsigned const *const buckets = &hashtab[2];
+         unsigned const *const chains = &buckets[nbucket];
+-        if ((unsigned)(file_size - ((char const *)buckets - (char const *)(void const *)file_image))
+-                <= sizeof(unsigned)*nbucket ) {
+-            char msg[80]; snprintf(msg, sizeof(msg),
+-                "bad nbucket %#x\n", nbucket);
+-            throwCantPack(msg);
+-        }
+         if (nbucket) {
+             unsigned const m = elf_hash(name) % nbucket;
+             unsigned nvisit = 0;
+@@ -8269,12 +8275,6 @@ Elf64_Sym const *PackLinuxElf64::elf_lookup(char const *name) const
+         unsigned const nbucket = get_te32(&hashtab[0]);
+         unsigned const *const buckets = &hashtab[2];
+         unsigned const *const chains = &buckets[nbucket];
+-        if ((unsigned)(file_size - ((char const *)buckets - (char const *)(void const *)file_image))
+-                <= sizeof(unsigned)*nbucket ) {
+-            char msg[80]; snprintf(msg, sizeof(msg),
+-                "bad nbucket %#x\n", nbucket);
+-            throwCantPack(msg);
+-        }
+         if (nbucket) { // -rust-musl can have "empty" hashtab
+             unsigned const m = elf_hash(name) % nbucket;
+             unsigned nvisit = 0;
+-- 
+2.25.1
+

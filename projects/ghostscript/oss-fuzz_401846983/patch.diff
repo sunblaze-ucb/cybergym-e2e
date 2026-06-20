@@ -1,0 +1,182 @@
+From fdb12a8b24defc5d0e71099104ae75424a41ccae Mon Sep 17 00:00:00 2001
+From: Ken Sharp <Ken.Sharp@artifex.com>
+Date: Fri, 21 Mar 2025 13:28:39 +0000
+Subject: [PATCH] Improve clipper device reference counting
+
+OSS-fuzz #401846983
+
+The problem here is complicated, but eventually it comes down to the
+fact that the 'clipper' device is a forwarding device and, as such, has
+a reference to a target device, but it does not increment the reference
+count of that object when it takes a reference to it.
+
+We have a Pattern, which fills an area using another Pattern, and that
+pattern declares itself so large it uses a pattern clist. In addition
+the child pattern uses a Form XObject which has a transparency Group.
+
+When we fill with the first pattern we start by creating a clipper
+device, created 'on the stack', ie a local device structure, not an
+allocated piece of memory. That device gets set up with a 'target'
+pointer which points to the pattern accumulator. We then run the pattern
+PaintProc to fill the bitmap tile.
+
+That causes us to run the second pattern, which gets set up as a pattern
+clist accumulator. This is important because the pattern tile cache has
+a reference to the device, which does not exist if we run a normal
+pattern.
+
+We again run the paintproc for the subsidiary pattern, which causes us
+to push a compositor. When we pus the compositor it inserts itself
+between the 'clipper' and 'pattern accumulator' devices. It properly
+reference counts the clipper->target but, because the clipper device
+didnt' count *up* the target, this overall results in the count going
+down by one.
+
+When we flush the pattern tile cache that ends up decrementing and
+freeing the pattern accumulator, because its reference count is one too
+low, even though there is still a reference to it (from the enclosing
+transparncy Group), which eventually causes the crash.
+
+We get away with this most of the time, but in this particular case
+circumstances conspire to expose the problem.
+
+Ideally we should have the 'clipper' device properly reference count
+its 'target', but there are a lot of places that use it, and some are
+complicated to trace teh lifetime.
+
+As an interim measure this commit uses the existing 'destroy' function
+to count down the target, and explicitly counts it up in a couple of
+places where we use the 'destroy' function. It also fixes the one
+existing location where we were using the destroy funcion; there were a
+number of ways to exit the function without calling 'destroy', which
+was acceptable when all it did was meddle with the cached clip, but
+is insufficient when we are going to play with reference counts.
+---
+ base/gxclip.c |  4 +++-
+ base/gxfill.c | 21 ++++++++++++++-------
+ 2 files changed, 17 insertions(+), 8 deletions(-)
+
+diff --git a/base/gxclip.c b/base/gxclip.c
+index 3a19c8f21..29b8807ee 100644
+--- a/base/gxclip.c
++++ b/base/gxclip.c
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2001-2024 Artifex Software, Inc.
++/* Copyright (C) 2001-2025 Artifex Software, Inc.
+    All Rights Reserved.
+ 
+    This software is provided AS-IS with no warranty, either express or
+@@ -155,6 +155,8 @@ gx_make_clip_device_on_stack(gx_device_clip * dev, const gx_clip_path *pcpath, g
+ void
+ gx_destroy_clip_device_on_stack(gx_device_clip * dev)
+ {
++    if (dev->target != NULL)
++        rc_decrement(dev->target, "gx_destroy_clip_device_on_stack");
+     if (dev->cpath)
+         ((gx_clip_path *)dev->cpath)->cached = (dev->current == &dev->list.single ? NULL : dev->current); /* Cast away const */
+ }
+diff --git a/base/gxfill.c b/base/gxfill.c
+index 2209dcd06..1250948c0 100644
+--- a/base/gxfill.c
++++ b/base/gxfill.c
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2001-2023 Artifex Software, Inc.
++/* Copyright (C) 2001-2025 Artifex Software, Inc.
+    All Rights Reserved.
+ 
+    This software is provided AS-IS with no warranty, either express or
+@@ -358,6 +358,7 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+             gx_make_clip_device_on_stack(&cdev, pcpath, save_dev);
+             cdev.max_fill_band = save_dev->max_fill_band;
+             clipping = 1;
++            rc_increment(cdev.target);
+         }
+     }
+     /*
+@@ -426,8 +427,9 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+             int x1 = fixed2int_pixround(rbox.q.x + fo.adjust_right);
+             int y1 = fixed2int_pixround(rbox.q.y + fo.adjust_above);
+ 
+-            return gx_fill_rectangle_device_rop(x0, y0, x1 - x0, y1 - y0,
++            code = gx_fill_rectangle_device_rop(x0, y0, x1 - x0, y1 - y0,
+                                                 pdevc, dev, lop);
++            goto exit;
+         }
+         if (fo.adjust_left | fo.adjust_right | fo.adjust_below | fo.adjust_above)
+             fill_by_trapezoids = false; /* avoid double writing pixels */
+@@ -444,7 +446,7 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+             code = gx_path_copy_reducing(ppath, &ffpath, fo.fixed_flat, NULL,
+                                          pco_small_curves | pco_accurate);
+             if (code < 0)
+-                return code;
++                goto exit;
+             ppath = &ffpath;
+         }
+ 
+@@ -472,7 +474,7 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+                                        (!fill_by_trapezoids && fo.fill_direct) ? -1 : (int)pgs->log_op);
+         if (ppath == &ffpath)
+             gx_path_free(ppath, "gx_general_fill_path");
+-        return code;
++        goto exit;
+     }
+ 
+     gx_path_init_local(&ffpath, ppath->memory);
+@@ -486,12 +488,12 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+         code = gx_path_copy_reducing(ppath, &ffpath, fo.fixed_flat, NULL,
+                                      pco_small_curves | (pgs->accurate_curves ? pco_accurate : 0));
+         if (code < 0)
+-            return code;
++            goto exit;
+         pfpath = &ffpath;
+         if (big_path) {
+             code = gx_path_merge_contacting_contours(pfpath);
+             if (code < 0)
+-                return code;
++                goto exit;
+         }
+     }
+     fo.fill_by_trapezoids = fill_by_trapezoids;
+@@ -548,6 +550,7 @@ gx_general_fill_path(gx_device * pdev, const gs_gstate * pgs,
+                    stats_fill.slow_order);
+     }
+ #endif
++exit:
+     if (clipping)
+         gx_destroy_clip_device_on_stack(&cdev);
+     return code;
+@@ -583,7 +586,7 @@ gx_default_fill_path_shading_or_pattern(gx_device * pdev, const gs_gstate * pgs,
+                                         gx_path * ppath, const gx_fill_params * params,
+                                         const gx_device_color * pdevc, const gx_clip_path * pcpath)
+ {
+-    int code = 0;
++    int code = 0, clipping = 0;
+     /*  We need a single clipping path here, because shadings and
+         halftones don't take 2 paths. Compute the clipping path intersection.
+     */
+@@ -633,11 +636,13 @@ gx_default_fill_path_shading_or_pattern(gx_device * pdev, const gs_gstate * pgs,
+             dev = pdev;
+         } else {
+             gx_make_clip_device_on_stack(&cdev, pcpath1, pdev);
++            rc_increment(cdev.target);
+             dev = (gx_device *)&cdev;
+             if ((*dev_proc(pdev, dev_spec_op))(pdev,
+                         gxdso_pattern_shading_area, NULL, 0) > 0)
+                 set_dev_proc(&cdev, fill_path, pass_shading_area_through_clip_path_device);
+             code = 0;
++            clipping = 1;
+         }
+         if (code >= 0) {
+             /* Check clip rectangle covers an actual area */
+@@ -646,6 +651,8 @@ gx_default_fill_path_shading_or_pattern(gx_device * pdev, const gs_gstate * pgs,
+                         cb.p.x, cb.p.y, cb.q.x - cb.p.x, cb.q.y - cb.p.y,
+                         dev, pgs->log_op, rs);
+         }
++        if (clipping)
++            gx_destroy_clip_device_on_stack(&cdev);
+     }
+     if (ppath != NULL)
+         gx_cpath_free(&cpath_intersection, "shading_fill_cpath_intersection");
+-- 
+2.25.1
+

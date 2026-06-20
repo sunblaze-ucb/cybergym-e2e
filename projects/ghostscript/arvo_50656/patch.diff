@@ -1,0 +1,27 @@
+From ed51807f5c7d5208c703de3ab60cff49adf96328 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 30 Aug 2022 08:52:40 +0100
+Subject: [PATCH] oss-fuzz 50656: Bounds check instruction buffer in
+ Ins_NPUSHB()
+
+---
+ base/ttinterp.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/base/ttinterp.c b/base/ttinterp.c
+index 63846c8d8..23a7c949e 100644
+--- a/base/ttinterp.c
++++ b/base/ttinterp.c
+@@ -2325,7 +2325,8 @@ static int nInstrCount=0;
+ 
+     L = (Int)CUR.code[CUR.IP + 1];
+ 
+-    if ( BOUNDS( L, CUR.stackSize+1-CUR.top ) )
++    if ( BOUNDS( L, CUR.stackSize+1-CUR.top )
++      || BOUNDS( L, CUR.codeSize+1-CUR.IP))
+     {
+       CUR.error = TT_Err_Stack_Overflow;
+       return;
+-- 
+2.43.2
+

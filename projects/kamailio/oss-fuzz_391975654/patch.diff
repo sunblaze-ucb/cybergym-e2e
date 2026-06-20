@@ -1,0 +1,25 @@
+From 200cdb318569191cd012dfe99b252f98fe9623b9 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Sun, 26 Jan 2025 18:07:54 +0100
+Subject: [PATCH] core/parser/sdp: proper test for media ip separator
+
+---
+ src/core/parser/sdp/sdp_helpr_funcs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/parser/sdp/sdp_helpr_funcs.c b/src/core/parser/sdp/sdp_helpr_funcs.c
+index 61022b6148..893ef0e58a 100644
+--- a/src/core/parser/sdp/sdp_helpr_funcs.c
++++ b/src/core/parser/sdp/sdp_helpr_funcs.c
+@@ -561,7 +561,7 @@ int extract_mediaip(str *body, str *mediaip, int *pf, char *line)
+ 	 * - for length, at least 6: ' IP[4|6] x...'
+ 	 * - white space after
+ 	 */
+-	if(cp + 6 > mediaip->s + mediaip->len && cp[4] != ' ') {
++	if(cp + 6 > mediaip->s + mediaip->len || cp[4] != ' ') {
+ 		LM_ERR("invalid content for `%s' line\n", line);
+ 		return -1;
+ 	}
+-- 
+2.25.1
+

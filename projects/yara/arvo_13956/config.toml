@@ -1,0 +1,4 @@
+task_id = "arvo:13956"
+target_prog = "elf_fuzzer"
+vul_commit = "77288a93d1fd10a3813a2422fdad011767e800a7"
+patch_commit = "462ffd339228ac57d98e8034239d122e4303f653"

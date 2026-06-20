@@ -1,0 +1,36 @@
+From 1176e61afea4b58c5f92c6f226cdb7b1c76797d5 Mon Sep 17 00:00:00 2001
+From: Marti Maria <marti.maria@littlecms.com>
+Date: Thu, 11 Apr 2024 18:44:45 +0200
+Subject: [PATCH] Add a check for wrong CRD parameters
+
+Detect wrong parameters on CRD creation
+---
+ src/cmsps2.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/cmsps2.c b/src/cmsps2.c
+index 2ffb8ac..afd1404 100644
+--- a/src/cmsps2.c
++++ b/src/cmsps2.c
+@@ -1314,12 +1314,17 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
+     DeviceLink = cmsPipelineDup(v ->Lut);
+     if (DeviceLink == NULL) {
+         cmsDeleteTransform(xform);
++        cmsSignalError(m->ContextID, cmsERROR_CORRUPTION_DETECTED, "Cannot access link for CRD");
+         return 0;
+     }
+ 
+      // We need a CLUT
+     dwFlags |= cmsFLAGS_FORCE_CLUT;
+-    _cmsOptimizePipeline(m->ContextID, &DeviceLink, RelativeEncodingIntent, &InFrm, &OutputFormat, &dwFlags);
++    if (!_cmsOptimizePipeline(m->ContextID, &DeviceLink, RelativeEncodingIntent, &InFrm, &OutputFormat, &dwFlags)) {
++        cmsDeleteTransform(xform);
++        cmsSignalError(m->ContextID, cmsERROR_CORRUPTION_DETECTED, "Cannot create CLUT table for CRD");
++        return 0;
++    }
+ 
+     _cmsIOPrintf(m, "<<\n");
+     _cmsIOPrintf(m, "/ColorRenderingType 1\n");
+-- 
+2.25.1
+

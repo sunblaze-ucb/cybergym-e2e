@@ -1,0 +1,27 @@
+From d67f28b5b28253ff1d0732c79762bda2a12e207b Mon Sep 17 00:00:00 2001
+From: davkor <david@adalogics.com>
+Date: Tue, 10 Nov 2020 14:35:21 +0000
+Subject: [PATCH] config_map: ensure memory allocation to avoid double-free
+ (oss-fuzz 27025)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_config_map.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/flb_config_map.c b/src/flb_config_map.c
+index 8f0eaebf7..b5ca9347d 100644
+--- a/src/flb_config_map.c
++++ b/src/flb_config_map.c
+@@ -681,7 +681,7 @@ int flb_config_map_set(struct mk_list *properties, struct mk_list *map, void *co
+ 
+             /* Populate value */
+             if (m->type == FLB_CONFIG_MAP_STR) {
+-                entry->val.str = kv->val;
++                entry->val.str = flb_sds_create(kv->val);
+             }
+             else if (m->type == FLB_CONFIG_MAP_INT) {
+                 entry->val.i_num = atoi(kv->val);
+-- 
+2.43.2
+

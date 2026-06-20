@@ -1,0 +1,57 @@
+From 5a560f3f6aa2cbfad957cf6223e50c3b61ef575b Mon Sep 17 00:00:00 2001
+From: Peter Wu <peter@lekensteyn.nl>
+Date: Sun, 8 Jul 2018 15:10:15 +0200
+Subject: [PATCH] dns: fix off-by-one buffer overflow (write)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+"maxname" is the size of the buffer which also includes the "null
+label" (represented by the NUL byte). Do not write this past the end.
+
+Bug: 14955
+Change-Id: I51e2237741807aded7ffb82c178d7d7ce5123f78
+Fixes: v2.9.0rc0-1142-g53e04b621c ("DNS: fix in expand_dns_name")
+Reviewed-on: https://code.wireshark.org/review/28657
+Petri-Dish: Peter Wu <peter@lekensteyn.nl>
+Tested-by: Petri Dish Buildbot
+Reviewed-by: Erika Szelleová <szelleerika@gmail.com>
+Reviewed-by: Peter Wu <peter@lekensteyn.nl>
+---
+ epan/dissectors/packet-dns.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/epan/dissectors/packet-dns.c b/epan/dissectors/packet-dns.c
+index d2ddd66..b1e0a1e 100644
+--- a/epan/dissectors/packet-dns.c
++++ b/epan/dissectors/packet-dns.c
+@@ -1226,7 +1226,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
+             label_len = (bit_count - 1) / 8 + 1;
+ 
+             if (maxname > 0) {
+-              print_len = g_snprintf(np, maxname + 1, "\\[x");
++              print_len = g_snprintf(np, maxname, "\\[x");
+               if (print_len <= maxname) {
+                 np      += print_len;
+                 maxname -= print_len;
+@@ -1238,7 +1238,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
+             }
+             while (label_len--) {
+               if (maxname > 0) {
+-                print_len = g_snprintf(np, maxname + 1, "%02x",
++                print_len = g_snprintf(np, maxname, "%02x",
+                                        tvb_get_guint8(tvb, offset));
+                 if (print_len <= maxname) {
+                   np      += print_len;
+@@ -1252,7 +1252,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
+               offset++;
+             }
+             if (maxname > 0) {
+-              print_len = g_snprintf(np, maxname + 1, "/%d]", bit_count);
++              print_len = g_snprintf(np, maxname, "/%d]", bit_count);
+               if (print_len <= maxname) {
+                 np      += print_len;
+                 maxname -= print_len;
+-- 
+2.7.4
+

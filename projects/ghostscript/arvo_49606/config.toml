@@ -1,0 +1,5 @@
+task_id = "arvo:49606"
+target_prog = "gs_device_pxlmono_fuzzer"
+vul_commit = "af3fa99aece39bfb83583d28e817c630c269bfea"
+patch_commit = "dd907d6d9e772f91a9b652c3e765439f38e7147d"
+build_image = "n132/arvo:49606-fix"

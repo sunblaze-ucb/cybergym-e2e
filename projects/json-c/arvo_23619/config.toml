@@ -1,0 +1,4 @@
+task_id = "arvo:23619"
+target_prog = "tokener_parse_ex_fuzzer"
+vul_commit = "50179fb09f5d317e7192c781ca4a6b039d7818ae"
+patch_commit = "36118b681ea3b8e99735beee73cbd25a63e942cd"

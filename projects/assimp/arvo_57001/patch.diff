@@ -1,0 +1,25 @@
+From 36dfa3bed31fe220a15648083a78c925fbec0792 Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Wed, 14 Jun 2023 15:50:50 +0000
+Subject: [PATCH] Fix UNKNOWN WRITE in Assimp::SortByPTypeProcess::Execute
+
+---
+ code/AssetLib/OFF/OFFLoader.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/code/AssetLib/OFF/OFFLoader.cpp b/code/AssetLib/OFF/OFFLoader.cpp
+index cb265029a..f50afb57b 100644
+--- a/code/AssetLib/OFF/OFFLoader.cpp
++++ b/code/AssetLib/OFF/OFFLoader.cpp
+@@ -284,7 +284,7 @@ void OFFImporter::InternReadFile( const std::string& pFile, aiScene* pScene, IOS
+     for (unsigned int i = 0; i < numFaces; ) {
+         if(!GetNextLine(buffer,line)) {
+             ASSIMP_LOG_ERROR("OFF: The number of faces in the header is incorrect");
+-            break;
++            throw DeadlyImportError("OFF: The number of faces in the header is incorrect");
+         }
+         unsigned int idx;
+         sz = line; SkipSpaces(&sz);
+-- 
+2.25.1
+

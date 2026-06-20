@@ -1,0 +1,5 @@
+task_id = "arvo:38766"
+target_prog = "libarchive_fuzzer"
+vul_commit = "6d56dfd6ef13625561da83c605d2a12cb146088c"
+patch_commit = "cfaa28168a07ea4a53276b63068f94fce37d6aff"
+build_image = "n132/arvo:38766-fix"

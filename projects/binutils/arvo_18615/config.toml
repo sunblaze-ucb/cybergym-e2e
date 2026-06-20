@@ -1,0 +1,4 @@
+task_id = "arvo:18615"
+target_prog = "fuzz_disassemble"
+vul_commit = "9adb25915092daa4096911d04fadb5d496c926a6"
+patch_commit = "efea62b44631289f995db16faf70979d6592580b"

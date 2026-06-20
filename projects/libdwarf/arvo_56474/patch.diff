@@ -1,0 +1,32 @@
+From b3df2530732ea515cda5a85438871e15c6723ead Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Tue, 23 May 2023 13:45:38 -0700
+Subject: [PATCH] dwarf_highpc_b() was dereferencing a pointer argument before
+ checking the argument. Now we check before using. 	modified:  
+ src/lib/libdwarf/dwarf_query.c
+
+---
+ src/lib/libdwarf/dwarf_query.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/libdwarf/dwarf_query.c b/src/lib/libdwarf/dwarf_query.c
+index 95445ffc..52c6c161 100644
+--- a/src/lib/libdwarf/dwarf_query.c
++++ b/src/lib/libdwarf/dwarf_query.c
+@@ -1136,11 +1136,11 @@ dwarf_lowpc(Dwarf_Die die,
+     int version = 0;
+     enum Dwarf_Form_Class class = DW_FORM_CLASS_UNKNOWN;
+     int res = 0;
+-    Dwarf_CU_Context context = die->di_cu_context;
++    Dwarf_CU_Context context = 0;
+     Dwarf_Small *die_info_end = 0;
+ 
+     CHECK_DIE(die, DW_DLV_ERROR);
+-
++    context = die->di_cu_context;
+     dbg = context->cc_dbg;
+     address_size = context->cc_address_size;
+     offset_size = context->cc_length_size;
+-- 
+2.25.1
+

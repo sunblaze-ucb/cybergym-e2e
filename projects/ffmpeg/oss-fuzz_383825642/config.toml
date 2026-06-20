@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:383825642"
+target_prog = "ffmpeg_DEMUXER_fuzzer"
+vul_commit = "54897da7ce8ae6e349cd56d0f11cb2404e264efa"
+patch_commit = "c43dbecbdad152a91eadc7538b545852eee562ae"
+build_image = "cybergym/oss-fuzz:383825642-fix"

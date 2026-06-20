@@ -1,0 +1,7 @@
+name = "libvips"
+language = "c++"
+homepage = "https://github.com/libvips/libvips"
+main_repo = "https://github.com/libvips/libvips"
+repo_to_patch = "libvips"
+build_image = "n132/arvo:39481-fix"
+immutable_files = ["test", "fuzz"]

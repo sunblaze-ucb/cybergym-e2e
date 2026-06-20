@@ -1,0 +1,5 @@
+task_id = "arvo:19414"
+target_prog = "fuzz_disassemble"
+vul_commit = "9ad9b810c385c83242a3100fa986d174c83ffe10"
+patch_commit = "f00901886d0acb7a4d4b177a5cabe8bd9ca2307b"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

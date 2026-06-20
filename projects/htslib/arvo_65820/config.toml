@@ -1,0 +1,5 @@
+task_id = "arvo:65820"
+target_prog = "hts_open_fuzzer"
+vul_commit = "31e5a5f972b137ec3738bfd565652270904f7112"
+patch_commit = "b08332d60a458f64ad4186dbe137ef528881c683"
+build_image = "n132/arvo:65820-fix"

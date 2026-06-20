@@ -1,0 +1,31 @@
+From 6996e1238e80b23caf05428dcbdd065fbd70ff10 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Tue, 6 Aug 2024 18:18:15 +0200
+Subject: [PATCH] avformat/av1dec: Check bits left before get_leb128()
+
+Fixes: use of uninitialized value
+Fixes: 70872/clusterfuzz-testcase-minimized-ffmpeg_dem_OBU_fuzzer-6005782487826432
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/av1dec.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libavformat/av1dec.c b/libavformat/av1dec.c
+index 3363003b18..a5b620a0ab 100644
+--- a/libavformat/av1dec.c
++++ b/libavformat/av1dec.c
+@@ -326,6 +326,9 @@ static int read_obu_with_size(const uint8_t *buf, int buf_size, int64_t *obu_siz
+         skip_bits(&gb, 3);  // extension_header_reserved_3bits
+     }
+ 
++    if (get_bits_left(&gb) < 8)
++        return AVERROR_INVALIDDATA;
++
+     *obu_size  = get_leb128(&gb);
+     if (*obu_size > INT_MAX)
+         return AVERROR_INVALIDDATA;
+-- 
+2.25.1
+

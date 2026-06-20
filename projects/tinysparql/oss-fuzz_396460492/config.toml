@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:396460492"
+target_prog = "fuzz_rdf_turtle"
+vul_commit = "9af8b043b91b8ecbbf215a66acec2d0213c6f8a4"
+patch_commit = "113041f26cb9fec77fd9a2251147c98280419cec"
+build_image = "cybergym/e2e:tinysparql"

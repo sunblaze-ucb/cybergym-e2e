@@ -1,0 +1,5 @@
+task_id = "arvo:21011"
+target_prog = "fuzz_bfd"
+vul_commit = "478e490a4df79436d678ca5f5f1d7c7ac7befa79"
+patch_commit = "f57140990f9be3232ffbc708fb1aade032052c80"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

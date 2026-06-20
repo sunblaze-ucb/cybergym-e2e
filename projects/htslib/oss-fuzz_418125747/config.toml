@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:418125747"
+target_prog = "hts_open_fuzzer"
+vul_commit = "a5e2071058284bc6ae027016d9932249bd08657c"
+patch_commit = "b8dfa3ad7f1ac6a165f01625fe1f3f6cb60a417c"
+build_image = "cybergym/e2e:htslib"

@@ -1,0 +1,28 @@
+From 595926471b034fe4b518af722b2e1fae4ed6c450 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Wed, 23 Sep 2020 17:04:40 +0200
+Subject: [PATCH] itacns: Really do not read behind the buffer bounds
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25885
+---
+ src/libopensc/pkcs15-itacns.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/pkcs15-itacns.c b/src/libopensc/pkcs15-itacns.c
+index 6f7523ae..ff1511c4 100644
+--- a/src/libopensc/pkcs15-itacns.c
++++ b/src/libopensc/pkcs15-itacns.c
+@@ -379,7 +379,7 @@ static int hextoint(char *src, unsigned int len)
+ 
+ 	if(len >= sizeof(hex))
+ 		return -1;
+-	strncpy(hex, src, len+1);
++	strncpy(hex, src, len);
+ 	hex[len] = '\0';
+ 	res = strtol(hex, &end, 0x10);
+ 	if(end != (char*)&hex[len])
+-- 
+2.43.2
+

@@ -1,0 +1,76 @@
+From 85d8681747faa317c9934f658dcf8749e945ea8c Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 6 Jan 2020 17:12:51 +1030
+Subject: [PATCH] som_bfd_fill_in_ar_symbols buffer overflow
+
+	* som.c (som_bfd_fill_in_ar_symbols): Bounds check som_dict index.
+---
+ bfd/ChangeLog |  4 ++++
+ bfd/som.c     | 23 +++++++++++++++++------
+ 2 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/bfd/ChangeLog b/bfd/ChangeLog
+index 1d2b346..2aed0db 100644
+--- a/bfd/ChangeLog
++++ b/bfd/ChangeLog
+@@ -1,5 +1,9 @@
+ 2020-01-06  Alan Modra  <amodra@gmail.com>
+ 
++	* som.c (som_bfd_fill_in_ar_symbols): Bounds check som_dict index.
++
++2020-01-06  Alan Modra  <amodra@gmail.com>
++
+ 	* mach-o.c (bfd_mach_o_read_dylinker): Don't read past end of
+ 	command.  Check name offset is within command.
+ 	(bfd_mach_o_read_dylib, bfd_mach_o_read_prebound_dylib),
+diff --git a/bfd/som.c b/bfd/som.c
+index 954b752..779fd5d 100644
+--- a/bfd/som.c
++++ b/bfd/som.c
+@@ -6002,6 +6002,7 @@ som_bfd_fill_in_ar_symbols (bfd *abfd,
+       size_t len;
+       unsigned char ext_len[4];
+       char *name;
++      unsigned int ndx;
+ 
+       /* An empty chain has zero as it's file offset.  */
+       hash_val = bfd_getb32 (hash_table + 4 * i);
+@@ -6048,9 +6049,14 @@ som_bfd_fill_in_ar_symbols (bfd *abfd,
+ 
+       /* Fill in the file offset.  Note that the "location" field points
+ 	 to the SOM itself, not the ar_hdr in front of it.  */
+-      set->file_offset =
+-	bfd_getb32 (som_dict[bfd_getb32 (lst_symbol.som_index)].location)
+-	- sizeof (struct ar_hdr);
++      ndx = bfd_getb32 (lst_symbol.som_index);
++      if (ndx >= lst_header->module_count)
++	{
++	  bfd_set_error (bfd_error_bad_value);
++	  goto error_return;
++	}
++      set->file_offset
++	= bfd_getb32 (som_dict[ndx].location) - sizeof (struct ar_hdr);
+ 
+       /* Go to the next symbol.  */
+       set++;
+@@ -6097,9 +6103,14 @@ som_bfd_fill_in_ar_symbols (bfd *abfd,
+ 
+ 	  /* Fill in the file offset.  Note that the "location" field points
+ 	     to the SOM itself, not the ar_hdr in front of it.  */
+-	  set->file_offset =
+-	    bfd_getb32 (som_dict[bfd_getb32 (lst_symbol.som_index)].location)
+-	    - sizeof (struct ar_hdr);
++	  ndx = bfd_getb32 (lst_symbol.som_index);
++	  if (ndx >= lst_header->module_count)
++	    {
++	      bfd_set_error (bfd_error_bad_value);
++	      goto error_return;
++	    }
++	  set->file_offset
++	    = bfd_getb32 (som_dict[ndx].location) - sizeof (struct ar_hdr);
+ 
+ 	  /* Go on to the next symbol.  */
+ 	  set++;
+-- 
+2.7.4
+

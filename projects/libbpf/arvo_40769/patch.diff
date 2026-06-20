@@ -1,0 +1,73 @@
+From 738277b77339d5fa7c3590d9e9ecfce8f5f061ee Mon Sep 17 00:00:00 2001
+From: Andrii Nakryiko <andrii@kernel.org>
+Date: Wed, 3 Nov 2021 10:32:09 -0700
+Subject: [PATCH 1/2] libbpf: Detect corrupted ELF symbols section
+
+Prevent divide-by-zero if ELF is corrupted and has zero sh_entsize.
+Reported by oss-fuzz project.
+
+Signed-off-by: Andrii Nakryiko <andrii@kernel.org>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: Yonghong Song <yhs@fb.com>
+Link: https://lore.kernel.org/bpf/20211103173213.1376990-2-andrii@kernel.org
+---
+ src/libbpf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libbpf.c b/src/libbpf.c
+index a1bea19..71f5a00 100644
+--- a/src/libbpf.c
++++ b/src/libbpf.c
+@@ -3555,7 +3555,7 @@ static int bpf_object__collect_externs(struct bpf_object *obj)
+ 
+ 	scn = elf_sec_by_idx(obj, obj->efile.symbols_shndx);
+ 	sh = elf_sec_hdr(obj, scn);
+-	if (!sh)
++	if (!sh || sh->sh_entsize != sizeof(Elf64_Sym))
+ 		return -LIBBPF_ERRNO__FORMAT;
+ 
+ 	dummy_var_btf_id = add_dummy_ksym_var(obj->btf);
+-- 
+2.43.2
+
+
+From 2f52e2afc068b801880021334a41f16a18fa4bc2 Mon Sep 17 00:00:00 2001
+From: Andrii Nakryiko <andrii@kernel.org>
+Date: Wed, 3 Nov 2021 10:32:10 -0700
+Subject: [PATCH 2/2] libbpf: Improve sanity checking during BTF fix up
+
+If BTF is corrupted DATASEC's variable type ID might be incorrect.
+Prevent this easy to detect situation with extra NULL check.
+Reported by oss-fuzz project.
+
+Signed-off-by: Andrii Nakryiko <andrii@kernel.org>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: Yonghong Song <yhs@fb.com>
+Link: https://lore.kernel.org/bpf/20211103173213.1376990-3-andrii@kernel.org
+---
+ src/libbpf.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/libbpf.c b/src/libbpf.c
+index 71f5a00..f836a19 100644
+--- a/src/libbpf.c
++++ b/src/libbpf.c
+@@ -2752,13 +2752,12 @@ static int btf_fixup_datasec(struct bpf_object *obj, struct btf *btf,
+ 
+ 	for (i = 0, vsi = btf_var_secinfos(t); i < vars; i++, vsi++) {
+ 		t_var = btf__type_by_id(btf, vsi->type);
+-		var = btf_var(t_var);
+-
+-		if (!btf_is_var(t_var)) {
++		if (!t_var || !btf_is_var(t_var)) {
+ 			pr_debug("Non-VAR type seen in section %s\n", name);
+ 			return -EINVAL;
+ 		}
+ 
++		var = btf_var(t_var);
+ 		if (var->linkage == BTF_VAR_STATIC)
+ 			continue;
+ 
+-- 
+2.43.2
+

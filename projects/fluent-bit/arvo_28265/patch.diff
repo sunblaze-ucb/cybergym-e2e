@@ -1,0 +1,29 @@
+From cfee54301badc5fd61422eb85ff4c1028ad6cbc7 Mon Sep 17 00:00:00 2001
+From: DavidKorczynski <david@adalogics.com>
+Date: Tue, 2 Mar 2021 16:39:08 +0000
+Subject: [PATCH] http_client: fix missing check on val leading to overflow.
+ OSS-Fuzz 6211846364987392 (#3137)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_http_client.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/flb_http_client.c b/src/flb_http_client.c
+index 5d22b2749..b5398e2ea 100644
+--- a/src/flb_http_client.c
++++ b/src/flb_http_client.c
+@@ -289,7 +289,9 @@ static int process_chunked_data(struct flb_http_client *c)
+         flb_errno();
+         return FLB_HTTP_ERROR;
+     }
+-
++    if (val < 0) {
++        return FLB_HTTP_ERROR;
++    }
+     /*
+      * 'val' contains the expected number of bytes, check current lengths
+      * and do buffer adjustments.
+-- 
+2.43.2
+

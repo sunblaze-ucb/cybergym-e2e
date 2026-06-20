@@ -1,0 +1,41 @@
+From 3916f3eea4a89090d017aa04981022e1cb49f207 Mon Sep 17 00:00:00 2001
+From: Vaibhav Valvaiker <100804@ittiam.com>
+Date: Mon, 27 Jan 2025 14:54:29 +0530
+Subject: [PATCH] mvcdec: Heap overflow in 'ih264d_read_coeff4x4_cabac'
+
+In some erroneous fuzzer bistreams, the slice data requires more
+parsing than what was implied by the distance between successive
+start codes. The primary culprit is the NEXTBITS macro which requires
+reading 4 additional bytes of the bitstream buffer. To alleviate
+this, 16 bytes per 4x4 TU have been additionally allocated to the
+bitstream buffer. Also, chroma bytes are added for 4:2:0/4:2:2.
+
+This is in reference to commit-72315c1, where additional bytes were added to fix similar issue.
+
+Bug = ossfuzz:42538616
+Test: mvc_dec_fuzzer
+---
+ decoder/mvc/imvcd_api.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/decoder/mvc/imvcd_api.c b/decoder/mvc/imvcd_api.c
+index 4b1876b..b193503 100644
+--- a/decoder/mvc/imvcd_api.c
++++ b/decoder/mvc/imvcd_api.c
+@@ -737,9 +737,10 @@ static IV_API_CALL_STATUS_T imvcd_view_decode(iv_obj_t *ps_dec_hdl, imvcd_video_
+               parsing than what was implied by the distance between successive
+               start codes.The primary culprit is the NEXTBITS macro which requires
+               reading 4 additional bytes of the bitstream buffer.To alleviate
+-              this, 4 bytes per 4x4 TU have been additionally allocated to the
+-              bitstream buffer. */
+-            UWORD32 u4_nalu_buf_size = ((UWORD32) i4_nalu_length) + 8 + 4 * 16;
++              this, 16 bytes per 4x4 TU have been additionally allocated to the
++              bitstream buffer. Also, chroma bytes are added for 4:2:0/4:2:2 */
++
++            UWORD32 u4_nalu_buf_size = ((UWORD32) i4_nalu_length) + 8 + EXTRA_BS_OFFSET;
+ 
+             if(u4_nalu_buf_size > u4_bitstream_buf_size)
+             {
+-- 
+2.25.1
+

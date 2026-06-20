@@ -1,0 +1,105 @@
+From db34d54064ae35adc78a499c49363a256f5145f6 Mon Sep 17 00:00:00 2001
+From: Robin Watts <Robin.Watts@artifex.com>
+Date: Thu, 24 Nov 2022 20:09:32 +0000
+Subject: [PATCH] Bug 706086: Fix OSS Fuzz clist buffer overrun.
+
+clist_copy_bits can copy small bitmaps into the clist uncompressed.
+When it copies them it calculates the size required as being:
+
+ raster * (h-1) + width_bytes
+
+where width_bytes is raster, without the padding at the end.
+
+Thus it saves a byte or two.
+
+The routine we have been using to copy the bitmap in since time
+immemorial did not know about this, so copied all the lines with
+padding. Most of the time this didn't matter, but just occasionally,
+if we get a bitmap that would JUST fit, we can overrun the buffer.
+---
+ base/gsbitops.c | 31 ++++++++++++++++++++++++++++++-
+ base/gsbitops.h |  8 +++++++-
+ base/gxclbits.c |  3 ++-
+ 3 files changed, 39 insertions(+), 3 deletions(-)
+
+diff --git a/base/gsbitops.c b/base/gsbitops.c
+index 479ebcd66..d2b9e9c95 100644
+--- a/base/gsbitops.c
++++ b/base/gsbitops.c
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2001-2021 Artifex Software, Inc.
++/* Copyright (C) 2001-2022 Artifex Software, Inc.
+    All Rights Reserved.
+ 
+    This software is provided AS-IS with no warranty, either express or
+@@ -725,3 +725,32 @@ bytes_copy_rectangle_zero_padding(byte * dest, uint dest_raster,
+         }
+     }
+ }
++
++/* Copy a rectangle of bytes zeroing any padding bytes, copying
++ * the last row with no padding. */
++void
++bytes_copy_rectangle_zero_padding_last_short(byte * dest, uint dest_raster,
++             const byte * src, uint src_raster, int width_bytes, int height)
++{
++    int padlen = dest_raster;
++    if (padlen < 0)
++        padlen = -padlen;
++    padlen -= width_bytes;
++    if (padlen == 0)
++    {
++        while (height-- > 0) {
++            memcpy(dest, src, width_bytes);
++            src += src_raster;
++            dest += dest_raster;
++        }
++    } else {
++        while (--height > 0) {
++            memcpy(dest, src, width_bytes);
++            memset(dest+width_bytes, 0, padlen);
++            src += src_raster;
++            dest += dest_raster;
++        }
++        if (height >= 0)
++            memcpy(dest, src, width_bytes);
++    }
++}
+diff --git a/base/gsbitops.h b/base/gsbitops.h
+index 127c24aab..dc919175a 100644
+--- a/base/gsbitops.h
++++ b/base/gsbitops.h
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2001-2021 Artifex Software, Inc.
++/* Copyright (C) 2001-2022 Artifex Software, Inc.
+    All Rights Reserved.
+ 
+    This software is provided AS-IS with no warranty, either express or
+@@ -502,4 +502,10 @@ int bytes_rectangle_is_const(const byte * src, uint src_raster, int width_bytes,
+ void bytes_copy_rectangle_zero_padding(byte * dest, uint dest_raster,
+     const byte * src, uint src_raster, int width_bytes, int height);
+ 
++/* Copy a rectangle of bytes, ensuring that any padding bits at the end
++ * of each dest_raster line are zeroed. The last row is copied without
++ * any padding. */
++void bytes_copy_rectangle_zero_padding_last_short(byte * dest, uint dest_raster,
++    const byte * src, uint src_raster, int width_bytes, int height);
++
+ #endif /* gsbitops_INCLUDED */
+diff --git a/base/gxclbits.c b/base/gxclbits.c
+index 6ccc65a75..c3da5b944 100644
+--- a/base/gxclbits.c
++++ b/base/gxclbits.c
+@@ -279,7 +279,8 @@ cmd_put_bits(gx_device_clist_writer * cldev, gx_clist_state * pcls,
+         compress = cmd_compress_const;
+     } else {
+         uint copy_bytes = (width_bits + 7) >> 3;
+-        bytes_copy_rectangle_zero_padding(dp + op_size, short_raster, data, raster,
++        bytes_copy_rectangle_zero_padding_last_short(
++                             dp + op_size, short_raster, data, raster,
+                              copy_bytes, height);
+     }
+ out:
+-- 
+2.25.1
+

@@ -1,0 +1,28 @@
+From 260cd3394d45bd51f2002936a63401419658ecd7 Mon Sep 17 00:00:00 2001
+From: dtldarek <dtl+github@google.com>
+Date: Wed, 25 Aug 2021 15:02:38 +0200
+Subject: [PATCH] Fix buffer overflow on input found with fuzzying (in c-string
+ format): "\n# h1\nc  hh##e2ked\n\n A | rong__ ___strong
+ \u0000\u0000\u0000\u0000\u0000\u0000\a\u0000\u0000\u0000\u0000\n# h1\nh#
+ #2\n### h3\n#### h4\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\\\n#####
+ h5\n#*#####\u0000\n6"
+
+---
+ src/md4c.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/md4c.c b/src/md4c.c
+index 2864010..3565ddf 100644
+--- a/src/md4c.c
++++ b/src/md4c.c
+@@ -5685,6 +5685,7 @@ md_is_container_mark(MD_CTX* ctx, unsigned indent, OFF beg, OFF* p_end, MD_CONTA
+         off++;
+     }
+     if(off > beg  &&
++       off < ctx->size  &&
+        (CH(off) == _T('.') || CH(off) == _T(')'))  &&
+        (off+1 >= ctx->size || ISBLANK(off+1) || ISNEWLINE(off+1)))
+     {
+-- 
+2.43.2
+

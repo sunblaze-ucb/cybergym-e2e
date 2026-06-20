@@ -1,0 +1,112 @@
+From f4bcc37667d82541eaf8a29e0b021fe1d7aa7b5b Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Thu, 24 Nov 2022 14:58:43 +0000
+Subject: [PATCH] GhostPDF - Correct main stream parsing
+
+This was noticed while I was working on the N-up problem, the test file
+for that problem was the 1.7 PDF Reference and the device was pdfwrite.
+After fixing the N-up problem I had tried running the full file, and it
+failed badly.
+
+The reason turns out to be that at some time in the distant past (long
+before we merged the pdfi branch to master) I wrapped the main stream
+in a SubFileDeocde filter, with a 'triler' EODString, before parsing
+objects when dereferencing in indirect reference.
+
+The PDF_Reference has an annotation which includes, in the text, the
+word 'trailer'. Because it isn't an ObjStm it isn't compressed, and so
+the SubFileDecode filter signals EOF when it hits that word, leading to
+errors.
+
+This commit removes the SubFileDecode filter, which led on to a couple
+of other problems; the offset calculation in pdfi_read_stream_object()
+was assuming it was never reading from the main stream, because we
+always had a filter in place. That meant the calculation was incorrect
+when we are reading from the main stream.
+
+/tests_private/comparefiles/Bug696541.pdf has strings in its Info
+dictionary which are invalid, this causes us to read to the end of file.
+Previously the SubFileDecode would have prevented us triggering the
+'eof' in the main stream but because we aren't using that any more we
+were falling foul of it because we would rewind the stream, then the
+PDF stream object would still have eof set, so we'd be unable to read
+anything from it.
+
+So have pdfi_seek() reset the 'eof' flag if we alter the file position
+and it is currently set.
+
+There may be more fallout from this change, the cluster runs clean but
+that does not test very many broken files. I'll be testing a moderate
+collection of files, including the OSS-fuzz files, over the next few
+days and may make more fixes.
+---
+ pdf/pdf_deref.c | 16 +++++++---------
+ pdf/pdf_file.c  |  8 +++++++-
+ 2 files changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/pdf/pdf_deref.c b/pdf/pdf_deref.c
+index 3e1a80465..31eb62961 100644
+--- a/pdf/pdf_deref.c
++++ b/pdf/pdf_deref.c
+@@ -217,8 +217,12 @@ static int pdfi_read_stream_object(pdf_context *ctx, pdf_c_stream *s, gs_offset_
+      * not be used for compressed object streams, but those don't need checking anyway
+      * they have a different mechanism altogether and should never get here.
+      */
+-    offset = stell(s->s) - s->unread_size + stream_offset;
+-    code = pdfi_seek(ctx, ctx->main_stream, offset, SEEK_SET);
++    if (s != ctx->main_stream) {
++        offset = stell(s->s) - s->unread_size + stream_offset;
++        code = pdfi_seek(ctx, ctx->main_stream, offset, SEEK_SET);
++    } else {
++        offset = stell(s->s) - s->unread_size;
++    }
+ 
+     if (pdfi_count_stack(ctx) < 1)
+         return_error(gs_error_stackunderflow);
+@@ -962,18 +966,12 @@ static int pdfi_dereference_main(pdf_context *ctx, uint64_t obj, uint64_t gen, p
+             if (code < 0)
+                 goto error;
+ 
+-            code = pdfi_apply_SubFileDecode_filter(ctx, 0, "trailer", ctx->main_stream, &SubFile_stream, false);
+-            if (code < 0)
+-                goto error;
+-
+-            code = pdfi_read_object(ctx, SubFile_stream, entry->u.uncompressed.offset);
++            code = pdfi_read_object(ctx, ctx->main_stream, entry->u.uncompressed.offset);
+ 
+             /* pdfi_read_object() could do a repair, which would invalidate the xref and rebuild it.
+              * reload the xref entry to be certain it is valid.
+              */
+             entry = &ctx->xref_table->xref[obj];
+-
+-            pdfi_close_file(ctx, SubFile_stream);
+             if (code < 0) {
+                 int code1 = 0;
+                 if (entry->free) {
+diff --git a/pdf/pdf_file.c b/pdf/pdf_file.c
+index b92d1cb86..95366fe01 100644
+--- a/pdf/pdf_file.c
++++ b/pdf/pdf_file.c
+@@ -1516,12 +1516,18 @@ void pdfi_close_file(pdf_context *ctx, pdf_c_stream *s)
+ 
+ int pdfi_seek(pdf_context *ctx, pdf_c_stream *s, gs_offset_t offset, uint32_t origin)
+ {
++    int code = 0;
++
+     if (origin == SEEK_CUR && s->unread_size != 0)
+         offset -= s->unread_size;
+ 
+     s->unread_size = 0;;
+ 
+-    return (sfseek(s->s, offset, origin));
++    code = sfseek(s->s, offset, origin);
++    if (s->eof && code >= 0)
++        s->eof = 0;
++
++    return code;
+ }
+ 
+ /* We use 'stell' sometimes to save the position of the underlying file
+-- 
+2.25.1
+

@@ -1,0 +1,29 @@
+From 764ab7b702142762bfa9c4e93427c6e494ff7940 Mon Sep 17 00:00:00 2001
+From: Mallikarjun Kamble <mallikarjun.kamble@ittiam.com>
+Date: Wed, 15 Feb 2023 10:24:59 +0530
+Subject: [PATCH] Resolve the issue of non-vcl buffer overflow in nal_parse
+
+BUG=oss-fuzz:55964
+Test: svc_dec_fuzzer
+---
+ decoder/svc/isvcd_nal_parse.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/decoder/svc/isvcd_nal_parse.c b/decoder/svc/isvcd_nal_parse.c
+index c79f36d..6bad007 100644
+--- a/decoder/svc/isvcd_nal_parse.c
++++ b/decoder/svc/isvcd_nal_parse.c
+@@ -381,7 +381,9 @@ void isvcd_pic_reset_ctxt(nal_parse_ctxt_t *ps_nal_parse_ctxt)
+ 
+     /* reset the bytes left to buffer size */
+     ps_nal_parse_ctxt->u4_bytes_left_vcl = MAX_VCL_NAL_BUFF_SIZE;
+-    ps_nal_parse_ctxt->u4_bytes_left_non_vcl = MAX_NON_VCL_NAL_BUFF_SIZE;
++
++    /* 85% of the buffer is used. 15% is used to handle error cases*/
++    ps_nal_parse_ctxt->u4_bytes_left_non_vcl = (MAX_NON_VCL_NAL_BUFF_SIZE * 0.85);
+ 
+     /* Offset the buffer to start of vcl data */
+     UPDATE_NAL_BUF_PTR(&ps_nal_parse_ctxt->pu1_non_vcl_nal_buf, NON_VCL_NAL,
+-- 
+2.25.1
+

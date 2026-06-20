@@ -1,0 +1,26 @@
+From 106c4ee7f53ef800a82fce9638f29756e8b78640 Mon Sep 17 00:00:00 2001
+From: Nikias Bassen <nikias@gmx.li>
+Date: Tue, 15 Feb 2022 04:30:07 +0100
+Subject: [PATCH] jplist: Fix another OOB read by using correct bounds check
+
+Credit to OSS-Fuzz
+---
+ src/jplist.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/jplist.c b/src/jplist.c
+index 978c5f9..45f0544 100644
+--- a/src/jplist.c
++++ b/src/jplist.c
+@@ -490,7 +490,7 @@ static plist_t parse_primitive(const char* js, jsmntok_info_t* ti, int* index)
+         if (endp >= str_end) {
+             /* integer */
+             val = plist_new_uint((uint64_t)intpart);
+-        } else if ((*endp == '.' && endp+1 < str_end && isdigit(*(endp+1))) || ((*endp == 'e' || *endp == 'E') && endp < str_end && (isdigit(*(endp+1)) || ((*(endp+1) == '-') && endp+1 < str_end && isdigit(*(endp+2)))))) {
++        } else if ((*endp == '.' && endp+1 < str_end && isdigit(*(endp+1))) || ((*endp == 'e' || *endp == 'E') && endp+1 < str_end && (isdigit(*(endp+1)) || ((*(endp+1) == '-') && endp+2 < str_end && isdigit(*(endp+2)))))) {
+             /* floating point */
+             double dval = (double)intpart;
+             char* fendp = endp;
+-- 
+2.43.2
+

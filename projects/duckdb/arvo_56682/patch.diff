@@ -1,0 +1,249 @@
+From 081513f003b661c0d9e4ec70d9e6c7b126386644 Mon Sep 17 00:00:00 2001
+From: Mark Raasveldt <mark.raasveldt@gmail.com>
+Date: Fri, 10 Mar 2023 17:27:50 +0100
+Subject: [PATCH 1/2] Fix various oss-fuzz issues
+
+---
+ src/catalog/dependency_list.cpp                            | 3 +--
+ src/common/string_util.cpp                                 | 5 ++++-
+ src/function/aggregate/holistic/approximate_quantile.cpp   | 7 +++++--
+ src/function/table/checkpoint.cpp                          | 6 +++++-
+ ...uzz-testcase-minimized-parse_fuzz_test-5455194230226944 | 1 +
+ ...uzz-testcase-minimized-parse_fuzz_test-5717171654492160 | 1 +
+ ...uzz-testcase-minimized-parse_fuzz_test-5869382900514816 | 1 +
+ ...uzz-testcase-minimized-parse_fuzz_test-6048141818593280 | 1 +
+ ...uzz-testcase-minimized-parse_fuzz_test-6186839351623680 | 1 +
+ 9 files changed, 20 insertions(+), 6 deletions(-)
+ create mode 100644 test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5455194230226944
+ create mode 100644 test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5717171654492160
+ create mode 100644 test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5869382900514816
+ create mode 100644 test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6048141818593280
+ create mode 100644 test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6186839351623680
+
+diff --git a/src/catalog/dependency_list.cpp b/src/catalog/dependency_list.cpp
+index 4edd7c419c..0aac67b022 100644
+--- a/src/catalog/dependency_list.cpp
++++ b/src/catalog/dependency_list.cpp
+@@ -11,7 +11,7 @@ void DependencyList::AddDependency(CatalogEntry *entry) {
+ }
+ 
+ void DependencyList::VerifyDependencies(Catalog *catalog, const string &name) {
+-	for(auto &dep : set) {
++	for (auto &dep : set) {
+ 		if (dep->catalog != catalog) {
+ 			throw DependencyException(
+ 			    "Error adding dependency for object \"%s\" - dependency \"%s\" is in catalog "
+@@ -21,5 +21,4 @@ void DependencyList::VerifyDependencies(Catalog *catalog, const string &name) {
+ 	}
+ }
+ 
+-
+ } // namespace duckdb
+diff --git a/src/common/string_util.cpp b/src/common/string_util.cpp
+index ba7b260172..a373ae65d5 100644
+--- a/src/common/string_util.cpp
++++ b/src/common/string_util.cpp
+@@ -191,11 +191,14 @@ vector<string> StringUtil::Split(const string &input, const string &split) {
+ 
+ 		// Push the substring [last, next) on to splits
+ 		string substr = input.substr(last, next - last);
+-		if (substr.empty() == false) {
++		if (!substr.empty()) {
+ 			splits.push_back(substr);
+ 		}
+ 		last = next + split_len;
+ 	}
++	if (splits.empty()) {
++		splits.push_back(split);
++	}
+ 	return splits;
+ }
+ 
+diff --git a/src/function/aggregate/holistic/approximate_quantile.cpp b/src/function/aggregate/holistic/approximate_quantile.cpp
+index 22e84727a4..ad93125b65 100644
+--- a/src/function/aggregate/holistic/approximate_quantile.cpp
++++ b/src/function/aggregate/holistic/approximate_quantile.cpp
+@@ -70,11 +70,14 @@ struct ApproxQuantileOperation {
+ 
+ 	template <class INPUT_TYPE, class STATE, class OP>
+ 	static void Operation(STATE *state, AggregateInputData &, INPUT_TYPE *data, ValidityMask &mask, idx_t idx) {
++		auto val = Cast::template Operation<INPUT_TYPE, SAVE_TYPE>(data[idx]);
++		if (!Value::DoubleIsFinite(val)) {
++			return;
++		}
+ 		if (!state->h) {
+ 			state->h = new duckdb_tdigest::TDigest(100);
+ 		}
+-
+-		state->h->add(Cast::template Operation<INPUT_TYPE, SAVE_TYPE>(data[idx]));
++		state->h->add(val);
+ 		state->pos++;
+ 	}
+ 
+diff --git a/src/function/table/checkpoint.cpp b/src/function/table/checkpoint.cpp
+index 2fba075344..2fb71f8fea 100644
+--- a/src/function/table/checkpoint.cpp
++++ b/src/function/table/checkpoint.cpp
+@@ -32,7 +32,11 @@ static unique_ptr<FunctionData> CheckpointBind(ClientContext &context, TableFunc
+ 	AttachedDatabase *db;
+ 	auto &db_manager = DatabaseManager::Get(context);
+ 	if (!input.inputs.empty()) {
+-		db = db_manager.GetDatabase(context, StringValue::Get(input.inputs[0]));
++		auto &db_name = StringValue::Get(input.inputs[0]);
++		db = db_manager.GetDatabase(context, db_name);
++		if (!db) {
++			throw BinderException("Database \"%s\" not found", db_name);
++		}
+ 	} else {
+ 		db = db_manager.GetDatabase(context, DatabaseManager::GetDefaultDatabase(context));
+ 	}
+diff --git a/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5455194230226944 b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5455194230226944
+new file mode 100644
+index 0000000000..4403cdf0f6
+--- /dev/null
++++ b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5455194230226944
+@@ -0,0 +1 @@
++install'.'
+\ No newline at end of file
+diff --git a/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5717171654492160 b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5717171654492160
+new file mode 100644
+index 0000000000..091e42e186
+--- /dev/null
++++ b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5717171654492160
+@@ -0,0 +1 @@
++checkpoint l
+\ No newline at end of file
+diff --git a/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5869382900514816 b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5869382900514816
+new file mode 100644
+index 0000000000..5e67edb159
+--- /dev/null
++++ b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-5869382900514816
+@@ -0,0 +1 @@
++summarize select 6E844%1
+\ No newline at end of file
+diff --git a/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6048141818593280 b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6048141818593280
+new file mode 100644
+index 0000000000..cf912c8fce
+--- /dev/null
++++ b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6048141818593280
+@@ -0,0 +1 @@
++reset ÿ
+\ No newline at end of file
+diff --git a/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6186839351623680 b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6186839351623680
+new file mode 100644
+index 0000000000..6f26c42abc
+--- /dev/null
++++ b/test/ossfuzz/cases/clusterfuzz-testcase-minimized-parse_fuzz_test-6186839351623680
+@@ -0,0 +1 @@
++install''
+\ No newline at end of file
+-- 
+2.25.1
+
+
+From d4c238573e9222afe73f1c6113d285a9df75e8a7 Mon Sep 17 00:00:00 2001
+From: Mark Raasveldt <mark.raasveldt@gmail.com>
+Date: Fri, 10 Mar 2023 22:30:46 +0100
+Subject: [PATCH 2/2] duckdb-fuzzer: fix overflow in bitstring_agg
+
+---
+ .../aggregate/distributive/bitstring_agg.cpp  | 25 +++++++++----
+ .../sqlsmith/bitstring_agg_overflow.test      | 35 +++++++++++++++++++
+ 2 files changed, 54 insertions(+), 6 deletions(-)
+ create mode 100644 test/fuzzer/sqlsmith/bitstring_agg_overflow.test
+
+diff --git a/src/function/aggregate/distributive/bitstring_agg.cpp b/src/function/aggregate/distributive/bitstring_agg.cpp
+index 2664c353d5..32db9ee1bd 100644
+--- a/src/function/aggregate/distributive/bitstring_agg.cpp
++++ b/src/function/aggregate/distributive/bitstring_agg.cpp
+@@ -6,6 +6,7 @@
+ #include "duckdb/storage/statistics/base_statistics.hpp"
+ #include "duckdb/execution/expression_executor.hpp"
+ #include "duckdb/common/types/cast_helpers.hpp"
++#include "duckdb/common/operator/subtract.hpp"
+ 
+ namespace duckdb {
+ 
+@@ -93,7 +94,16 @@ struct BitStringAggOperation {
+ 
+ 	template <class INPUT_TYPE>
+ 	static idx_t GetRange(INPUT_TYPE min, INPUT_TYPE max) {
+-		return max - min + 1;
++		D_ASSERT(max >= min);
++		INPUT_TYPE result;
++		if (!TrySubtractOperator::Operation(max, min, result)) {
++			return NumericLimits<idx_t>::Maximum();
++		}
++		idx_t val(result);
++		if (val == NumericLimits<idx_t>::Maximum()) {
++			return val;
++		}
++		return val + 1;
+ 	}
+ 
+ 	template <class INPUT_TYPE, class STATE>
+@@ -162,12 +172,15 @@ void BitStringAggOperation::Execute(BitAggState<hugeint_t> *state, hugeint_t inp
+ 
+ template <>
+ idx_t BitStringAggOperation::GetRange(hugeint_t min, hugeint_t max) {
+-	idx_t val;
+-	if (Hugeint::TryCast(max - min + 1, val)) {
+-		return val;
+-	} else {
+-		throw OutOfRangeException("Range too large for bitstring aggregation");
++	hugeint_t result;
++	if (!TrySubtractOperator::Operation(max, min, result)) {
++		return NumericLimits<idx_t>::Maximum();
++	}
++	idx_t range;
++	if (!Hugeint::TryCast(result + 1, range)) {
++		return NumericLimits<idx_t>::Maximum();
+ 	}
++	return range;
+ }
+ 
+ unique_ptr<BaseStatistics> BitstringPropagateStats(ClientContext &context, BoundAggregateExpression &expr,
+diff --git a/test/fuzzer/sqlsmith/bitstring_agg_overflow.test b/test/fuzzer/sqlsmith/bitstring_agg_overflow.test
+new file mode 100644
+index 0000000000..ec78171b4d
+--- /dev/null
++++ b/test/fuzzer/sqlsmith/bitstring_agg_overflow.test
+@@ -0,0 +1,35 @@
++# name: test/fuzzer/sqlsmith/bitstring_agg_overflow.test
++# description: bitstring_agg overflow
++# group: [sqlsmith]
++
++foreach type utinyint usmallint uinteger ubigint smallint integer bigint hugeint
++
++statement ok
++CREATE OR REPLACE TABLE integers(i ${type});
++
++statement ok
++INSERT INTO integers VALUES (0), (255);
++
++statement ok
++SELECT bitstring_agg(i) FROM integers
++
++endloop
++
++statement ok
++CREATE TABLE all_types AS FROM test_all_types();
++
++foreach small_type utinyint usmallint
++
++statement ok
++SELECT bitstring_agg("${small_type}") FROM all_types;
++
++endloop
++
++foreach type tinyint smallint int uint ubigint bigint hugeint
++
++statement error
++SELECT bitstring_agg("${type}") FROM all_types;
++----
++too large for bitstring aggregation
++
++endloop
+-- 
+2.25.1
+

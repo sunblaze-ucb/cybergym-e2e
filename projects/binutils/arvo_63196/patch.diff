@@ -1,0 +1,38 @@
+From 84f24adc5ba65e7850d7a83e8839e305ef23c8d4 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 16 Oct 2023 19:34:03 +1030
+Subject: [PATCH] asan: Invalid free in
+ alpha_ecoff_get_relocated_section_contents
+
+This fixes an ancient bug in commit a3a33af390 (which makes me think
+this code has never been used).
+
+	* coff-alpha.c (alpha_ecoff_get_relocated_section_contents): Iterate
+	through reloc_vector using a temp.
+---
+ bfd/coff-alpha.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/bfd/coff-alpha.c b/bfd/coff-alpha.c
+index 1b34a8957c2..59476b57237 100644
+--- a/bfd/coff-alpha.c
++++ b/bfd/coff-alpha.c
+@@ -810,13 +810,13 @@ alpha_ecoff_get_relocated_section_contents (bfd *abfd,
+ 	}
+     }
+ 
+-  for (; *reloc_vector != (arelent *) NULL; reloc_vector++)
++  for (arelent **relp = reloc_vector; *relp != NULL; relp++)
+     {
+       arelent *rel;
+       bfd_reloc_status_type r;
+       char *err;
+ 
+-      rel = *reloc_vector;
++      rel = *relp;
+       r = bfd_reloc_ok;
+       switch (rel->howto->type)
+ 	{
+-- 
+2.25.1
+

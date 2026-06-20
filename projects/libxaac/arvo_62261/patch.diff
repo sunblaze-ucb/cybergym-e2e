@@ -1,0 +1,151 @@
+From 56716426e2087e604ee6267129857b409e53ab09 Mon Sep 17 00:00:00 2001
+From: Akshay Ragir <akshay.ragir@ittiam.com>
+Date: Tue, 3 Oct 2023 10:15:52 +0530
+Subject: [PATCH] Fix for the Global-buffer-overflow READ 4 in
+ iusace_quantize_lines
+
+These changes handle the global-buffer-overflow runtime error
+reported when the tonal difference in the SBR module becomes
+zero.
+
+Bug: ossFuzz: 62261
+Test: poc in bug
+---
+ encoder/ixheaace_basic_ops.c                 | 16 ++++++++++++++++
+ encoder/ixheaace_common_utils.h              |  2 ++
+ encoder/ixheaace_cplx_pred.c                 |  4 ++--
+ encoder/ixheaace_sbr_missing_harmonics_det.c |  5 +++--
+ encoder/ixheaace_sbr_ton_corr_hp.c           |  9 +++------
+ 5 files changed, 26 insertions(+), 10 deletions(-)
+
+diff --git a/encoder/ixheaace_basic_ops.c b/encoder/ixheaace_basic_ops.c
+index c18b430..04b727b 100644
+--- a/encoder/ixheaace_basic_ops.c
++++ b/encoder/ixheaace_basic_ops.c
+@@ -18,6 +18,8 @@
+  * Originally developed and contributed by Ittiam Systems Pvt. Ltd, Bangalore
+  */
+ 
++#include <float.h>
++#include <math.h>
+ #include "ixheaac_type_def.h"
+ #include "ixheaac_constants.h"
+ #include "ixheaace_aac_constants.h"
+@@ -33,3 +35,17 @@ WORD ia_enhaacplus_enc_norm32_arr(const WORD32 *word32_arr, LOOPINDEX n) {
+   }
+   return (ixheaac_pnorm32(max_bits));
+ }
++
++FLOAT32 ixheaace_div32(FLOAT32 num, FLOAT32 den) {
++  if (fabs(den) < FLT_EPSILON) {
++    if (den < 0.0f) {
++      return -num;
++    }
++    else {
++      return num;
++    }
++  }
++  else {
++    return num / den;
++  }
++}
+diff --git a/encoder/ixheaace_common_utils.h b/encoder/ixheaace_common_utils.h
+index 282ae74..4c03c9f 100644
+--- a/encoder/ixheaace_common_utils.h
++++ b/encoder/ixheaace_common_utils.h
+@@ -37,3 +37,5 @@
+ #define C75 (-0.3408728838f)  //(2 * sin(u) - sin(2 * u) + sin(3 * u)) / 3;
+ #define C76 (0.5339693427f)   //(sin(u) - 2 * sin(2 * u) - sin(3 * u)) / 3;
+ #define C77 (-0.8748422265f)  //(sin(u) + sin(2 * u) + 2 * sin(3 * u)) / 3;
++
++FLOAT32 ixheaace_div32(FLOAT32 num, FLOAT32 den);
+\ No newline at end of file
+diff --git a/encoder/ixheaace_cplx_pred.c b/encoder/ixheaace_cplx_pred.c
+index a14b8be..a9f3646 100644
+--- a/encoder/ixheaace_cplx_pred.c
++++ b/encoder/ixheaace_cplx_pred.c
+@@ -51,6 +51,7 @@
+ #include "ixheaace_asc_write.h"
+ #include "iusace_main.h"
+ #include "iusace_rom.h"
++#include "ixheaace_common_utils.h"
+ 
+ static VOID iusace_compute_pred_coef(WORD32 num_lines, WORD32 complex_coef,
+                                      FLOAT64 *ptr_spec_mdct_dmx, FLOAT64 *ptr_spec_mdst_dmx,
+@@ -371,8 +372,7 @@ static IA_ERRORCODE iusace_cplx_pred_main(
+   for (i = 0; i < pstr_usac_config->ccfl; i++) {
+     nrg_res += (FLOAT32)(ptr_spec_mdct_res[i] * ptr_spec_mdct_res[i]);
+   }
+-  pred_gain =
+-      10.f * log10f((*pred_dir == 0 ? nrg_side : nrg_mid) / (nrg_res + FLT_EPSILON));
++  pred_gain = 10.f * log10f(ixheaace_div32((*pred_dir == 0 ? nrg_side : nrg_mid), nrg_res));
+       /* Prediction gain in dB */
+ 
+   if (pred_gain > 20.f) /* Retain complex prediction */
+diff --git a/encoder/ixheaace_sbr_missing_harmonics_det.c b/encoder/ixheaace_sbr_missing_harmonics_det.c
+index 7bff257..5527e4a 100644
+--- a/encoder/ixheaace_sbr_missing_harmonics_det.c
++++ b/encoder/ixheaace_sbr_missing_harmonics_det.c
+@@ -50,6 +50,7 @@
+ #include "iusace_esbr_pvc.h"
+ #include "iusace_esbr_inter_tes.h"
+ #include "ixheaace_sbr.h"
++#include "ixheaace_common_utils.h"
+ 
+ static VOID ia_enhaacplus_enc_diff(FLOAT32 *ptr_tonal_orig, FLOAT32 *ptr_diff_map_2_scfb,
+                                    const UWORD8 *ptr_freq_band_tab, WORD32 n_scfb,
+@@ -538,7 +539,7 @@ static VOID ia_enhaacplus_enc_calculate_comp_vector(
+           comp_val = SBR_MAX_COMP;
+         }
+ 
+-        if ((FLOAT32)1.0f / (ptr_diff[max_pos_est][i - 1] + FLT_EPSILON) >
++        if (ixheaace_div32((FLOAT32)1.0f, ptr_diff[max_pos_est][i - 1]) >
+             (SBR_DIFF_QUOTA * ptr_diff[max_pos_est][i])) {
+           ptr_env_compensation[i - 1] = -1 * comp_val;
+         }
+@@ -549,7 +550,7 @@ static VOID ia_enhaacplus_enc_calculate_comp_vector(
+           comp_val = SBR_MAX_COMP;
+         }
+ 
+-        if ((FLOAT32)1.0f / (ptr_diff[max_pos_est][i + 1] + FLT_EPSILON) >
++        if (ixheaace_div32((FLOAT32)1.0f, ptr_diff[max_pos_est][i + 1]) >
+             (SBR_DIFF_QUOTA * ptr_diff[max_pos_est][i])) {
+           ptr_env_compensation[i + 1] = comp_val;
+         }
+diff --git a/encoder/ixheaace_sbr_ton_corr_hp.c b/encoder/ixheaace_sbr_ton_corr_hp.c
+index c068766..1bcd3c8 100644
+--- a/encoder/ixheaace_sbr_ton_corr_hp.c
++++ b/encoder/ixheaace_sbr_ton_corr_hp.c
+@@ -18,6 +18,7 @@
+  * Originally developed and contributed by Ittiam Systems Pvt. Ltd, Bangalore
+  */
+ 
++#include <math.h>
+ #include <string.h>
+ 
+ #include "ixheaac_type_def.h"
+@@ -49,7 +50,7 @@
+ #include "ixheaace_sbr.h"
+ 
+ #include "ixheaace_sbr_misc.h"
+-#include <math.h>
++#include "ixheaace_common_utils.h"
+ 
+ static VOID ixheaace_calc_auto_corr_second_order(ixheaace_acorr_coeffs *pstr_ac,
+                                                  FLOAT32 **ptr_real, FLOAT32 **ptr_imag,
+@@ -178,11 +179,7 @@ VOID ixheaace_calculate_tonality_quotas(ixheaace_pstr_sbr_ton_corr_est pstr_ton_
+       if (r00r) {
+         FLOAT32 tmp =
+             -(alphar[0] * r01r + alphai[0] * r01i + alphar[1] * r02r + alphai[1] * r02i) / (r00r);
+-        FLOAT32 denum = 1.0f - tmp;
+-        if (fabs(denum) < EPS) {
+-          denum = (FLOAT32)EPS;
+-        }
+-        ptr_quota_mtx[time_index][r] = (FLOAT32)(tmp / denum);
++        ptr_quota_mtx[time_index][r] = (FLOAT32)ixheaace_div32(tmp, 1.0f - tmp);
+       } else {
+         ptr_quota_mtx[time_index][r] = 0;
+       }
+-- 
+2.25.1
+

@@ -1,0 +1,59 @@
+From 21380a712bb427670db47a0193d450c35e72856a Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 6 Sep 2022 13:34:23 +0100
+Subject: [PATCH] oss-fuzz 51011: Bounds check CharString opstack for SEAC
+ opcode.
+
+---
+ base/gxtype1.c | 35 ++++++++++++++++++++---------------
+ 1 file changed, 20 insertions(+), 15 deletions(-)
+
+diff --git a/base/gxtype1.c b/base/gxtype1.c
+index 27c44e1c5..b2b593a4c 100644
+--- a/base/gxtype1.c
++++ b/base/gxtype1.c
+@@ -548,21 +548,26 @@ c_return:
+             case ce1_seac:
+                 goto do_seac;
+             case ce1_callothersubr:
+-                switch (fixed2int_var(*csp)) {
+-                default:
+-                    goto out;
+-                case 3:
+-                    if (csp >= &(cstack[1]))
+-                        csp -= 2;
+-                    goto top;
+-                case 12:
+-                case 13:
+-                case 14:
+-                case 15:
+-                case 16:
+-                case 17:
+-                case 18:
+-                    cnext;
++                if (CS_CHECK_CSTACK_BOUNDS(csp, cstack)) {
++                    switch (fixed2int_var(*csp)) {
++                    default:
++                        goto out;
++                    case 3:
++                        if (csp >= &(cstack[1]))
++                            csp -= 2;
++                        goto top;
++                    case 12:
++                    case 13:
++                    case 14:
++                    case 15:
++                    case 16:
++                    case 17:
++                    case 18:
++                        cnext;
++                    }
++                }
++                else {
++                    return_error(gs_error_invalidfont);
+                 }
+             }
+         }
+-- 
+2.43.2
+

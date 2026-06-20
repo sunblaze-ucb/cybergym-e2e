@@ -1,0 +1,31 @@
+From 17b019c517af26c6d2f0c6266938c60d36db1fa3 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 26 Dec 2024 02:53:45 +0100
+Subject: [PATCH] avformat/wtvdec: Initialize buf
+
+ff_parse_mpeg2_descriptor() reads over what is initialized
+Fixes: use of uninitialized memory
+Fixes: 383825645/clusterfuzz-testcase-minimized-ffmpeg_dem_WTV_fuzzer-5144130618982400
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/wtvdec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavformat/wtvdec.c b/libavformat/wtvdec.c
+index 730c7fca78..21c9649869 100644
+--- a/libavformat/wtvdec.c
++++ b/libavformat/wtvdec.c
+@@ -833,7 +833,7 @@ static int parse_chunks(AVFormatContext *s, int mode, int64_t seekts, int *len_p
+             int stream_index = ff_find_stream_index(s, sid);
+             if (stream_index >= 0) {
+                 AVStream *st = s->streams[stream_index];
+-                uint8_t buf[258];
++                uint8_t buf[258] = {0};
+                 const uint8_t *pbuf = buf;
+                 int buf_size;
+ 
+-- 
+2.25.1
+

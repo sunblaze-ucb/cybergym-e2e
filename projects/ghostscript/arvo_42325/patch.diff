@@ -1,0 +1,46 @@
+From 1ae55674f6d68eb6215d7d0f82610f636d81ad3d Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 14 Dec 2021 15:17:18 +0000
+Subject: [PATCH] OSS-fuzz #42282
+
+A broken Object stream could be 'repaired' in such a way as to use
+object numbers outside the current size of the xref table. This would
+lead to corruption of memory because we wrote directly to the table
+using the index. For me this caused a seg fault during repair.
+
+Fix this by calling pdfi_repair_add_object() if the object number
+exceeds the current size of the xref table, and then set the table
+entry contents.
+---
+ pdf/pdf_repair.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/pdf/pdf_repair.c b/pdf/pdf_repair.c
+index fcb8a2b44..c6e0a5391 100644
+--- a/pdf/pdf_repair.c
++++ b/pdf/pdf_repair.c
+@@ -436,11 +436,16 @@ int pdfi_repair_file(pdf_context *ctx)
+                                                                 code = gs_note_error(gs_error_rangecheck);
+                                                                 goto exit;
+                                                             }
+-                                                            ctx->xref_table->xref[obj_num].compressed = true;
+-                                                            ctx->xref_table->xref[obj_num].free = false;
+-                                                            ctx->xref_table->xref[obj_num].object_num = obj_num;
+-                                                            ctx->xref_table->xref[obj_num].u.compressed.compressed_stream_num = i;
+-                                                            ctx->xref_table->xref[obj_num].u.compressed.object_index = j;
++                                                            if (obj_num > ctx->xref_table->xref_size)
++                                                                code = pdfi_repair_add_object(ctx, obj_num, 0, 0);
++
++                                                            if (code == 0) {
++                                                                ctx->xref_table->xref[obj_num].compressed = true;
++                                                                ctx->xref_table->xref[obj_num].free = false;
++                                                                ctx->xref_table->xref[obj_num].object_num = obj_num;
++                                                                ctx->xref_table->xref[obj_num].u.compressed.compressed_stream_num = i;
++                                                                ctx->xref_table->xref[obj_num].u.compressed.object_index = j;
++                                                            }
+                                                         }
+                                                     }
+                                                 }
+-- 
+2.43.2
+

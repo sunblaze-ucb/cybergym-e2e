@@ -1,0 +1,49 @@
+From 22997c77b024c3ee4e6618b44c44dc0f0179add8 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Fri, 23 Sep 2022 11:26:18 +0930
+Subject: [PATCH] pdb: _bfd_generic_close_and_cleanup
+
+Every format that might appear inside a generic archive needs to call
+_bfd_generic_close_and_cleanup, so that the archive element lookup
+htab can be tidied on closing an element.  Otherwise you get stale
+entries in the htab pointing at freed and perhaps reused memory,
+resulting in segfaults when the archive is closed.
+
+Calling _bfd_generic_close_and_cleanup on close means tdata needs to
+be set up too, since pdb claims to be of format bfd_archive.
+
+	* pdb.c (pdb_close_and_cleanup): Define as
+	_bfd_generic_close_and_cleanup.
+	(pdb_archive_p): Set up tdata for bfd_archive format.
+---
+ bfd/pdb.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/pdb.c b/bfd/pdb.c
+index 67d7e73c655..14e1049d03c 100644
+--- a/bfd/pdb.c
++++ b/bfd/pdb.c
+@@ -54,6 +54,11 @@ pdb_archive_p (bfd *abfd)
+       return NULL;
+     }
+ 
++  void *tdata = bfd_zalloc (abfd, sizeof (struct artdata));
++  if (tdata == NULL)
++    return NULL;
++  bfd_ardata (abfd) = tdata;
++
+   return _bfd_no_cleanup;
+ }
+ 
+@@ -755,7 +760,7 @@ pdb_write_contents (bfd *abfd)
+ #define pdb_new_section_hook _bfd_generic_new_section_hook
+ #define pdb_get_section_contents _bfd_generic_get_section_contents
+ #define pdb_get_section_contents_in_window _bfd_generic_get_section_contents_in_window
+-#define pdb_close_and_cleanup _bfd_bool_bfd_true
++#define pdb_close_and_cleanup _bfd_generic_close_and_cleanup
+ 
+ #define pdb_slurp_armap _bfd_noarchive_slurp_armap
+ #define pdb_slurp_extended_name_table _bfd_noarchive_slurp_extended_name_table
+-- 
+2.25.1
+

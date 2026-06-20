@@ -1,0 +1,31 @@
+From c43dbecbdad152a91eadc7538b545852eee562ae Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 26 Dec 2024 01:46:49 +0100
+Subject: [PATCH] avformat/vqf: Check avio_read() in add_metadata()
+
+Fixes: use of uninitialized data
+Fixes: 383825642/clusterfuzz-testcase-minimized-ffmpeg_DEMUXER_fuzzer-5380168801124352
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/vqf.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/vqf.c b/libavformat/vqf.c
+index 4820e0817c..79deb33744 100644
+--- a/libavformat/vqf.c
++++ b/libavformat/vqf.c
+@@ -63,7 +63,8 @@ static void add_metadata(AVFormatContext *s, uint32_t tag,
+     buf = av_malloc(len+1);
+     if (!buf)
+         return;
+-    avio_read(s->pb, buf, len);
++    if (len != avio_read(s->pb, buf, len))
++        return;
+     buf[len] = 0;
+     AV_WL32(key, tag);
+     av_dict_set(&s->metadata, key, buf, AV_DICT_DONT_STRDUP_VAL);
+-- 
+2.25.1
+

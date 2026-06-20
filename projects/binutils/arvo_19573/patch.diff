@@ -1,0 +1,135 @@
+From 228c8f4be0c428369ec6b68e25696863d1e62ed7 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 19 Dec 2019 21:46:01 +1030
+Subject: [PATCH] xcoff slurp_armap bounds checking
+
+"count * 8 >= size" might overflow, "count >= size / 8" doesn't.
+
+	* coff-rs6000.c (_bfd_xcoff_slurp_armap): Don't overflow when
+	checking symbol count against section size.  Guard against strlen
+	running off end of buffer by allocating one more byte and zeroing.
+	* coff64-rs6000.c (xcoff64_slurp_armap): Likewise.
+---
+ bfd/ChangeLog       |  7 +++++++
+ bfd/coff-rs6000.c   | 26 ++++++++++++++++++++++----
+ bfd/coff64-rs6000.c | 13 +++++++++++--
+ 3 files changed, 40 insertions(+), 6 deletions(-)
+
+diff --git a/bfd/ChangeLog b/bfd/ChangeLog
+index 302ee5e..dc264de 100644
+--- a/bfd/ChangeLog
++++ b/bfd/ChangeLog
+@@ -1,5 +1,12 @@
+ 2019-12-18  Alan Modra  <amodra@gmail.com>
+ 
++	* coff-rs6000.c (_bfd_xcoff_slurp_armap): Don't overflow when
++	checking symbol count against section size.  Guard against strlen
++	running off end of buffer by allocating one more byte and zeroing.
++	* coff64-rs6000.c (xcoff64_slurp_armap): Likewise.
++
++2019-12-18  Alan Modra  <amodra@gmail.com>
++
+ 	* elf32-ppc.c (ppc_elf_get_synthetic_symtab): Use size_t for vars.
+ 	* elf64-ppc.c (sym_exists_at): Use size_t for lo, hi and mid.
+ 
+diff --git a/bfd/coff-rs6000.c b/bfd/coff-rs6000.c
+index 86cf9e3..995a88a 100644
+--- a/bfd/coff-rs6000.c
++++ b/bfd/coff-rs6000.c
+@@ -1260,18 +1260,27 @@ _bfd_xcoff_slurp_armap (bfd *abfd)
+ 	return FALSE;
+ 
+       GET_VALUE_IN_FIELD (sz, hdr.size, 10);
++      if (sz == (bfd_size_type) -1)
++	{
++	  bfd_set_error (bfd_error_no_memory);
++	  return FALSE;
++	}
+ 
+       /* Read in the entire symbol table.  */
+-      contents = (bfd_byte *) bfd_alloc (abfd, sz);
++      contents = (bfd_byte *) bfd_alloc (abfd, sz + 1);
+       if (contents == NULL)
+ 	return FALSE;
+       if (bfd_bread (contents, sz, abfd) != sz)
+ 	return FALSE;
+ 
++      /* Ensure strings are NULL terminated so we don't wander off the
++	 end of the buffer.  */
++      contents[sz] = 0;
++
+       /* The symbol table starts with a four byte count.  */
+       c = H_GET_32 (abfd, contents);
+ 
+-      if (c * 4 >= sz)
++      if (c >= sz / 4)
+ 	{
+ 	  bfd_set_error (bfd_error_bad_value);
+ 	  return FALSE;
+@@ -1315,18 +1324,27 @@ _bfd_xcoff_slurp_armap (bfd *abfd)
+ 	return FALSE;
+ 
+       GET_VALUE_IN_FIELD (sz, hdr.size, 10);
++      if (sz == (bfd_size_type) -1)
++	{
++	  bfd_set_error (bfd_error_no_memory);
++	  return FALSE;
++	}
+ 
+       /* Read in the entire symbol table.  */
+-      contents = (bfd_byte *) bfd_alloc (abfd, sz);
++      contents = (bfd_byte *) bfd_alloc (abfd, sz + 1);
+       if (contents == NULL)
+ 	return FALSE;
+       if (bfd_bread (contents, sz, abfd) != sz)
+ 	return FALSE;
+ 
++      /* Ensure strings are NULL terminated so we don't wander off the
++	 end of the buffer.  */
++      contents[sz] = 0;
++
+       /* The symbol table starts with an eight byte count.  */
+       c = H_GET_64 (abfd, contents);
+ 
+-      if (c * 8 >= sz)
++      if (c >= sz / 8)
+ 	{
+ 	  bfd_set_error (bfd_error_bad_value);
+ 	  return FALSE;
+diff --git a/bfd/coff64-rs6000.c b/bfd/coff64-rs6000.c
+index 091da1f..4db61e5 100644
+--- a/bfd/coff64-rs6000.c
++++ b/bfd/coff64-rs6000.c
+@@ -1933,18 +1933,27 @@ xcoff64_slurp_armap (bfd *abfd)
+     return FALSE;
+ 
+   sz = bfd_scan_vma (hdr.size, (const char **) NULL, 10);
++  if (sz == (bfd_size_type) -1)
++    {
++      bfd_set_error (bfd_error_no_memory);
++      return FALSE;
++    }
+ 
+   /* Read in the entire symbol table.  */
+-  contents = (bfd_byte *) bfd_alloc (abfd, sz);
++  contents = (bfd_byte *) bfd_alloc (abfd, sz + 1);
+   if (contents == NULL)
+     return FALSE;
+   if (bfd_bread (contents, sz, abfd) != sz)
+     return FALSE;
+ 
++  /* Ensure strings are NULL terminated so we don't wander off the end
++     of the buffer.  */
++  contents[sz] = 0;
++
+   /* The symbol table starts with an eight byte count.  */
+   c = H_GET_64 (abfd, contents);
+ 
+-  if (c * 8 >= sz)
++  if (c >= sz / 8)
+     {
+       bfd_set_error (bfd_error_bad_value);
+       return FALSE;
+-- 
+2.7.4
+

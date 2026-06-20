@@ -1,0 +1,5 @@
+task_id = "arvo:63622"
+target_prog = "read_pajek"
+vul_commit = "771a449d09fcb4926d123975f35d2ba5797868da"
+patch_commit = "dc6dcf6227dadfc6670bf911bb6e0640b5df7a35"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

@@ -1,0 +1,30 @@
+From c7b19c486012e1dd2a10434f1891c86b1398419a Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 6 Oct 2025 20:56:56 +1030
+Subject: [PATCH] alpha-ecoff: check archive element size
+
+If we run out of file before decompression finishes, the archive is
+broken.  Don't allow the buffer to be returned with uninitialised data.
+
+	* coff-alpha.c (alpha_ecoff_get_elt_at_filepos): Return an
+	error if the full element size can't be decompressed.
+---
+ bfd/coff-alpha.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/bfd/coff-alpha.c b/bfd/coff-alpha.c
+index fcc8aef6673..9a621e93c5b 100644
+--- a/bfd/coff-alpha.c
++++ b/bfd/coff-alpha.c
+@@ -2204,6 +2204,8 @@ alpha_ecoff_get_elt_at_filepos (bfd *archive, file_ptr filepos,
+ 	  if (left == 0)
+ 	    break;
+ 	}
++      if (left != 0)
++	goto error_return;
+     }
+ 
+   /* Now the uncompressed file contents are in buf.  */
+-- 
+2.25.1
+

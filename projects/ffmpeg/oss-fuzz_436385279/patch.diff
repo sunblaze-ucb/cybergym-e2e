@@ -1,0 +1,33 @@
+From 610d368d9bc3f1b7073a0b33e352f8bd7db24c7e Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 3 Aug 2025 08:33:40 +0200
+Subject: [PATCH] avcodec/lzf: Check for input space
+
+Fixes: use of uninitialized memory
+Fixes: 423673969/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_NOTCHLC_fuzzer-5597015691296768
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/lzf.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/libavcodec/lzf.c b/libavcodec/lzf.c
+index 1e3c86c88c..94b369dd59 100644
+--- a/libavcodec/lzf.c
++++ b/libavcodec/lzf.c
+@@ -56,7 +56,10 @@ int ff_lzf_uncompress(GetByteContext *gb, uint8_t **buf, int64_t *size)
+                 p = *buf + len;
+             }
+ 
+-            bytestream2_get_buffer(gb, p, s);
++            int s2 = bytestream2_get_buffer(gb, p, s);
++            if (s2 != s)
++                return AVERROR_INVALIDDATA;
++
+             p   += s;
+             len += s;
+         } else {
+-- 
+2.25.1
+

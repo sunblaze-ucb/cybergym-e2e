@@ -1,0 +1,26 @@
+From a75b96f7e5833c9206f6a15d11168a757a85ee59 Mon Sep 17 00:00:00 2001
+From: Garret Rieger <grieger@google.com>
+Date: Tue, 16 Nov 2021 14:34:07 -0800
+Subject: [PATCH] [sanitize] In lookup sanitize don't try to access subtable 0
+ if it isn't there.
+
+---
+ src/hb-ot-layout-common.hh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index 5d98278be..5b61e6408 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -1357,7 +1357,7 @@ struct Lookup
+     if (unlikely (!get_subtables<TSubTable> ().sanitize (c, this, get_type ())))
+       return_trace (false);
+ 
+-    if (unlikely (get_type () == TSubTable::Extension && !c->get_edit_count ()))
++    if (unlikely (get_type () == TSubTable::Extension && subtables && !c->get_edit_count ()))
+     {
+       /* The spec says all subtables of an Extension lookup should
+        * have the same type, which shall not be the Extension type
+-- 
+2.43.2
+

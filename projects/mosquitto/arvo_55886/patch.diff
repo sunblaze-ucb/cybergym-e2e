@@ -1,0 +1,48 @@
+From 1df253e4e3c48079a196788dbacc9c1364c92162 Mon Sep 17 00:00:00 2001
+From: "Roger A. Light" <roger@atchoo.org>
+Date: Sun, 12 Feb 2023 22:28:13 +0000
+Subject: [PATCH] Fix case where mixed default/non-default listener config
+ could crash.
+
+This effects only very unusual configs, and would cause a crash on
+startup. It is not a security concern.
+
+Fixes oss-fuzz #55886.
+---
+ src/conf.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/conf.c b/src/conf.c
+index 4e6521bf..72d3fe38 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -144,7 +144,16 @@ static int config__check_bridges(struct mosquitto__config *config);
+ static int config__add_listener(struct mosquitto__config *config)
+ {
+ 	struct mosquitto__listener *listener;
++	int def_listener = -1;
+ 
++	if(config->default_listener){
++		for(int i=0; i<config->listener_count; i++){
++			if(&config->listeners[i] == config->default_listener){
++				def_listener = i;
++				break;
++			}
++		}
++	}
+ 	config->listener_count++;
+ 	config->listeners = mosquitto__realloc(config->listeners, sizeof(struct mosquitto__listener)*(size_t)config->listener_count);
+ 	if(!config->listeners){
+@@ -158,6 +167,9 @@ static int config__add_listener(struct mosquitto__config *config)
+ 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
+ 		return MOSQ_ERR_NOMEM;
+ 	}
++	if(def_listener != -1){
++		config->default_listener = &config->listeners[def_listener];
++	}
+ 
+ 	return MOSQ_ERR_SUCCESS;
+ }
+-- 
+2.25.1
+

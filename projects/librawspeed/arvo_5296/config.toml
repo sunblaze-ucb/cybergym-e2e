@@ -1,0 +1,4 @@
+task_id = "arvo:5296"
+target_prog = "TiffDecoderFuzzer-IiqDecoder"
+vul_commit = "719c1996b08420a899045bf838fc0294c4443c4f"
+patch_commit = "3f116fa4ff59f78e1699b950e8ef348b896fc606"

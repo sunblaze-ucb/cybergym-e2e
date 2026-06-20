@@ -1,0 +1,4 @@
+task_id = "arvo:31276"
+target_prog = "rpc_fuzzer"
+vul_commit = "34b568727ff98ebb36f45a3d63c07f165c58219b"
+patch_commit = "b3243a754763f6df19351593781b88e277a324bc"

@@ -1,0 +1,26 @@
+From dca5cca4e129ab1e424ec86f5ceb325e7ee3d8cd Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Sat, 3 Feb 2018 01:21:14 +0100
+Subject: [PATCH] Bug 698986: Remember to fz_var() variable dropped in
+ fz_catch().
+
+---
+ source/pdf/pdf-stream.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/source/pdf/pdf-stream.c b/source/pdf/pdf-stream.c
+index c6ba7ad..fb51787 100644
+--- a/source/pdf/pdf-stream.c
++++ b/source/pdf/pdf-stream.c
+@@ -305,6 +305,8 @@ pdf_open_raw_filter(fz_context *ctx, fz_stream *chain, pdf_document *doc, pdf_ob
+ 
+ 	chain = fz_keep_stream(ctx, chain);
+ 
++	fz_var(chain);
++
+ 	fz_try(ctx)
+ 	{
+ 		len = pdf_to_int(ctx, pdf_dict_get(ctx, stmobj, PDF_NAME_Length));
+-- 
+2.7.4
+

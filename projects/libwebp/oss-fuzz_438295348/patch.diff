@@ -1,0 +1,203 @@
+From 61e5c391d6609666983edcf9ad97dd0ebd70b501 Mon Sep 17 00:00:00 2001
+From: James Zern <jzern@google.com>
+Date: Wed, 13 Aug 2025 16:51:23 -0700
+Subject: [PATCH] Revert "dsp/lossless{,_enc}_sse2.c: reorder *_SSE
+ assignments"
+
+This reverts commit 2246828be3329e26d8c0774481e98b0315872110.
+
+Reason for revert: NULL dereferences in the fuzzers.
+The `VP8LPredictorsAdd_SSE` table is not completely initialized (index
+14 and 15) which may be accessed with an invalid bitstream.
+
+Bug: 435213378
+Original change's description:
+> dsp/lossless{,_enc}_sse2.c: reorder *_SSE assignments
+>
+> When `WEBP_USE_THREAD` is not defined the assignments of *_SSE and their
+> unsuffixed counterparts may race. Assigning *_SSE directly rather than
+> relying on the unsuffixed values avoids a case where the *_SSE variants
+> may refer to the calling function (i.e., AVX2) resulting in infinite
+> recursion.
+>
+> Defining `WEBP_USE_THREAD` is recommended when decode/encode calls can
+> be made from different threads.
+>
+> Bug: 435213378
+> Change-Id: Id5549730cb72be99b3014ed8e4e355f3ea988659
+
+Bug: 435213378, 438295348, 438294044, 438264629, 438294033
+Change-Id: I3299d6fbb29c45872e2ea1f8f1c3d0ebbda64a69
+---
+ src/dsp/lossless_enc_sse2.c  | 59 ++++++++++++++++++------------------
+ src/dsp/lossless_enc_sse41.c |  7 ++---
+ src/dsp/lossless_sse2.c      | 45 +++++++++++++--------------
+ 3 files changed, 55 insertions(+), 56 deletions(-)
+
+diff --git a/src/dsp/lossless_enc_sse2.c b/src/dsp/lossless_enc_sse2.c
+index 8b531e5e..026f5045 100644
+--- a/src/dsp/lossless_enc_sse2.c
++++ b/src/dsp/lossless_enc_sse2.c
+@@ -697,44 +697,43 @@ static void PredictorSub13_SSE2(const uint32_t* in, const uint32_t* upper,
+ extern void VP8LEncDspInitSSE2(void);
+ 
+ WEBP_TSAN_IGNORE_FUNCTION void VP8LEncDspInitSSE2(void) {
+-  // SSE exports for AVX and above.
+-  VP8LSubtractGreenFromBlueAndRed_SSE = SubtractGreenFromBlueAndRed_SSE2;
+-  VP8LTransformColor_SSE = TransformColor_SSE2;
+-  VP8LCollectColorBlueTransforms_SSE = CollectColorBlueTransforms_SSE2;
+-  VP8LCollectColorRedTransforms_SSE = CollectColorRedTransforms_SSE2;
+-  VP8LBundleColorMap_SSE = BundleColorMap_SSE2;
+-
+-  VP8LSubtractGreenFromBlueAndRed = VP8LSubtractGreenFromBlueAndRed_SSE;
+-  VP8LTransformColor = VP8LTransformColor_SSE;
+-  VP8LCollectColorBlueTransforms = VP8LCollectColorBlueTransforms_SSE;
+-  VP8LCollectColorRedTransforms = VP8LCollectColorRedTransforms_SSE;
++  VP8LSubtractGreenFromBlueAndRed = SubtractGreenFromBlueAndRed_SSE2;
++  VP8LTransformColor = TransformColor_SSE2;
++  VP8LCollectColorBlueTransforms = CollectColorBlueTransforms_SSE2;
++  VP8LCollectColorRedTransforms = CollectColorRedTransforms_SSE2;
+   VP8LAddVector = AddVector_SSE2;
+   VP8LAddVectorEq = AddVectorEq_SSE2;
+ #if !defined(DONT_USE_COMBINED_SHANNON_ENTROPY_SSE2_FUNC)
+   VP8LCombinedShannonEntropy = CombinedShannonEntropy_SSE2;
+ #endif
+   VP8LVectorMismatch = VectorMismatch_SSE2;
+-  VP8LBundleColorMap = VP8LBundleColorMap_SSE;
++  VP8LBundleColorMap = BundleColorMap_SSE2;
++
++  VP8LPredictorsSub[0] = PredictorSub0_SSE2;
++  VP8LPredictorsSub[1] = PredictorSub1_SSE2;
++  VP8LPredictorsSub[2] = PredictorSub2_SSE2;
++  VP8LPredictorsSub[3] = PredictorSub3_SSE2;
++  VP8LPredictorsSub[4] = PredictorSub4_SSE2;
++  VP8LPredictorsSub[5] = PredictorSub5_SSE2;
++  VP8LPredictorsSub[6] = PredictorSub6_SSE2;
++  VP8LPredictorsSub[7] = PredictorSub7_SSE2;
++  VP8LPredictorsSub[8] = PredictorSub8_SSE2;
++  VP8LPredictorsSub[9] = PredictorSub9_SSE2;
++  VP8LPredictorsSub[10] = PredictorSub10_SSE2;
++  VP8LPredictorsSub[11] = PredictorSub11_SSE2;
++  VP8LPredictorsSub[12] = PredictorSub12_SSE2;
++  VP8LPredictorsSub[13] = PredictorSub13_SSE2;
++  VP8LPredictorsSub[14] = PredictorSub0_SSE2;  // <- padding security sentinels
++  VP8LPredictorsSub[15] = PredictorSub0_SSE2;
+ 
+   // SSE exports for AVX and above.
+-  VP8LPredictorsSub_SSE[0] = PredictorSub0_SSE2;
+-  VP8LPredictorsSub_SSE[1] = PredictorSub1_SSE2;
+-  VP8LPredictorsSub_SSE[2] = PredictorSub2_SSE2;
+-  VP8LPredictorsSub_SSE[3] = PredictorSub3_SSE2;
+-  VP8LPredictorsSub_SSE[4] = PredictorSub4_SSE2;
+-  VP8LPredictorsSub_SSE[5] = PredictorSub5_SSE2;
+-  VP8LPredictorsSub_SSE[6] = PredictorSub6_SSE2;
+-  VP8LPredictorsSub_SSE[7] = PredictorSub7_SSE2;
+-  VP8LPredictorsSub_SSE[8] = PredictorSub8_SSE2;
+-  VP8LPredictorsSub_SSE[9] = PredictorSub9_SSE2;
+-  VP8LPredictorsSub_SSE[10] = PredictorSub10_SSE2;
+-  VP8LPredictorsSub_SSE[11] = PredictorSub11_SSE2;
+-  VP8LPredictorsSub_SSE[12] = PredictorSub12_SSE2;
+-  VP8LPredictorsSub_SSE[13] = PredictorSub13_SSE2;
+-  // padding security sentinels
+-  VP8LPredictorsSub_SSE[14] = PredictorSub0_SSE2;
+-  VP8LPredictorsSub_SSE[15] = PredictorSub0_SSE2;
+-  memcpy(VP8LPredictorsSub, VP8LPredictorsSub_SSE, sizeof(VP8LPredictorsSub));
++  VP8LSubtractGreenFromBlueAndRed_SSE = SubtractGreenFromBlueAndRed_SSE2;
++  VP8LTransformColor_SSE = TransformColor_SSE2;
++  VP8LCollectColorBlueTransforms_SSE = CollectColorBlueTransforms_SSE2;
++  VP8LCollectColorRedTransforms_SSE = CollectColorRedTransforms_SSE2;
++  VP8LBundleColorMap_SSE = BundleColorMap_SSE2;
++
++  memcpy(VP8LPredictorsSub_SSE, VP8LPredictorsSub, sizeof(VP8LPredictorsSub));
+ }
+ 
+ #else  // !WEBP_USE_SSE2
+diff --git a/src/dsp/lossless_enc_sse41.c b/src/dsp/lossless_enc_sse41.c
+index 8d124950..bfc3e14d 100644
+--- a/src/dsp/lossless_enc_sse41.c
++++ b/src/dsp/lossless_enc_sse41.c
+@@ -175,15 +175,14 @@ extern void VP8LEncDspInitSSE41(void);
+ 
+ WEBP_TSAN_IGNORE_FUNCTION void VP8LEncDspInitSSE41(void) {
+   VP8LExtraCost = ExtraCost_SSE41;
++  VP8LSubtractGreenFromBlueAndRed = SubtractGreenFromBlueAndRed_SSE41;
++  VP8LCollectColorBlueTransforms = CollectColorBlueTransforms_SSE41;
++  VP8LCollectColorRedTransforms = CollectColorRedTransforms_SSE41;
+ 
+   // SSE exports for AVX and above.
+   VP8LSubtractGreenFromBlueAndRed_SSE = SubtractGreenFromBlueAndRed_SSE41;
+   VP8LCollectColorBlueTransforms_SSE = CollectColorBlueTransforms_SSE41;
+   VP8LCollectColorRedTransforms_SSE = CollectColorRedTransforms_SSE41;
+-
+-  VP8LSubtractGreenFromBlueAndRed = VP8LSubtractGreenFromBlueAndRed_SSE;
+-  VP8LCollectColorBlueTransforms = VP8LCollectColorBlueTransforms_SSE;
+-  VP8LCollectColorRedTransforms = VP8LCollectColorRedTransforms_SSE;
+ }
+ 
+ #else  // !WEBP_USE_SSE41
+diff --git a/src/dsp/lossless_sse2.c b/src/dsp/lossless_sse2.c
+index 56e45ae6..ab17346c 100644
+--- a/src/dsp/lossless_sse2.c
++++ b/src/dsp/lossless_sse2.c
+@@ -695,28 +695,23 @@ WEBP_TSAN_IGNORE_FUNCTION void VP8LDspInitSSE2(void) {
+   VP8LPredictors[12] = Predictor12_SSE2;
+   VP8LPredictors[13] = Predictor13_SSE2;
+ 
+-  // SSE exports for AVX and above.
+-  VP8LPredictorsAdd_SSE[0] = PredictorAdd0_SSE2;
+-  VP8LPredictorsAdd_SSE[1] = PredictorAdd1_SSE2;
+-  VP8LPredictorsAdd_SSE[2] = PredictorAdd2_SSE2;
+-  VP8LPredictorsAdd_SSE[3] = PredictorAdd3_SSE2;
+-  VP8LPredictorsAdd_SSE[4] = PredictorAdd4_SSE2;
+-  VP8LPredictorsAdd_SSE[5] = PredictorAdd5_SSE2;
+-  VP8LPredictorsAdd_SSE[6] = PredictorAdd6_SSE2;
+-  VP8LPredictorsAdd_SSE[7] = PredictorAdd7_SSE2;
+-  VP8LPredictorsAdd_SSE[8] = PredictorAdd8_SSE2;
+-  VP8LPredictorsAdd_SSE[9] = PredictorAdd9_SSE2;
+-  VP8LPredictorsAdd_SSE[10] = PredictorAdd10_SSE2;
+-  VP8LPredictorsAdd_SSE[11] = PredictorAdd11_SSE2;
+-  VP8LPredictorsAdd_SSE[12] = PredictorAdd12_SSE2;
+-  VP8LPredictorsAdd_SSE[13] = PredictorAdd13_SSE2;
+-  memcpy(VP8LPredictorsAdd, VP8LPredictorsAdd_SSE, sizeof(VP8LPredictorsAdd));
+-
+-  // SSE exports for AVX and above.
+-  VP8LAddGreenToBlueAndRed_SSE = AddGreenToBlueAndRed_SSE2;
+-  VP8LTransformColorInverse_SSE = TransformColorInverse_SSE2;
+-  VP8LAddGreenToBlueAndRed = VP8LAddGreenToBlueAndRed_SSE;
+-  VP8LTransformColorInverse = VP8LTransformColorInverse_SSE;
++  VP8LPredictorsAdd[0] = PredictorAdd0_SSE2;
++  VP8LPredictorsAdd[1] = PredictorAdd1_SSE2;
++  VP8LPredictorsAdd[2] = PredictorAdd2_SSE2;
++  VP8LPredictorsAdd[3] = PredictorAdd3_SSE2;
++  VP8LPredictorsAdd[4] = PredictorAdd4_SSE2;
++  VP8LPredictorsAdd[5] = PredictorAdd5_SSE2;
++  VP8LPredictorsAdd[6] = PredictorAdd6_SSE2;
++  VP8LPredictorsAdd[7] = PredictorAdd7_SSE2;
++  VP8LPredictorsAdd[8] = PredictorAdd8_SSE2;
++  VP8LPredictorsAdd[9] = PredictorAdd9_SSE2;
++  VP8LPredictorsAdd[10] = PredictorAdd10_SSE2;
++  VP8LPredictorsAdd[11] = PredictorAdd11_SSE2;
++  VP8LPredictorsAdd[12] = PredictorAdd12_SSE2;
++  VP8LPredictorsAdd[13] = PredictorAdd13_SSE2;
++
++  VP8LAddGreenToBlueAndRed = AddGreenToBlueAndRed_SSE2;
++  VP8LTransformColorInverse = TransformColorInverse_SSE2;
+ 
+   VP8LConvertBGRAToRGB = ConvertBGRAToRGB_SSE2;
+   VP8LConvertBGRAToRGBA = ConvertBGRAToRGBA_SSE2;
+@@ -724,6 +719,12 @@ WEBP_TSAN_IGNORE_FUNCTION void VP8LDspInitSSE2(void) {
+   VP8LConvertBGRAToRGB565 = ConvertBGRAToRGB565_SSE2;
+   VP8LConvertBGRAToBGR = ConvertBGRAToBGR_SSE2;
+ 
++  // SSE exports for AVX and above.
++  memcpy(VP8LPredictorsAdd_SSE, VP8LPredictorsAdd, sizeof(VP8LPredictorsAdd));
++
++  VP8LAddGreenToBlueAndRed_SSE = AddGreenToBlueAndRed_SSE2;
++  VP8LTransformColorInverse_SSE = TransformColorInverse_SSE2;
++
+   VP8LConvertBGRAToRGB_SSE = ConvertBGRAToRGB_SSE2;
+   VP8LConvertBGRAToRGBA_SSE = ConvertBGRAToRGBA_SSE2;
+ }
+-- 
+2.25.1
+

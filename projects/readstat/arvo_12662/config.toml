@@ -1,0 +1,4 @@
+task_id = "arvo:12662"
+target_prog = "fuzz_format_sas7bdat"
+vul_commit = "e1c41e1363b0414e49b21fd1ebbe24ff0733cdb1"
+patch_commit = "15d2192da9028fee80da0b2dd8df1b6a00873e46"

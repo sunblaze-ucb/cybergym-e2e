@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42536107"
+target_prog = "libical_fuzzer"
+vul_commit = "46ec81267af7f6fee88f752fd36204b935913b33"
+patch_commit = "8df37e343eed47db25af1c8b0727b8270d2bb94b"
+build_image = "cybergym/oss-fuzz:42536107-fix"

@@ -1,0 +1,25 @@
+From 864ecc8d14466bcdf04287cc42b0d7631ad4d831 Mon Sep 17 00:00:00 2001
+From: Randy <randy408@protonmail.com>
+Date: Fri, 27 Nov 2020 02:28:21 +0100
+Subject: [PATCH] zip_fuzzer: omit file validation
+
+this is an unbounded operation
+---
+ tests/zip_fuzzer.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/tests/zip_fuzzer.c b/tests/zip_fuzzer.c
+index 7b8af0f..5737d89 100644
+--- a/tests/zip_fuzzer.c
++++ b/tests/zip_fuzzer.c
+@@ -33,7 +33,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+         if(mz_zip_reader_is_file_a_directory(&zip, i)) continue;
+ 
+         mz_zip_validate_file(&zip, i, MZ_ZIP_FLAG_VALIDATE_HEADERS_ONLY);
+-        mz_zip_validate_file(&zip, i, 0);
+ 
+         if(mz_zip_reader_is_file_encrypted(&zip, i)) continue;
+ 
+-- 
+2.43.2
+

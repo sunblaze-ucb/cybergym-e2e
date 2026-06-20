@@ -1,0 +1,5 @@
+task_id = "arvo:47525"
+target_prog = "fuzzer_decoder"
+vul_commit = "43b6b64cad5e38de2101296f4154b69f693664ae"
+patch_commit = "69cf76c58e797d093cea73b1f8ad1ff55ec2786d"
+build_image = "n132/arvo:47525-fix"

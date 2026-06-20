@@ -1,0 +1,4 @@
+task_id = "arvo:5494"
+target_prog = "pdf_fuzzer"
+vul_commit = "7f82c01523505052615492f8e220f4348ba46995"
+patch_commit = "71ceebcf56e682504da22c4035b39a2d451e8ffd"

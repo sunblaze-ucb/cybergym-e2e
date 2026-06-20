@@ -1,0 +1,26 @@
+From 81dd97bd5612846411b581bed5b8e02b624f1160 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Mon, 27 Nov 2023 01:22:36 +0100
+Subject: [PATCH] Fix offset check in bmp decoder.
+
+This fixes OSS-fuzz issue 64453.
+---
+ source/fitz/load-bmp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/fitz/load-bmp.c b/source/fitz/load-bmp.c
+index 5b6a79bc2..402fc0d31 100644
+--- a/source/fitz/load-bmp.c
++++ b/source/fitz/load-bmp.c
+@@ -806,7 +806,7 @@ bmp_read_color_profile(fz_context *ctx, struct info *info, const unsigned char *
+ 		fz_buffer *profile;
+ 		fz_colorspace *cs;
+ 
+-		if ((uint32_t)(end - begin) < info->profileoffset + info->profilesize)
++		if ((uint32_t)(end - begin) < info->profilesize)
+ 		{
+ 			fz_warn(ctx, "ignoring truncated color profile in bmp image");
+ 			return NULL;
+-- 
+2.25.1
+

@@ -1,0 +1,32 @@
+From 877959117eef391293b5abff200a23bafe458754 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Fri, 1 Jan 2021 17:44:02 -0800
+Subject: [PATCH] Fixed ASAN heap-buffer-overflow when reading trailer from
+ frame with invalid offset.
+
+	frame_get_usermeta c-blosc2/blosc/frame.c:932:5
+    blosc2_frame_to_schunk c-blosc2/blosc/frame.c:1267:18
+    blosc2_schunk_open_sframe c-blosc2/blosc/schunk.c:263:27
+    LLVMFuzzerTestOneInput c-blosc2/tests/fuzz/fuzz_decompress_frame.c:23:27
+---
+ blosc/frame.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index e0388b8b..e31de0ea 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -925,6 +925,10 @@ int32_t frame_get_usermeta(blosc2_frame* frame, uint8_t** usermeta) {
+     BLOSC_TRACE_ERROR("Unable to get the trailer offset from frame.");
+     return -1;
+   }
++  if (trailer_offset + FRAME_TRAILER_USERMETA_LEN_OFFSET > frame_len) {
++    BLOSC_TRACE_ERROR("Invalid trailer offset exceeds frame length.");
++    return -1;
++  }
+ 
+   // Get the size of usermeta (inside the trailer)
+   int32_t usermeta_len_network;
+-- 
+2.43.2
+

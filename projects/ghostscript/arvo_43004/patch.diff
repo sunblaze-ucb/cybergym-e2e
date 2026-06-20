@@ -1,0 +1,35 @@
+From 20face1eeb418935307731d4e2e4bada028c7ba7 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Sat, 8 Jan 2022 10:47:55 +0000
+Subject: [PATCH] OSS-fuzz #42973 - correct a countodown
+
+On error we were counting down an object, which would later be counted
+down again leading eventually to an attempt to use a stale cache entry
+and a seg fault.
+---
+ pdf/pdf_colour.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/pdf/pdf_colour.c b/pdf/pdf_colour.c
+index 70bfada37..185b74cf7 100644
+--- a/pdf/pdf_colour.c
++++ b/pdf/pdf_colour.c
+@@ -1789,10 +1789,12 @@ all_error:
+             ArrayAlternate = (pdf_array *)o;
+             code = pdfi_create_colorspace_by_array(ctx, ArrayAlternate, 0, stream_dict, page_dict, &pcs_alt, inline_image);
+             ctx->currentSpace = Saved;
+-            if (code < 0) {
+-                pdfi_countdown(o);
++            if (code < 0)
++                /* OSS-fuzz error 42973; we don't need to count down 'o' here because
++                 * we have assigned it to ArrayAlternate and both the success and error
++                 * paths count down ArrayAlternate.
++                 */
+                 goto pdfi_devicen_error;
+-            }
+         }
+         else {
+             code = gs_error_typecheck;
+-- 
+2.43.2
+

@@ -1,0 +1,34 @@
+From 16756ff9286df9a43b4b6e21824975a1c6809835 Mon Sep 17 00:00:00 2001
+From: Christos Zoulas <christos@zoulas.com>
+Date: Wed, 6 Jul 2022 19:05:56 +0000
+Subject: [PATCH] Make sure *ucp is never past ue. (oss-fuzz 48736)
+
+---
+ src/is_json.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/is_json.c b/src/is_json.c
+index 7d8fbcea..ecc3fc03 100644
+--- a/src/is_json.c
++++ b/src/is_json.c
+@@ -32,7 +32,7 @@
+ #include "file.h"
+ 
+ #ifndef lint
+-FILE_RCSID("@(#)$File: is_json.c,v 1.24 2022/07/04 20:08:07 christos Exp $")
++FILE_RCSID("@(#)$File: is_json.c,v 1.25 2022/07/06 19:05:56 christos Exp $")
+ #endif
+ 
+ #include "magic.h"
+@@ -327,6 +327,8 @@ json_parse_const(const unsigned char **ucp, const unsigned char *ue,
+ 
+ 	DPRINTF("Parse const: ", uc, *ucp);
+ 	*ucp += --len - 1;
++	if (*ucp > ue)
++		*ucp = ue;
+ 	for (; uc < ue && --len;) {
+ 		if (*uc++ != *++str) {
+ 			DPRINTF("Bad const: ", uc, *ucp);
+-- 
+2.43.2
+

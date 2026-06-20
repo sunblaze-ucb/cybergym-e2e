@@ -1,0 +1,4 @@
+task_id = "arvo:3505"
+target_prog = "FiffParserFuzzer-GetDecoder-Decode"
+vul_commit = "4eb38fa333918ef99e699a03b35d5f3c60295de9"
+patch_commit = "d505b6d818773a70c26ba6d31e6ae88beb0ecb0c"

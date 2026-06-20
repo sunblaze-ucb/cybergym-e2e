@@ -1,0 +1,1807 @@
+From 2295654a792beed3d2b2e81d346271089fa1cd02 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Tue, 19 Jul 2022 09:48:23 +0100
+Subject: [PATCH 1/3] Fixes Stack-buffer-overflow WRITE in
+ pcpp::IDnsResource::decodeName (#913)
+
+* Fixes Stack-buffer-overflow WRITE in pcpp::IDnsResource::decodeName
+
+Fixes Stack-buffer-overflow WRITE in pcpp::IDnsResource::decodeName:
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=43847
+
+When decoded name perfectly fits 256 char buffer, so that [255] == '.' the `resultPtr` points exactly past the buffer and `resultPtr[0] = 0;` results in off by one write violation.
+
+* Add regression test case-minimized-FuzzTarget-5814090897948672
+---
+ Packet++/src/DnsResource.cpp                    |   9 ++++++---
+ ...stcase-minimized-FuzzTarget-5814090897948672 | Bin 0 -> 39463 bytes
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+ create mode 100644 Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672
+
+diff --git a/Packet++/src/DnsResource.cpp b/Packet++/src/DnsResource.cpp
+index fe3a8fe7..bf821f18 100644
+--- a/Packet++/src/DnsResource.cpp
++++ b/Packet++/src/DnsResource.cpp
+@@ -138,9 +138,12 @@ size_t IDnsResource::decodeName(const char* encodedName, char* result, int itera
+ 		result[resultPtr - result - 1] = 0;
+ 	}
+ 
+-	// add the last '\0' to encodedNameLength
+-	resultPtr[0] = 0;
+-	encodedNameLength++;
++	if (resultPtr - result < 256)
++	{
++		// add the last '\0' to encodedNameLength
++		resultPtr[0] = 0;
++		encodedNameLength++;
++	}
+ 
+ 	return encodedNameLength;
+ }
+diff --git a/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672 b/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672
+new file mode 100644
+index 0000000000000000000000000000000000000000..2427f08353a9ec0d7e220853a1a5f1e82bc1aebd
+GIT binary patch
+literal 39463
+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
+E2Qa^2*#H0l
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.2
+
+
+From 2849d329f6283de7820b884b580f50b7709f9e77 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ege=20=C3=87etin?=
+ <64282645+egecetin@users.noreply.github.com>
+Date: Wed, 20 Jul 2022 10:53:12 +0300
+Subject: [PATCH 2/3] FTP Protocol Support (#887)
+
+---
+ Common++/header/Logger.h                      |   2 +
+ Packet++/header/FtpLayer.h                    | 470 ++++++++++++++++++
+ Packet++/header/ProtocolType.h                |   5 +
+ Packet++/header/SingleCommandTextProtocol.h   |  56 +++
+ Packet++/src/FtpLayer.cpp                     | 382 ++++++++++++++
+ Packet++/src/SingleCommandTextProtocol.cpp    | 140 ++++++
+ Packet++/src/TcpLayer.cpp                     |   5 +
+ README.md                                     |  13 +-
+ Tests/Packet++Test/PacketExamples/Ftp.pcap    | Bin 0 -> 1031 bytes
+ .../PacketExamples/ftpIpv4Req.dat             |   1 +
+ .../PacketExamples/ftpIpv4Resp.dat            |   1 +
+ .../PacketExamples/ftpIpv4RespHyphen.dat      |   1 +
+ .../PacketExamples/ftpIpv6Req.dat             |   1 +
+ .../PacketExamples/ftpIpv6Resp.dat            |   1 +
+ .../PacketExamples/ftpReqEdited1.dat          |   1 +
+ .../PacketExamples/ftpReqEdited2.dat          |   1 +
+ .../PacketExamples/ftpRespEdited1.dat         |   1 +
+ .../PacketExamples/ftpRespEdited2.dat         |   1 +
+ Tests/Packet++Test/TestDefinition.h           |   5 +
+ Tests/Packet++Test/Tests/FtpTests.cpp         | 202 ++++++++
+ Tests/Packet++Test/main.cpp                   |   4 +
+ mk/vs/Packet++.vcxproj.filters                |  12 +
+ mk/vs/Packet++.vcxproj.template               |   4 +
+ mk/vs/Packet++Test.vcxproj.filters            |   3 +
+ mk/vs/Packet++Test.vcxproj.template           |   3 +-
+ 25 files changed, 1308 insertions(+), 7 deletions(-)
+ create mode 100644 Packet++/header/FtpLayer.h
+ create mode 100644 Packet++/header/SingleCommandTextProtocol.h
+ create mode 100644 Packet++/src/FtpLayer.cpp
+ create mode 100644 Packet++/src/SingleCommandTextProtocol.cpp
+ create mode 100644 Tests/Packet++Test/PacketExamples/Ftp.pcap
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpIpv4Req.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpIpv4Resp.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpIpv4RespHyphen.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpIpv6Req.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpIpv6Resp.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpReqEdited1.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpReqEdited2.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpRespEdited1.dat
+ create mode 100644 Tests/Packet++Test/PacketExamples/ftpRespEdited2.dat
+ create mode 100644 Tests/Packet++Test/Tests/FtpTests.cpp
+
+diff --git a/Common++/header/Logger.h b/Common++/header/Logger.h
+index fba4df55..5210769a 100644
+--- a/Common++/header/Logger.h
++++ b/Common++/header/Logger.h
+@@ -62,6 +62,8 @@ namespace pcpp
+ 		PacketLogModuleIPSecLayer, ///< IPSecLayers module (Packet++)
+ 		PacketLogModuleNtpLayer, ///< NtpLayer module (Packet++)
+ 		PacketLogModuleTelnetLayer, ///< TelnetLayer module (Packet++)
++		PacketLogModuleSingleCommandTextProtocolLayer, ///< SingleCommandTextProtocol module (Packet++)
++		PacketLogModuleFtpLayer, ///< FtpLayer module (Packet++)
+ 		PcapLogModuleWinPcapLiveDevice, ///< WinPcapLiveDevice module (Pcap++)
+ 		PcapLogModuleRemoteDevice, ///< WinPcapRemoteDevice module (Pcap++)
+ 		PcapLogModuleLiveDevice, ///< PcapLiveDevice module (Pcap++)
+diff --git a/Packet++/header/FtpLayer.h b/Packet++/header/FtpLayer.h
+new file mode 100644
+index 00000000..1965b6e9
+--- /dev/null
++++ b/Packet++/header/FtpLayer.h
+@@ -0,0 +1,470 @@
++#ifndef PACKETPP_FTP_LAYER
++#define PACKETPP_FTP_LAYER
++
++#include "SingleCommandTextProtocol.h"
++
++/// @file
++
++/**
++ * \namespace pcpp
++ * \brief The main namespace for the PcapPlusPlus lib
++ */
++namespace pcpp
++{
++
++	/**
++	 * Class for general FTP message
++	 */
++	class FtpLayer : public SingleCommandTextProtocol
++	{
++	protected:
++		FtpLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, Packet *packet) : SingleCommandTextProtocol(data, dataLen, prevLayer, packet) { m_Protocol = FTP; };
++		FtpLayer(std::string command, std::string option) : SingleCommandTextProtocol(command, option) { m_Protocol = FTP; };
++
++	public:
++
++		/**
++		 * A static method that checks whether the port is considered as FTP
++		 * @param[in] port The port number to be checked
++		 */
++		static bool isFtpPort(uint16_t port) { return port == 21; }
++
++		// overridden methods
++
++		/// FTP is the always last so does nothing for this layer
++		void parseNextLayer() {}
++
++		/**
++		 * @return Get the size of the layer
++		 */
++		size_t getHeaderLen() const { return m_DataLen; }
++
++		/// Does nothing for this layer
++		void computeCalculateFields() {}
++
++		/**
++		 * @return The OSI layer level of FTP (Application Layer).
++		 */
++		OsiModelLayer getOsiModelLayer() const { return OsiModelApplicationLayer; }
++
++	};
++
++	/**
++	 * Class for representing the request messages of FTP Layer
++	 */
++	class FtpRequestLayer : public FtpLayer
++	{
++	public:
++
++		/**
++		 * Enum for FTP command codes
++		 */
++		enum class FtpCommand : int
++		{
++			/// Unknown command
++			UNK,
++			/// Abort an active file transfer.
++			ABOR = ('A') | ('B' << 8) | ('O' << 16) | ('R' << 24),
++			/// Account information.
++			ACCT = ('A') | ('C' << 8) | ('C' << 16) | ('T' << 24),
++			/// Authentication/Security Data
++			ADAT = ('A') | ('D' << 8) | ('A' << 16) | ('T' << 24),
++			/// Allocate sufficient disk space to receive a file.
++			ALLO = ('A') | ('L' << 8) | ('L' << 16) | ('O' << 24),
++			/// Append (with create)
++			APPE = ('A') | ('P' << 8) | ('P' << 16) | ('E' << 24),
++			/// Authentication/Security Mechanism
++			AUTH = ('A') | ('U' << 8) | ('T' << 16) | ('H' << 24),
++			/// Get the available space
++			AVBL = ('A') | ('V' << 8) | ('B' << 16) | ('L' << 24),
++			/// Clear Command Channel
++			CCC = ('C') | ('C' << 8) | ('C' << 16),
++			/// Change to Parent Directory.
++			CDUP = ('C') | ('D' << 8) | ('U' << 16) | ('P' << 24),
++			/// Confidentiality Protection Command
++			CONF = ('C') | ('O' << 8) | ('N' << 16) | ('F' << 24),
++			/// Client / Server Identification
++			CSID = ('C') | ('S' << 8) | ('I' << 16) | ('D' << 24),
++			/// Change working directory.
++			CWD  = ('C') | ('W' << 8) | ('D' << 16),
++			/// Delete file.
++			DELE = ('D') | ('E' << 8) | ('L' << 16) | ('E' << 24),
++			/// Get the directory size
++			DSIZ = ('D') | ('S' << 8) | ('I' << 16) | ('Z' << 24),
++			/// Privacy Protected Channel
++			ENC  = ('E') | ('N' << 8) | ('C' << 16),
++			/// Specifies an extended address and port to which the server should connect.
++			EPRT = ('E') | ('P' << 8) | ('R' << 16) | ('T' << 24),
++			/// Enter extended passive mode.
++			EPSV = ('E') | ('P' << 8) | ('S' << 16) | ('V' << 24),
++			/// Get the feature list implemented by the server.
++			FEAT = ('F') | ('E' << 8) | ('A' << 16) | ('T' << 24),
++			/// Returns usage documentation on a command if specified, else a general help document is returned.
++			HELP = ('H') | ('E' << 8) | ('L' << 16) | ('P' << 24),
++			/// Identify desired virtual host on server, by name.
++			HOST = ('H') | ('O' << 8) | ('S' << 16) | ('T' << 24),
++			/// Language Negotiation
++			LANG = ('L') | ('A' << 8) | ('N' << 16) | ('G' << 24),
++			/// Returns information of a file or directory if specified, else information of the current working directory is returned.
++			LIST = ('L') | ('I' << 8) | ('S' << 16) | ('T' << 24),
++			/// Specifies a long address and port to which the server should connect.
++			LPRT = ('L') | ('P' << 8) | ('R' << 16) | ('T' << 24),
++			/// Enter long passive mode.
++			LPSV = ('L') | ('P' << 8) | ('S' << 16) | ('V' << 24),
++			/// Return the last-modified time of a specified file.
++			MDTM = ('M') | ('D' << 8) | ('T' << 16) | ('M' << 24),
++			/// Modify the creation time of a file.
++			MFCT = ('M') | ('F' << 8) | ('C' << 16) | ('T' << 24),
++			/// Modify fact (the last modification time, creation time, UNIX group/owner/mode of a file).
++			MFF  = ('M') | ('F' << 8) | ('F' << 16),
++			/// Modify the last modification time of a file.
++			MFMT = ('M') | ('F' << 8) | ('M' << 16) | ('T' << 24),
++			/// Integrity Protected Command
++			MIC  = ('M') | ('I' << 8) | ('C' << 16),
++			/// Make directory.
++			MKD  = ('M') | ('K' << 8) | ('D' << 16),
++			/// Lists the contents of a directory in a standardized machine-readable format.
++			MLSD = ('M') | ('L' << 8) | ('S' << 16) | ('D' << 24),
++			/// Provides data about exactly the object named on its command line in a standardized machine-readable format.
++			MLST = ('M') | ('L' << 8) | ('S' << 16) | ('T' << 24),
++			/// Sets the transfer mode (Stream, Block, or Compressed).
++			MODE = ('M') | ('O' << 8) | ('D' << 16) | ('E' << 24),
++			/// Returns a list of file names in a specified directory.
++			NLST = ('N') | ('L' << 8) | ('S' << 16) | ('T' << 24),
++			/// No operation (dummy packet; used mostly on keepalives).
++			NOOP = ('N') | ('O' << 8) | ('O' << 16) | ('P' << 24),
++			/// Select options for a feature (for example OPTS UTF8 ON).
++			OPTS = ('O') | ('P' << 8) | ('T' << 16) | ('S' << 24),
++			/// Authentication password.
++			PASS = ('P') | ('A' << 8) | ('S' << 16) | ('S' << 24),
++			/// Enter passive mode.
++			PASV = ('P') | ('A' << 8) | ('S' << 16) | ('V' << 24),
++			/// Protection Buffer Size
++			PBSZ = ('P') | ('B' << 8) | ('S' << 16) | ('Z' << 24),
++			/// Specifies an address and port to which the server should connect.
++			PORT = ('P') | ('O' << 8) | ('R' << 16) | ('T' << 24),
++			/// Data Channel Protection Level.
++			PROT = ('P') | ('R' << 8) | ('O' << 16) | ('T' << 24),
++			/// Print working directory. Returns the current directory of the host.
++			PWD  = ('P') | ('W' << 8) | ('D' << 16),
++			/// Disconnect.
++			QUIT = ('Q') | ('U' << 8) | ('I' << 16) | ('T' << 24),
++			/// Re initializes the connection.
++			REIN = ('R') | ('E' << 8) | ('I' << 16) | ('N' << 24),
++			/// Restart transfer from the specified point.
++			REST = ('R') | ('E' << 8) | ('S' << 16) | ('T' << 24),
++			/// Retrieve a copy of the file
++			RETR = ('R') | ('E' << 8) | ('T' << 16) | ('R' << 24),
++			/// Remove a directory.
++			RMD  = ('R') | ('M' << 8) | ('D' << 16),
++			/// Remove a directory tree
++			RMDA = ('R') | ('M' << 8) | ('D' << 16) | ('A' << 24),
++			/// Rename from.
++			RNFR = ('R') | ('N' << 8) | ('F' << 16) | ('R' << 24),
++			/// Rename to.
++			RNTO = ('R') | ('N' << 8) | ('T' << 16) | ('O' << 24),
++			/// Sends site specific commands to remote server (like SITE IDLE 60 or SITE UMASK 002). Inspect SITE HELP output for complete list of supported commands.
++			SITE = ('S') | ('I' << 8) | ('T' << 16) | ('E' << 24),
++			/// Return the size of a file.
++			SIZE = ('S') | ('I' << 8) | ('Z' << 16) | ('E' << 24),
++			/// Mount file structure.
++			SMNT = ('S') | ('M' << 8) | ('N' << 16) | ('T' << 24),
++			/// Use single port passive mode (only one TCP port number for both control connections and passive-mode data connections)
++			SPSV = ('S') | ('P' << 8) | ('S' << 16) | ('V' << 24),
++			/// Returns information on the server status, including the status of the current connection
++			STAT = ('S') | ('T' << 8) | ('A' << 16) | ('T' << 24),
++			/// Accept the data and to store the data as a file at the server site
++			STOR = ('S') | ('T' << 8) | ('O' << 16) | ('R' << 24),
++			/// Store file uniquely.
++			STOU = ('S') | ('T' << 8) | ('O' << 16) | ('U' << 24),
++			/// Set file transfer structure.
++			STRU = ('S') | ('T' << 8) | ('R' << 16) | ('U' << 24),
++			/// Return system type.
++			SYST = ('S') | ('Y' << 8) | ('S' << 16) | ('T' << 24),
++			/// Get a thumbnail of a remote image file
++			THMB = ('T') | ('H' << 8) | ('M' << 16) | ('B' << 24),
++			/// Sets the transfer mode (ASCII/Binary).
++			TYPE = ('T') | ('Y' << 8) | ('P' << 16) | ('E' << 24),
++			/// Authentication username.
++			USER = ('U') | ('S' << 8) | ('E' << 16) | ('R' << 24),
++			/// Change to the parent of the current working directory
++			XCUP = ('X') | ('C' << 8) | ('U' << 16) | ('P' << 24),
++			/// Make a directory
++			XMKD = ('X') | ('M' << 8) | ('K' << 16) | ('D' << 24),
++			/// Print the current working directory
++			XPWD = ('X') | ('P' << 8) | ('W' << 16) | ('D' << 24),
++			///
++			XRCP = ('X') | ('R' << 8) | ('C' << 16) | ('P' << 24),
++			/// Remove the directory
++			XRMD = ('X') | ('R' << 8) | ('M' << 16) | ('D' << 24),
++			///
++			XRSQ = ('X') | ('R' << 8) | ('S' << 16) | ('Q' << 24),
++			/// Send, mail if cannot
++			XSEM = ('X') | ('S' << 8) | ('E' << 16) | ('M' << 24),
++			/// Send to terminal
++			XSEN = ('X') | ('S' << 8) | ('E' << 16) | ('N' << 24)
++		};
++
++		/** A constructor that creates the layer from an existing packet raw data
++		 * @param[in] data A pointer to the raw data
++		 * @param[in] dataLen Size of the data in bytes
++		 * @param[in] prevLayer A pointer to the previous layer
++		 * @param[in] packet A pointer to the Packet instance where layer will be stored in
++		 */
++		FtpRequestLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, Packet *packet) : FtpLayer(data, dataLen, prevLayer, packet) {};
++
++		/**
++		 * A constructor that creates layer with provided input values
++		 * @param[in] command FTP command
++		 * @param[in] option Argument of the command
++		 */
++		FtpRequestLayer(const FtpCommand &command, const std::string &option = "") : FtpLayer(getCommandAsString(command), option) {};
++
++		/**
++		 * Set the command of request message
++		 * @param[in] code Value to set command
++		 * @return True if the operation is successful, false otherwise
++		 */
++		bool setCommand(FtpCommand code);
++
++		/**
++		 * Get the command of request message
++		 * @return FtpCommand Value of the command
++		 */
++		FtpCommand getCommand() const;
++
++		/**
++		 * Get the command of request message as string
++		 * @return std::string Value of the command as string
++		 */
++		std::string getCommandString() const;
++
++		/**
++		 * Set the command argument of request message
++		 * @param[in] value Value to set command argument
++		 * @return True if the operation is successful, false otherwise
++		 */
++		bool setCommandOption(const std::string &value);
++
++		/**
++		 * Get the command argument of request message
++		 * @param[in] removeEscapeCharacters Whether non-alphanumerical characters should be removed or not
++		 * @return std::string Value of command argument
++		 */
++		std::string getCommandOption(bool removeEscapeCharacters = true) const;
++
++		/**
++		 * Convert the command info to readable string
++		 * @param[in] code Command code to convert
++		 * @return std::string Returns the command info as readable string
++		 */
++		static std::string getCommandInfo(FtpCommand code);
++
++		/**
++		 * Convert the command to readable string
++		 * @param[in] code Command code to convert
++		 * @return std::string Returns the command as readable string
++		 */
++		static std::string getCommandAsString(FtpCommand code);
++
++		// overridden methods
++
++		/**
++		 * @return Returns the protocol info as readable string
++		 */
++		std::string toString() const;
++	};
++
++	/**
++	 * Class for representing the response messages of FTP Layer
++	 */
++	class FtpResponseLayer : public FtpLayer
++	{
++	public:
++
++		/**
++		 * Enum for FTP response codes
++		 */
++		enum class FtpStatusCode : int
++		{
++			/// Unknown status code
++			UNKNOWN,
++			/// Restart marker reply
++			RESTART_MARKER = 110,
++			/// Service ready in nnn minutes
++			SERVICE_READY_IN_MIN = 120,
++			/// Data connection already open; transfer starting
++			DATA_ALREADY_OPEN_START_TRANSFER = 125,
++			/// File status okay; about to open data connection
++			FILE_OK = 150,
++			/// Command okay
++			COMMAND_OK = 200,
++			/// Command not implemented, superfluous at this site
++			COMMAND_NOT_IMPLEMENTED_SUPERFLUOUS = 202,
++			/// System status, or system help reply
++			SYSTEM_STATUS = 211,
++			/// Directory status
++			DIR_STATUS = 212,
++			/// File status
++			FILE_STATUS = 213,
++			/// Help message
++			HELP_MESSAGE = 214,
++			/// NAME system type
++			NAME_SYSTEM_TYPE = 215,
++			/// Service ready for new user
++			SERVICE_READY_FOR_USER = 220,
++			/// Service closing control connection
++			SERVICE_CLOSING_CONTROL = 221,
++			/// Data connection open; no transfer in progress
++			DATA_OPEN_NO_TRANSFER = 225,
++			/// Closing data connection
++			CLOSING_DATA = 226,
++			/// Entering Passive Mode
++			ENTERING_PASSIVE = 227,
++			/// Entering Extended Passive Mode
++			ENTERING_EXTENDED_PASSIVE = 229,
++			/// User logged in, proceed
++			USER_LOG_IN_PROCEED = 230,
++			/// User logged in, authorized by security data exchange
++			USER_LOG_IN_AUTHORIZED = 232,
++			/// Security data exchange complete
++			SEC_DATA_EXCHANGE_COMPLETE = 234,
++			/// Security data exchange completed successfully
++			SEC_DATA_EXCHANGE_COMPLETE_SUCCESS = 235,
++			/// Requested file action okay, completed
++			REQ_FILE_OK_COMPLETE = 250,
++			/// PATHNAME created
++			PATHNAME_CREATED = 257,
++			/// User name okay, need password
++			USER_OK_NEED_PASSWORD = 331,
++			/// Need account for login
++			NEED_ACCOUNT = 332,
++			/// Requested security mechanism is ok
++			REQ_SEC_MECHANISM_OK = 334,
++			/// Security data is acceptable, more is required
++			SEC_IS_ACCEPTABLE = 335,
++			/// Username okay, need password. Challenge is ...
++			USER_OK_NEED_PASS_CHALLENGE = 336,
++			/// Requested file action pending further information
++			FILE_PENDING_ACTION = 350,
++			/// Service not available, closing control connection
++			SERVICE_NOT_AVAILABLE = 421,
++			/// Can't open data connection
++			CANT_OPEN_DATA_CONNECTION = 425,
++			/// Connection closed; transfer aborted
++			CONNECTION_CLOSED = 426,
++			/// Need some unavailable resource to process security
++			NEED_UNAVAILABLE_RESOURCE_TO_SEC = 431,
++			/// Requested file action not taken
++			REQ_FILE_ACTION_NOT_TAKEN = 450,
++			/// Requested action aborted: local error in processing
++			REQ_ACTION_ABORTED = 451,
++			/// Requested action not taken. Insufficient storage space in system
++			REQ_ACTION_NOT_TAKEN = 452,
++			/// Syntax error, command unrecognized
++			SYNTAX_ERROR_COMMAND_UNRECOGNIZED = 500,
++			/// Syntax error in parameters or arguments
++			SYNTAX_ERROR_PARAMETER_OR_ARGUMENT = 501,
++			/// Command not implemented
++			COMMAND_NOT_IMPLEMENTED = 502,
++			/// Bad sequence of commands
++			BAD_SEQUENCE_COMMANDS = 503,
++			/// Command not implemented for that parameter
++			COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER = 504,
++			/// Network protocol not supported
++			NETWORK_PROTOCOL_NOT_SUPPORTED = 522,
++			/// Not logged in
++			NOT_LOGGED_IN = 530,
++			/// Need account for storing files
++			NEED_ACCOUNT_FOR_STORE_FILE = 532,
++			/// Command protection level denied for policy reasons
++			COMMAND_PROTECTION_DENIED = 533,
++			/// Request denied for policy reasons
++			REQUEST_DENIED = 534,
++			/// Failed security check (hash, sequence, etc)
++			FAILED_SEC_CHECK = 535,
++			/// Requested PROT level not supported by mechanism
++			REQ_PROT_LEVEL_NOT_SUPPORTED = 536,
++			/// Command protection level not supported by security mechanism
++			COMMAND_PROTECTION_LEVEL_NOT_SUPPORTED = 537,
++			/// Requested action not taken: File unavailable
++			FILE_UNAVAILABLE = 550,
++			/// Requested action aborted: page type unknown
++			PAGE_TYPE_UNKNOWN = 551,
++			/// Requested file action aborted: Exceeded storage allocation
++			EXCEED_STORAGE_ALLOCATION = 552,
++			/// Requested action not taken: File name not allowed
++			FILENAME_NOT_ALLOWED = 553,
++			/// Integrity protected reply
++			INTEGRITY_PROTECTED = 631,
++			/// Confidentiality and integrity protected reply
++			CONFIDENTIALITY_AND_INTEGRITY_PROTECTED = 632,
++			/// Confidentiality protected reply
++			CONFIDENTIALITY_PROTECTED = 633
++		};
++
++		/** A constructor that creates the layer from an existing packet raw data
++		 * @param[in] data A pointer to the raw data
++		 * @param[in] dataLen Size of the data in bytes
++		 * @param[in] prevLayer A pointer to the previous layer
++		 * @param[in] packet A pointer to the Packet instance where layer will be stored in
++		 */
++		FtpResponseLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, Packet *packet) : FtpLayer(data, dataLen, prevLayer, packet) {};
++
++		/**
++		 * A constructor that creates layer with provided input values
++		 * @param[in] code Status code
++		 * @param[in] option Argument of the status code
++		 */
++		FtpResponseLayer(const FtpStatusCode &code, const std::string &option = "") : FtpLayer(std::to_string(int(code)), option) {};
++
++		/**
++		 * Set the status code of response message
++		 * @param[in] code Value to set status code
++		 * @return True if the operation is successful, false otherwise
++		 */
++		bool setStatusCode(FtpStatusCode code);
++
++		/**
++		 * Get the status code of response message
++		 * @return FtpStatusCode Value of the status code
++		 */
++		FtpStatusCode getStatusCode() const;
++
++		/**
++		 * Get the status code of response message as string
++		 * @return std::string Value of the status code as string
++		 */
++		std::string getStatusCodeString() const;
++
++		/**
++		 * Set the argument of response message
++		 * @param[in] value Value to set argument
++		 * @return True if the operation is successful, false otherwise
++		 */
++		bool setStatusOption(const std::string &value);
++
++		/**
++		 * Get the argument of response message
++		 * @param[in] removeEscapeCharacters Whether non-alphanumerical characters should be removed or not
++		 * @return std::string Value of argument
++		 */
++		std::string getStatusOption(bool removeEscapeCharacters = true) const;
++
++		/**
++		 * Convert the status code to readable string
++		 * @param[in] code Status code to convert
++		 * @return std::string Returns the status info as readable string
++		 */
++		static std::string getStatusCodeAsString(FtpStatusCode code);
++
++		// overridden methods
++
++		/**
++		 * @return Returns the protocol info as readable string
++		 */
++		std::string toString() const;
++	};
++} // namespace pcpp
++
++#endif /* PACKETPP_FTP_LAYER */
+diff --git a/Packet++/header/ProtocolType.h b/Packet++/header/ProtocolType.h
+index 5852acb7..df11757e 100644
+--- a/Packet++/header/ProtocolType.h
++++ b/Packet++/header/ProtocolType.h
+@@ -262,6 +262,11 @@ namespace pcpp
+ 	 */
+ 	const ProtocolType Telnet = 0x8000000000;
+ 
++  	/**
++   	 * File Transfer (FTP) Protocol
++	 */
++	const ProtocolType FTP = 0x10000000000;
++
+ 	/**
+ 	 * An enum representing OSI model layers
+ 	 */
+diff --git a/Packet++/header/SingleCommandTextProtocol.h b/Packet++/header/SingleCommandTextProtocol.h
+new file mode 100644
+index 00000000..3fd71864
+--- /dev/null
++++ b/Packet++/header/SingleCommandTextProtocol.h
+@@ -0,0 +1,56 @@
++#ifndef PACKETPP_SINGLE_COMMAND_TEXT_PROTOCOL_LAYER
++#define PACKETPP_SINGLE_COMMAND_TEXT_PROTOCOL_LAYER
++
++#include <sstream>
++#include "Layer.h"
++
++/// @file
++
++/**
++ * \namespace pcpp
++ * \brief The main namespace for the PcapPlusPlus lib
++ */
++namespace pcpp
++{
++
++	/**
++	 * Class for single command text based protocol (FTP, SMTP) messages
++	 */
++	class SingleCommandTextProtocol : public Layer
++	{
++	private:
++		size_t getArgumentFieldOffset() const;
++		void setDelimiter(bool hyphen);
++		bool hyphenRequired(std::string value);
++
++	protected:
++		SingleCommandTextProtocol(uint8_t *data, size_t dataLen, Layer *prevLayer, Packet *packet) : Layer(data, dataLen, prevLayer, packet) {};
++		SingleCommandTextProtocol(std::string &command, std::string &option);
++
++		bool setCommandInternal(std::string value);
++		bool setCommandOptionInternal(std::string value);
++
++		std::string getCommandInternal() const;
++		std::string getCommandOptionInternal() const;
++
++	public:
++
++		/**
++		 * Checks if the current message is a multi-line reply. Multi-line messages are indicated with a Hyphen (-) immediately after reply code.
++		 * @return true If this is a multi-line reply
++		 * @return false Otherwise
++		 */
++		bool isMultiLine() const;
++
++		/**
++		 * A static method that takes a byte array and detects whether it is a single command text based message.
++		 * All single command text based message terminated with single "\r\n".
++		 * @param[in] data A byte array
++		 * @param[in] dataSize The byte array size (in bytes)
++		 * @return True if the data is identified as single command text based message
++		 */
++		static bool isDataValid(const uint8_t *data, size_t dataSize);
++	};
++} // namespace pcpp
++
++#endif /* PACKETPP_SINGLE_COMMAND_TEXT_PROTOCOL_LAYER */
+diff --git a/Packet++/src/FtpLayer.cpp b/Packet++/src/FtpLayer.cpp
+new file mode 100644
+index 00000000..9319e325
+--- /dev/null
++++ b/Packet++/src/FtpLayer.cpp
+@@ -0,0 +1,382 @@
++#define LOG_MODULE PacketLogModuleFtpLayer
++
++#include "FtpLayer.h"
++
++namespace pcpp
++{
++
++	// ----------------- Class FtpRequestLayer -----------------
++	bool FtpRequestLayer::setCommand(FtpCommand code)
++	{
++		return setCommandInternal(getCommandAsString(code));
++	}
++
++	FtpRequestLayer::FtpCommand FtpRequestLayer::getCommand() const
++	{
++		size_t val = 0;
++		std::string field = getCommandString();
++
++		for (size_t idx = 0; idx < field.size(); ++idx)
++			val |= (field.c_str()[idx] << (idx * 8));
++
++		return static_cast<FtpCommand>(val);
++	}
++
++	std::string FtpRequestLayer::getCommandString() const
++	{
++		return getCommandInternal();
++	}
++
++	bool FtpRequestLayer::setCommandOption(const std::string &value)
++	{
++		return setCommandOptionInternal(value);
++	}
++
++	std::string FtpRequestLayer::getCommandOption(bool removeEscapeCharacters) const
++	{
++		if (removeEscapeCharacters)
++		{
++			std::stringstream ss;
++			std::string field = getCommandOptionInternal();
++			for (size_t idx = 0; idx < field.size(); ++idx)
++			{
++				if (int(field.c_str()[idx]) < 127 && int(field.c_str()[idx]) > 31) // From SPACE to ~
++					ss << field.c_str()[idx];
++			}
++			return ss.str();
++		}
++		return getCommandOptionInternal();
++	}
++
++	std::string FtpRequestLayer::getCommandInfo(FtpCommand code)
++	{
++		switch (code)
++		{
++		case FtpCommand::ABOR:
++			return "Abort an active file transfer.";
++		case FtpCommand::ACCT:
++			return "Account information.";
++		case FtpCommand::ADAT:
++			return "Authentication/Security Data";
++		case FtpCommand::ALLO:
++			return "Allocate sufficient disk space to receive a file.";
++		case FtpCommand::APPE:
++			return "Append (with create)";
++		case FtpCommand::AUTH:
++			return "Authentication/Security Mechanism";
++		case FtpCommand::AVBL:
++			return "Get the available space";
++		case FtpCommand::CCC:
++			return "Clear Command Channel";
++		case FtpCommand::CDUP:
++			return "Change to Parent Directory.";
++		case FtpCommand::CONF:
++			return "Confidentiality Protection Command";
++		case FtpCommand::CSID:
++			return "Client / Server Identification";
++		case FtpCommand::CWD:
++			return "Change working directory.";
++		case FtpCommand::DELE:
++			return "Delete file.";
++		case FtpCommand::DSIZ:
++			return "Get the directory size";
++		case FtpCommand::ENC:
++			return "Privacy Protected Channel";
++		case FtpCommand::EPRT:
++			return "Specifies an extended address and port to which the server should connect.";
++		case FtpCommand::EPSV:
++			return "Enter extended passive mode.";
++		case FtpCommand::FEAT:
++			return "Get the feature list implemented by the server.";
++		case FtpCommand::HELP:
++			return "Returns usage documentation on a command if specified, else a general help document is returned.";
++		case FtpCommand::HOST:
++			return "Identify desired virtual host on server, by name.";
++		case FtpCommand::LANG:
++			return "Language Negotiation";
++		case FtpCommand::LIST:
++			return "Returns information of a file or directory if specified, else information of the current working "
++				"directory is returned.";
++		case FtpCommand::LPRT:
++			return "Specifies a long address and port to which the server should connect.";
++		case FtpCommand::LPSV:
++			return "Enter long passive mode.";
++		case FtpCommand::MDTM:
++			return "Return the last-modified time of a specified file.";
++		case FtpCommand::MFCT:
++			return "Modify the creation time of a file.";
++		case FtpCommand::MFF:
++			return "Modify fact (the last modification time, creation time, UNIX group/owner/mode of a file).";
++		case FtpCommand::MFMT:
++			return "Modify the last modification time of a file.";
++		case FtpCommand::MIC:
++			return "Integrity Protected Command";
++		case FtpCommand::MKD:
++			return "Make directory.";
++		case FtpCommand::MLSD:
++			return "Lists the contents of a directory in a standardized machine-readable format.";
++		case FtpCommand::MLST:
++			return "Provides data about exactly the object named on its command line in a standardized "
++				"machine-readable format.";
++		case FtpCommand::MODE:
++			return "Sets the transfer mode (Stream, Block, or Compressed).";
++		case FtpCommand::NLST:
++			return "Returns a list of file names in a specified directory.";
++		case FtpCommand::NOOP:
++			return "No operation (dummy packet; used mostly on keepalives).";
++		case FtpCommand::OPTS:
++			return "Select options for a feature (for example OPTS UTF8 ON).";
++		case FtpCommand::PASS:
++			return "Authentication password.";
++		case FtpCommand::PASV:
++			return "Enter passive mode.";
++		case FtpCommand::PBSZ:
++			return "Protection Buffer Size";
++		case FtpCommand::PORT:
++			return "Specifies an address and port to which the server should connect.";
++		case FtpCommand::PROT:
++			return "Data Channel Protection Level.";
++		case FtpCommand::PWD:
++			return "Print working directory. Returns the current directory of the host.";
++		case FtpCommand::QUIT:
++			return "Disconnect.";
++		case FtpCommand::REIN:
++			return "Re initializes the connection.";
++		case FtpCommand::REST:
++			return "Restart transfer from the specified point.";
++		case FtpCommand::RETR:
++			return "Retrieve a copy of the file";
++		case FtpCommand::RMD:
++			return "Remove a directory.";
++		case FtpCommand::RMDA:
++			return "Remove a directory tree";
++		case FtpCommand::RNFR:
++			return "Rename from.";
++		case FtpCommand::RNTO:
++			return "Rename to.";
++		case FtpCommand::SITE:
++			return "Sends site specific commands to remote server (like SITE IDLE 60 or SITE UMASK 002). Inspect SITE "
++				"HELP output for complete list of supported commands.";
++		case FtpCommand::SIZE:
++			return "Return the size of a file.";
++		case FtpCommand::SMNT:
++			return "Mount file structure.";
++		case FtpCommand::SPSV:
++			return "Use single port passive mode (only one TCP port number for both control connections and "
++				"passive-mode data connections)";
++		case FtpCommand::STAT:
++			return "Returns information on the server status, including the status of the current connection";
++		case FtpCommand::STOR:
++			return "Accept the data and to store the data as a file at the server site";
++		case FtpCommand::STOU:
++			return "Store file uniquely.";
++		case FtpCommand::STRU:
++			return "Set file transfer structure.";
++		case FtpCommand::SYST:
++			return "Return system type.";
++		case FtpCommand::THMB:
++			return "Get a thumbnail of a remote image file";
++		case FtpCommand::TYPE:
++			return "Sets the transfer mode (ASCII/Binary).";
++		case FtpCommand::USER:
++			return "Authentication username.";
++		case FtpCommand::XCUP:
++			return "Change to the parent of the current working directory";
++		case FtpCommand::XMKD:
++			return "Make a directory";
++		case FtpCommand::XPWD:
++			return "Print the current working directory";
++		case FtpCommand::XRCP:
++			return "";
++		case FtpCommand::XRMD:
++			return "Remove the directory";
++		case FtpCommand::XRSQ:
++			return "";
++		case FtpCommand::XSEM:
++			return "Send, mail if cannot";
++		case FtpCommand::XSEN:
++			return "Send to terminal";
++		default:
++			return "Unknown command";
++		}
++	}
++
++	std::string FtpRequestLayer::getCommandAsString(FtpCommand code)
++	{
++		std::stringstream oss;
++		for (size_t idx = 0; idx < 4; ++idx)
++			oss << char((int(code) >> (8 * idx)) & UINT8_MAX);
++		return oss.str();
++	}
++
++	std::string FtpRequestLayer::toString() const
++	{
++		return "FTP Request: " + getCommandString();
++	}
++
++	// ----------------- Class FtpResponseLayer -----------------
++	bool FtpResponseLayer::setStatusCode(FtpStatusCode code)
++	{
++		std::ostringstream oss;
++		oss << int(code);
++		return setCommandInternal(oss.str());
++	}
++
++	FtpResponseLayer::FtpStatusCode FtpResponseLayer::getStatusCode() const
++	{
++		return static_cast<FtpStatusCode>(atoi(getCommandInternal().c_str()));
++	}
++
++	std::string FtpResponseLayer::getStatusCodeString() const
++	{
++		return getCommandInternal();
++	}
++
++	bool FtpResponseLayer::setStatusOption(const std::string &value)
++	{
++		return setCommandOptionInternal(value);
++	}
++
++	std::string FtpResponseLayer::getStatusOption(bool removeEscapeCharacters) const
++	{
++		if (removeEscapeCharacters)
++		{
++			std::stringstream ss;
++			std::string field = getCommandOptionInternal();
++			for (size_t idx = 0; idx < field.size(); ++idx)
++			{
++				if (int(field.c_str()[idx]) < 127 && int(field.c_str()[idx]) > 31) // From SPACE to ~
++					ss << field.c_str()[idx];
++			}
++			return ss.str();
++		}
++		return getCommandOptionInternal();
++	}
++
++	std::string FtpResponseLayer::getStatusCodeAsString(FtpStatusCode code)
++	{
++		switch (code)
++		{
++		case FtpStatusCode::RESTART_MARKER:
++			return "Restart marker reply";
++		case FtpStatusCode::SERVICE_READY_IN_MIN:
++			return "Service ready in nnn minutes";
++		case FtpStatusCode::DATA_ALREADY_OPEN_START_TRANSFER:
++			return "Data connection already open; transfer starting";
++		case FtpStatusCode::FILE_OK:
++			return "File status okay; about to open data connection";
++		case FtpStatusCode::COMMAND_OK:
++			return "Command okay";
++		case FtpStatusCode::COMMAND_NOT_IMPLEMENTED_SUPERFLUOUS:
++			return "Command not implemented, superfluous at this site";
++		case FtpStatusCode::SYSTEM_STATUS:
++			return "System status, or system help reply";
++		case FtpStatusCode::DIR_STATUS:
++			return "Directory status";
++		case FtpStatusCode::FILE_STATUS:
++			return "File status";
++		case FtpStatusCode::HELP_MESSAGE:
++			return "Help message";
++		case FtpStatusCode::NAME_SYSTEM_TYPE:
++			return "NAME system type";
++		case FtpStatusCode::SERVICE_READY_FOR_USER:
++			return "Service ready for new user";
++		case FtpStatusCode::SERVICE_CLOSING_CONTROL:
++			return "Service closing control connection";
++		case FtpStatusCode::DATA_OPEN_NO_TRANSFER:
++			return "Data connection open; no transfer in progress";
++		case FtpStatusCode::CLOSING_DATA:
++			return "Closing data connection";
++		case FtpStatusCode::ENTERING_PASSIVE:
++			return "Entering Passive Mode";
++		case FtpStatusCode::ENTERING_EXTENDED_PASSIVE:
++			return "Entering Extended Passive Mode";
++		case FtpStatusCode::USER_LOG_IN_PROCEED:
++			return "User logged in, proceed";
++		case FtpStatusCode::USER_LOG_IN_AUTHORIZED:
++			return "User logged in, authorized by security data exchange";
++		case FtpStatusCode::SEC_DATA_EXCHANGE_COMPLETE:
++			return "Security data exchange complete";
++		case FtpStatusCode::SEC_DATA_EXCHANGE_COMPLETE_SUCCESS:
++			return "Security data exchange completed successfully";
++		case FtpStatusCode::REQ_FILE_OK_COMPLETE:
++			return "Requested file action okay, completed";
++		case FtpStatusCode::PATHNAME_CREATED:
++			return "PATHNAME created";
++		case FtpStatusCode::USER_OK_NEED_PASSWORD:
++			return "User name okay, need password";
++		case FtpStatusCode::NEED_ACCOUNT:
++			return "Need account for login";
++		case FtpStatusCode::REQ_SEC_MECHANISM_OK:
++			return "Requested security mechanism is ok";
++		case FtpStatusCode::SEC_IS_ACCEPTABLE:
++			return "Security data is acceptable, more is required";
++		case FtpStatusCode::USER_OK_NEED_PASS_CHALLENGE:
++			return "Username okay, need password. Challenge is ...";
++		case FtpStatusCode::FILE_PENDING_ACTION:
++			return "Requested file action pending further information";
++		case FtpStatusCode::SERVICE_NOT_AVAILABLE:
++			return "Service not available, closing control connection";
++		case FtpStatusCode::CANT_OPEN_DATA_CONNECTION:
++			return "Can't open data connection";
++		case FtpStatusCode::CONNECTION_CLOSED:
++			return "Connection closed; transfer aborted";
++		case FtpStatusCode::NEED_UNAVAILABLE_RESOURCE_TO_SEC:
++			return "Need some unavailable resource to process security";
++		case FtpStatusCode::REQ_FILE_ACTION_NOT_TAKEN:
++			return "Requested file action not taken";
++		case FtpStatusCode::REQ_ACTION_ABORTED:
++			return "Requested action aborted: local error in processing";
++		case FtpStatusCode::REQ_ACTION_NOT_TAKEN:
++			return "Requested action not taken. Insufficient storage space in system";
++		case FtpStatusCode::SYNTAX_ERROR_COMMAND_UNRECOGNIZED:
++			return "Syntax error, command unrecognized";
++		case FtpStatusCode::SYNTAX_ERROR_PARAMETER_OR_ARGUMENT:
++			return "Syntax error in parameters or arguments";
++		case FtpStatusCode::COMMAND_NOT_IMPLEMENTED:
++			return "Command not implemented";
++		case FtpStatusCode::BAD_SEQUENCE_COMMANDS:
++			return "Bad sequence of commands";
++		case FtpStatusCode::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER:
++			return "Command not implemented for that parameter";
++		case FtpStatusCode::NETWORK_PROTOCOL_NOT_SUPPORTED:
++			return "Network protocol not supported";
++		case FtpStatusCode::NOT_LOGGED_IN:
++			return "Not logged in";
++		case FtpStatusCode::NEED_ACCOUNT_FOR_STORE_FILE:
++			return "Need account for storing files";
++		case FtpStatusCode::COMMAND_PROTECTION_DENIED:
++			return "Command protection level denied for policy reasons";
++		case FtpStatusCode::REQUEST_DENIED:
++			return "Request denied for policy reasons";
++		case FtpStatusCode::FAILED_SEC_CHECK:
++			return "Failed security check (hash, sequence, etc)";
++		case FtpStatusCode::REQ_PROT_LEVEL_NOT_SUPPORTED:
++			return "Requested PROT level not supported by mechanism";
++		case FtpStatusCode::COMMAND_PROTECTION_LEVEL_NOT_SUPPORTED:
++			return "Command protection level not supported by security mechanism";
++		case FtpStatusCode::FILE_UNAVAILABLE:
++			return "Requested action not taken: File unavailable";
++		case FtpStatusCode::PAGE_TYPE_UNKNOWN:
++			return "Requested action aborted: page type unknown";
++		case FtpStatusCode::EXCEED_STORAGE_ALLOCATION:
++			return "Requested file action aborted: Exceeded storage allocation";
++		case FtpStatusCode::FILENAME_NOT_ALLOWED:
++			return "Requested action not taken: File name not allowed";
++		case FtpStatusCode::INTEGRITY_PROTECTED:
++			return "Integrity protected reply";
++		case FtpStatusCode::CONFIDENTIALITY_AND_INTEGRITY_PROTECTED:
++			return "Confidentiality and integrity protected reply";
++		case FtpStatusCode::CONFIDENTIALITY_PROTECTED:
++			return "Confidentiality protected reply";
++		default:
++			return "Unknown Status Code";
++		}
++	}
++
++	std::string FtpResponseLayer::toString() const
++	{
++		return "FTP Response: " + getStatusCodeString();
++	}
++
++} // namespace pcpp
+diff --git a/Packet++/src/SingleCommandTextProtocol.cpp b/Packet++/src/SingleCommandTextProtocol.cpp
+new file mode 100644
+index 00000000..fc43f16b
+--- /dev/null
++++ b/Packet++/src/SingleCommandTextProtocol.cpp
+@@ -0,0 +1,140 @@
++#include "SingleCommandTextProtocol.h"
++#include "Logger.h"
++
++#include <string.h>
++
++#define ASCII_HYPHEN 0x2d
++#define ASCII_SPACE 0x20
++
++namespace pcpp
++{
++
++	size_t SingleCommandTextProtocol::getArgumentFieldOffset() const
++	{
++		size_t maxLen;
++		if (m_DataLen < 5)
++			maxLen = m_DataLen;
++		else
++			maxLen = 5;
++
++		// Find <SP> if exists
++		uint8_t *pos = (uint8_t *)memchr(m_Data, ASCII_SPACE, maxLen);
++		if (pos)
++			return pos - m_Data;
++
++		// Find Hyphen "-" if exists
++		pos = (uint8_t *)memchr(m_Data, ASCII_HYPHEN, maxLen);
++		if (pos)
++			return pos - m_Data;
++
++		return m_DataLen - 1;
++	}
++
++	void SingleCommandTextProtocol::setDelimiter(bool hyphen)
++	{
++		if (hyphen)
++			memset(&m_Data[getArgumentFieldOffset()], ASCII_HYPHEN, 1);
++		else
++			memset(&m_Data[getArgumentFieldOffset()], ASCII_SPACE, 1);
++	}
++
++	bool SingleCommandTextProtocol::hyphenRequired(std::string value)
++	{
++		size_t firstPos = value.find_first_of("\r\n");
++		size_t lastPos = value.find_last_of("\r\n");
++		return (firstPos != std::string::npos) && (lastPos != std::string::npos) && (firstPos != lastPos - 1);
++	}
++
++	SingleCommandTextProtocol::SingleCommandTextProtocol(std::string &command, std::string &option)
++	{
++		m_Data = new uint8_t[6];
++		m_DataLen = 6;
++		if (!command.empty())
++			setCommandInternal(command);
++		if (!option.empty())
++			setCommandOptionInternal(option);
++	}
++
++	bool SingleCommandTextProtocol::setCommandInternal(std::string value)
++	{
++		size_t currentOffset = getArgumentFieldOffset();
++		if (currentOffset == m_DataLen - 1)
++			currentOffset = 0;
++		if (!currentOffset)
++			value += " \r\n";
++
++		if (value.size() < currentOffset)
++		{
++			if (!shortenLayer(0, currentOffset - value.size()))
++				return false;
++		}
++		else if (m_Data && value.size() > currentOffset)
++		{
++			if (!extendLayer(0, value.size() - currentOffset))
++				return false;
++		}
++
++		memcpy(m_Data, value.c_str(), value.size());
++		return true;
++	}
++
++	bool SingleCommandTextProtocol::setCommandOptionInternal(std::string value)
++	{
++		size_t lastPos = value.find_last_of("\r\n");
++		if (lastPos == std::string::npos || lastPos != value.size() - 2)
++			value += "\r\n";
++
++		size_t currentOffset = getArgumentFieldOffset() + 1;
++
++		if (value.size() < (m_DataLen - currentOffset))
++		{
++			if (!shortenLayer(currentOffset, (m_DataLen - currentOffset) - value.size()))
++				return false;
++		}
++		else if (m_Data && value.size() > (m_DataLen - currentOffset))
++		{
++			if (!extendLayer(currentOffset, value.size() - (m_DataLen - currentOffset)))
++				return false;
++		}
++
++		memcpy(&m_Data[currentOffset], value.c_str(), value.size());
++
++		if (hyphenRequired(value))
++			setDelimiter(true);
++		else
++			setDelimiter(false);
++		return true;
++	}
++
++	std::string SingleCommandTextProtocol::getCommandInternal() const
++	{
++		size_t offset = getArgumentFieldOffset();
++
++		// If there is no option remove trailing newline characters
++		if (offset == (m_DataLen - 1) && offset > 1)
++			return std::string((char *)m_Data, offset - 1);
++		return std::string((char *)m_Data, offset);
++	}
++
++	std::string SingleCommandTextProtocol::getCommandOptionInternal() const
++	{
++		if (getArgumentFieldOffset() != (m_DataLen - 1))
++			return std::string((char *)&m_Data[getArgumentFieldOffset() + 1], m_DataLen - getArgumentFieldOffset() - 2);
++		return "";
++	}
++
++	bool SingleCommandTextProtocol::isMultiLine() const
++	{
++		return m_Data[getArgumentFieldOffset()] == ASCII_HYPHEN;
++	}
++
++	bool SingleCommandTextProtocol::isDataValid(const uint8_t *data, size_t dataSize)
++	{
++		if (data == nullptr || dataSize < 6)
++			return false;
++
++		std::string payload = std::string((char *)data, dataSize);
++		return payload.find_last_of("\r\n") == dataSize - 1;
++	}
++
++} // namespace pcpp
+diff --git a/Packet++/src/TcpLayer.cpp b/Packet++/src/TcpLayer.cpp
+index 7223922e..1c421e35 100644
+--- a/Packet++/src/TcpLayer.cpp
++++ b/Packet++/src/TcpLayer.cpp
+@@ -12,6 +12,7 @@
+ #include "SSHLayer.h"
+ #include "DnsLayer.h"
+ #include "TelnetLayer.h"
++#include "FtpLayer.h"
+ #include "PacketUtils.h"
+ #include "Logger.h"
+ #include <string.h>
+@@ -376,6 +377,10 @@ void TcpLayer::parseNextLayer()
+ 		m_NextLayer = new DnsOverTcpLayer(payload, payloadLen, this, m_Packet);
+ 	else if (TelnetLayer::isDataValid(payload, payloadLen) && (TelnetLayer::isTelnetPort(portDst) || TelnetLayer::isTelnetPort(portSrc)))
+ 		m_NextLayer = new TelnetLayer(payload, payloadLen, this, m_Packet);
++	else if (FtpLayer::isFtpPort(portSrc) && FtpLayer::isDataValid(payload, payloadLen))
++		m_NextLayer = new FtpResponseLayer(payload, payloadLen, this, m_Packet);
++	else if (FtpLayer::isFtpPort(portDst) && FtpLayer::isDataValid(payload, payloadLen))
++		m_NextLayer = new FtpRequestLayer(payload, payloadLen, this, m_Packet);
+ 	else
+ 		m_NextLayer = new PayloadLayer(payload, payloadLen, this, m_Packet);
+ }
+diff --git a/README.md b/README.md
+index ac81ab91..2b9f8771 100644
+--- a/README.md
++++ b/README.md
+@@ -213,12 +213,13 @@ PcapPlusPlus currently supports parsing, editing and creation of packets of the
+ 25. DHCP
+ 26. DHCPv6
+ 27. DNS
+-28. HTTP headers (request & response)
+-29. NTP (v3, v4)
+-30. Radius
+-31. SSH - parsing only (no editing capabilities)
+-32. Telnet - parsing only (no editing capabilities)
+-33. Generic payload
++28. FTP
++29. HTTP headers (request & response)
++30. NTP (v3, v4)
++31. Radius
++32. SSH - parsing only (no editing capabilities)
++33. Telnet - parsing only (no editing capabilities)
++34. Generic payload
+ 
+ ## DPDK And PF_RING Support
+ 
+diff --git a/Tests/Packet++Test/PacketExamples/Ftp.pcap b/Tests/Packet++Test/PacketExamples/Ftp.pcap
+new file mode 100644
+index 0000000000000000000000000000000000000000..fef5689d618a8c750cdc7066994ed5a4907ea922
+GIT binary patch
+literal 1031
+zcmca|c+)~A1{MYcU}0bca?-coaEe{d%#Z_QgRqpd0#F<T85lSiTp1YRR$4GHG-%$q
+z7uf9Fd>|s3F##yUpv2aozyuNjaTpjtECoh33r;2mMkYq4|NkD9PGezW5KYSd%<<HG
+z>5>2mC*xT)3=9E|!NCfiuA#-LMGm}N*+9D&F6LpV2ATlE5L+QG0Nb6b1vFnk(``++
+zkfb8WjszBm7Yv4M_ULw@yM;lNg$Zcy6`=hp0TPV~>!vX<m>L)<gyv=E<(KCvB<JVm
+zCg!CmsF#+cS*Yvra^28waecm-9pqs!W)S`4Q1+fd>|9>A3fL*;%bz+hG_YL=Kd^$K
+z2#61|6f%h3-@NJnvEz&h0TRxixMnagga*3?DI^yIO-?N;h8QYwg`J@lXebCnjDr{r
+zHndzb6=bO243L2!gMscY1RA*Q{^rf90TTaj-rc~!U}R{h>snEgnpd2epI59<Tv||&
+zUsRHsV#Uj);OyfU0;GIhLVSS~Fm%I!RFG?Mh(d5kkgFp|FxWH7m6r=>h=OZg3e=}(
+zzOpmq0^I|`7><h9Ob0t^9jc?4)Pat213GHQvGYJjnHnfKhr7T7vbZ!kIkmVrtu#kZ
+zK}lapA+uN^xwNP#HLpY=C9^0sxg@`+5@>nVw`)nP&lo8PX4xeS3~sKDAxOatGt>j<
+z84$*ZJ1c11g@A$><SX>JTfq-CG$ggSL?OSR1Q^l?$C4jX2QC3a%E*k8ka7q52ZS-A
+T$r2h(S8zoWDDQwQNAVK?Khr&Q
+
+literal 0
+HcmV?d00001
+
+diff --git a/Tests/Packet++Test/PacketExamples/ftpIpv4Req.dat b/Tests/Packet++Test/PacketExamples/ftpIpv4Req.dat
+new file mode 100644
+index 00000000..8d88d73a
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpIpv4Req.dat
+@@ -0,0 +1 @@
++0015f24076ef0016ce6e8b24080045000037a7e540008006d057c0a80072c0a800c104710015dfb3b2ffc6c70160501843f20a98000055534552206373616e646572730d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpIpv4Resp.dat b/Tests/Packet++Test/PacketExamples/ftpIpv4Resp.dat
+new file mode 100644
+index 00000000..f4ef4851
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpIpv4Resp.dat
+@@ -0,0 +1 @@
++0016ce6e8b240015f24076ef08004500005f2967400080064eaec0a800c1c0a8007200150471c6c70227dfb3b3465018ffb8c6cf00003235302043574420636f6d6d616e64207375636365737366756c2e20222f222069732063757272656e74206469726563746f72792e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpIpv4RespHyphen.dat b/Tests/Packet++Test/PacketExamples/ftpIpv4RespHyphen.dat
+new file mode 100644
+index 00000000..06f87f03
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpIpv4RespHyphen.dat
+@@ -0,0 +1 @@
++0016ce6e8b240015f24076ef0800450000772965400080064e98c0a800c1c0a8007200150471c6c701b6dfb3b3255018ffd9ddb000003231312d457874656e73696f6e7320737570706f727465643a0d0a20434c4e540d0a204d44544d0d0a20504153560d0a20524553542053545245414d0d0a2053495a450d0a32313120456e642e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpIpv6Req.dat b/Tests/Packet++Test/PacketExamples/ftpIpv6Req.dat
+new file mode 100644
+index 00000000..2a44c001
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpIpv6Req.dat
+@@ -0,0 +1 @@
++1a432000010001000100000008004500005ea93800008029d8de51834383c05863016000000000220680200251834383000000000000518343832001063809020001020102fffee2759604020015626bf308e537a5a4501842339a7c00005041535320494555736572400d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpIpv6Resp.dat b/Tests/Packet++Test/PacketExamples/ftpIpv6Resp.dat
+new file mode 100644
+index 00000000..b11f8d68
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpIpv6Resp.dat
+@@ -0,0 +1 @@
++0100010000001a432000010008004500006d2a830000102946ac8b12192151834383600440e80031063f2001063809020001020102fffee275962002518343830000000000005183438300150402e537a5d4626bf32450188160ae96000035303220556e6b6e6f776e20636f6d6d616e64202775746638272e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpReqEdited1.dat b/Tests/Packet++Test/PacketExamples/ftpReqEdited1.dat
+new file mode 100644
+index 00000000..ea72a082
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpReqEdited1.dat
+@@ -0,0 +1 @@
++0015f24076ef0016ce6e8b24080045000037a7e540008006d057c0a80072c0a800c104710015dfb3b2ffc6c70160501843f21da4000046454154206373616e646572730d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpReqEdited2.dat b/Tests/Packet++Test/PacketExamples/ftpReqEdited2.dat
+new file mode 100644
+index 00000000..bace5d3b
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpReqEdited2.dat
+@@ -0,0 +1 @@
++0015f24076ef0016ce6e8b2408004500003aa7e540008006d054c0a80072c0a800c104710015dfb3b2ffc6c70160501843f2a80f0000464541542054657374206f7074696f6e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpRespEdited1.dat b/Tests/Packet++Test/PacketExamples/ftpRespEdited1.dat
+new file mode 100644
+index 00000000..883728f5
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpRespEdited1.dat
+@@ -0,0 +1 @@
++0016ce6e8b240015f24076ef08004500005f2967400080064eaec0a800c1c0a8007200150471c6c70227dfb3b3465018ffb8c0d200003232362043574420636f6d6d616e64207375636365737366756c2e20222f222069732063757272656e74206469726563746f72792e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/PacketExamples/ftpRespEdited2.dat b/Tests/Packet++Test/PacketExamples/ftpRespEdited2.dat
+new file mode 100644
+index 00000000..349aac16
+--- /dev/null
++++ b/Tests/Packet++Test/PacketExamples/ftpRespEdited2.dat
+@@ -0,0 +1 @@
++0016ce6e8b240015f24076ef0800450000392967400080064ed4c0a800c1c0a8007200150471c6c70227dfb3b3465018ffb82a8300003232362054657374206f7074696f6e0d0a
+\ No newline at end of file
+diff --git a/Tests/Packet++Test/TestDefinition.h b/Tests/Packet++Test/TestDefinition.h
+index d31e05ef..bad6b39d 100644
+--- a/Tests/Packet++Test/TestDefinition.h
++++ b/Tests/Packet++Test/TestDefinition.h
+@@ -172,3 +172,8 @@ PTF_TEST_CASE(NtpCreationTests);
+ // Implemented in TelnetTests.cpp
+ PTF_TEST_CASE(TelnetCommandParsingTests);
+ PTF_TEST_CASE(TelnetDataParsingTests);
++
++// Implemented in FtpTests.cpp
++PTF_TEST_CASE(FtpParsingTests);
++PTF_TEST_CASE(FtpCreationTests);
++PTF_TEST_CASE(FtpEditTests);
+diff --git a/Tests/Packet++Test/Tests/FtpTests.cpp b/Tests/Packet++Test/Tests/FtpTests.cpp
+new file mode 100644
+index 00000000..1ca9583c
+--- /dev/null
++++ b/Tests/Packet++Test/Tests/FtpTests.cpp
+@@ -0,0 +1,202 @@
++#include "../TestDefinition.h"
++#include "../Utils/TestUtils.h"
++#include "EndianPortable.h"
++#include "EthLayer.h"
++#include "FtpLayer.h"
++#include "IPv4Layer.h"
++#include "IPv6Layer.h"
++#include "Packet.h"
++#include "SystemUtils.h"
++#include "TcpLayer.h"
++
++PTF_TEST_CASE(FtpParsingTests)
++{
++	timeval time;
++	gettimeofday(&time, NULL);
++
++	// Test IPv4 packets
++	READ_FILE_AND_CREATE_PACKET(1, "PacketExamples/ftpIpv4Req.dat");
++
++	pcpp::Packet ftpPacket1(&rawPacket1);
++	pcpp::FtpRequestLayer *ftpLayer1 = ftpPacket1.getLayerOfType<pcpp::FtpRequestLayer>();
++
++	PTF_ASSERT_NOT_NULL(ftpLayer1);
++	PTF_ASSERT_EQUAL(int(ftpLayer1->getCommand()), int(pcpp::FtpRequestLayer::FtpCommand::USER));
++	PTF_ASSERT_EQUAL(ftpLayer1->getCommandString(), "USER");
++	PTF_ASSERT_EQUAL(ftpLayer1->getCommandOption(), "csanders");
++	PTF_ASSERT_EQUAL(ftpLayer1->toString(), "FTP Request: USER");
++	PTF_ASSERT_FALSE(ftpLayer1->isMultiLine());
++
++	PTF_ASSERT_EQUAL(pcpp::FtpRequestLayer::getCommandInfo(pcpp::FtpRequestLayer::FtpCommand::USER),
++					 "Authentication username.");
++	PTF_ASSERT_EQUAL(pcpp::FtpRequestLayer::getCommandAsString(pcpp::FtpRequestLayer::FtpCommand::USER), "USER");
++
++	READ_FILE_AND_CREATE_PACKET(2, "PacketExamples/ftpIpv4Resp.dat");
++
++	pcpp::Packet ftpPacket2(&rawPacket2);
++	pcpp::FtpResponseLayer *ftpLayer2 = ftpPacket2.getLayerOfType<pcpp::FtpResponseLayer>();
++
++	PTF_ASSERT_NOT_NULL(ftpLayer2);
++	PTF_ASSERT_EQUAL(int(ftpLayer2->getStatusCode()), int(pcpp::FtpResponseLayer::FtpStatusCode::REQ_FILE_OK_COMPLETE));
++	PTF_ASSERT_EQUAL(ftpLayer2->getStatusCodeString(), "250");
++	PTF_ASSERT_EQUAL(ftpLayer2->getStatusOption(), "CWD command successful. \"/\" is current directory.");
++	PTF_ASSERT_EQUAL(ftpLayer2->toString(), "FTP Response: 250");
++	PTF_ASSERT_FALSE(ftpLayer2->isMultiLine());
++
++	PTF_ASSERT_EQUAL(
++		pcpp::FtpResponseLayer::getStatusCodeAsString(pcpp::FtpResponseLayer::FtpStatusCode::REQ_FILE_OK_COMPLETE),
++		"Requested file action okay, completed");
++
++	READ_FILE_AND_CREATE_PACKET(3, "PacketExamples/ftpIpv4RespHyphen.dat");
++
++	pcpp::Packet ftpPacket3(&rawPacket3);
++	pcpp::FtpResponseLayer *ftpLayer3 = ftpPacket3.getLayerOfType<pcpp::FtpResponseLayer>();
++
++	PTF_ASSERT_NOT_NULL(ftpLayer3);
++	PTF_ASSERT_EQUAL(int(ftpLayer3->getStatusCode()), int(pcpp::FtpResponseLayer::FtpStatusCode::SYSTEM_STATUS));
++	PTF_ASSERT_EQUAL(ftpLayer3->getStatusCodeString(), "211");
++	PTF_ASSERT_EQUAL(ftpLayer3->getStatusOption(), "Extensions supported: CLNT MDTM PASV REST STREAM SIZE211 End.");
++	PTF_ASSERT_EQUAL(ftpLayer3->toString(), "FTP Response: 211");
++	PTF_ASSERT_TRUE(ftpLayer3->isMultiLine());
++
++	PTF_ASSERT_EQUAL(
++		pcpp::FtpResponseLayer::getStatusCodeAsString(pcpp::FtpResponseLayer::FtpStatusCode::SYSTEM_STATUS),
++		"System status, or system help reply");
++
++	// Test IPv6 packets
++	READ_FILE_AND_CREATE_PACKET(4, "PacketExamples/ftpIpv6Req.dat");
++
++	pcpp::Packet ftpPacket4(&rawPacket4);
++	pcpp::FtpRequestLayer *ftpLayer4 = ftpPacket4.getLayerOfType<pcpp::FtpRequestLayer>();
++
++	PTF_ASSERT_NOT_NULL(ftpLayer4);
++	PTF_ASSERT_EQUAL(int(ftpLayer4->getCommand()), int(pcpp::FtpRequestLayer::FtpCommand::PASS));
++	PTF_ASSERT_EQUAL(ftpLayer4->getCommandString(), "PASS");
++	PTF_ASSERT_EQUAL(ftpLayer4->getCommandOption(), "IEUser@");
++	PTF_ASSERT_EQUAL(ftpLayer4->toString(), "FTP Request: PASS");
++	PTF_ASSERT_FALSE(ftpLayer4->isMultiLine());
++
++	PTF_ASSERT_EQUAL(pcpp::FtpRequestLayer::getCommandInfo(pcpp::FtpRequestLayer::FtpCommand::PASS),
++					 "Authentication password.");
++	PTF_ASSERT_EQUAL(pcpp::FtpRequestLayer::getCommandAsString(pcpp::FtpRequestLayer::FtpCommand::PASS), "PASS");
++
++	READ_FILE_AND_CREATE_PACKET(5, "PacketExamples/ftpIpv6Resp.dat");
++
++	pcpp::Packet ftpPacket5(&rawPacket5);
++	pcpp::FtpResponseLayer *ftpLayer5 = ftpPacket5.getLayerOfType<pcpp::FtpResponseLayer>();
++
++	PTF_ASSERT_NOT_NULL(ftpLayer5);
++	PTF_ASSERT_EQUAL(int(ftpLayer5->getStatusCode()),
++					 int(pcpp::FtpResponseLayer::FtpStatusCode::COMMAND_NOT_IMPLEMENTED));
++	PTF_ASSERT_EQUAL(ftpLayer5->getStatusCodeString(), "502");
++	PTF_ASSERT_EQUAL(ftpLayer5->getStatusOption(), "Unknown command 'utf8'.");
++	PTF_ASSERT_EQUAL(ftpLayer5->toString(), "FTP Response: 502");
++	PTF_ASSERT_FALSE(ftpLayer5->isMultiLine());
++
++	PTF_ASSERT_EQUAL(
++		pcpp::FtpResponseLayer::getStatusCodeAsString(pcpp::FtpResponseLayer::FtpStatusCode::COMMAND_NOT_IMPLEMENTED),
++		"Command not implemented");
++}
++
++PTF_TEST_CASE(FtpCreationTests)
++{
++	timeval time;
++	gettimeofday(&time, NULL);
++
++	// Craft packets
++	READ_FILE_AND_CREATE_PACKET(1, "PacketExamples/ftpIpv4Req.dat");
++
++	pcpp::Packet ftpPacket1(&rawPacket1);
++	pcpp::Packet craftedPacket1;
++
++	pcpp::EthLayer ethLayer1(*ftpPacket1.getLayerOfType<pcpp::EthLayer>());
++	PTF_ASSERT_TRUE(craftedPacket1.addLayer(&ethLayer1));
++
++	pcpp::IPv4Layer ipv4Layer1(*ftpPacket1.getLayerOfType<pcpp::IPv4Layer>());
++	PTF_ASSERT_TRUE(craftedPacket1.addLayer(&ipv4Layer1));
++
++	pcpp::TcpLayer tcpLayer1(*ftpPacket1.getLayerOfType<pcpp::TcpLayer>());
++	PTF_ASSERT_TRUE(craftedPacket1.addLayer(&tcpLayer1));
++
++	pcpp::FtpRequestLayer ftpReqLayer1(pcpp::FtpRequestLayer::FtpCommand::USER, "csanders");
++	PTF_ASSERT_TRUE(craftedPacket1.addLayer(&ftpReqLayer1));
++
++	PTF_ASSERT_EQUAL(bufferLength1, craftedPacket1.getRawPacket()->getRawDataLen());
++	PTF_ASSERT_BUF_COMPARE(buffer1, craftedPacket1.getRawPacket()->getRawData(), bufferLength1);
++
++	READ_FILE_AND_CREATE_PACKET(2, "PacketExamples/ftpIpv4RespHyphen.dat");
++
++	pcpp::Packet ftpPacket2(&rawPacket2);
++	pcpp::Packet craftedPacket2;
++
++	pcpp::EthLayer ethLayer2(*ftpPacket2.getLayerOfType<pcpp::EthLayer>());
++	PTF_ASSERT_TRUE(craftedPacket2.addLayer(&ethLayer2));
++
++	pcpp::IPv4Layer ipv4Layer2(*ftpPacket2.getLayerOfType<pcpp::IPv4Layer>());
++	PTF_ASSERT_TRUE(craftedPacket2.addLayer(&ipv4Layer2));
++
++	pcpp::TcpLayer tcpLayer2(*ftpPacket2.getLayerOfType<pcpp::TcpLayer>());
++	PTF_ASSERT_TRUE(craftedPacket2.addLayer(&tcpLayer2));
++
++	pcpp::FtpResponseLayer ftpRespLayer1(
++		pcpp::FtpResponseLayer::FtpStatusCode::SYSTEM_STATUS,
++		"Extensions supported:\r\n CLNT\r\n MDTM\r\n PASV\r\n REST STREAM\r\n SIZE\r\n211 End.");
++	PTF_ASSERT_TRUE(craftedPacket2.addLayer(&ftpRespLayer1));
++
++	PTF_ASSERT_EQUAL(bufferLength2, craftedPacket2.getRawPacket()->getRawDataLen());
++	PTF_ASSERT_BUF_COMPARE(buffer2, craftedPacket2.getRawPacket()->getRawData(), bufferLength2);
++}
++
++PTF_TEST_CASE(FtpEditTests)
++{
++	timeval time;
++	gettimeofday(&time, NULL);
++
++	// Modify existing request packets
++	READ_FILE_AND_CREATE_PACKET(1, "PacketExamples/ftpIpv4Req.dat");
++	pcpp::Packet ftpPacket1(&rawPacket1);
++	pcpp::FtpRequestLayer *ftpLayer1 = ftpPacket1.getLayerOfType<pcpp::FtpRequestLayer>();
++	PTF_ASSERT_NOT_NULL(ftpLayer1);
++
++	READ_FILE_AND_CREATE_PACKET(2, "PacketExamples/ftpReqEdited1.dat");
++	pcpp::Packet ftpReqEdited1(&rawPacket2);
++	pcpp::FtpRequestLayer *ftpReqEditedLayer1 = ftpReqEdited1.getLayerOfType<pcpp::FtpRequestLayer>();
++	PTF_ASSERT_NOT_NULL(ftpReqEditedLayer1);
++
++	ftpLayer1->setCommand(pcpp::FtpRequestLayer::FtpCommand::FEAT);
++	PTF_ASSERT_EQUAL(ftpLayer1->getDataLen(), ftpReqEditedLayer1->getDataLen());
++	PTF_ASSERT_BUF_COMPARE(ftpLayer1->getData(), ftpReqEditedLayer1->getData(), ftpLayer1->getDataLen());
++
++	READ_FILE_AND_CREATE_PACKET(3, "PacketExamples/ftpReqEdited2.dat");
++	pcpp::Packet ftpReqEdited2(&rawPacket3);
++	pcpp::FtpRequestLayer *ftpReqEditedLayer2 = ftpReqEdited2.getLayerOfType<pcpp::FtpRequestLayer>();
++	PTF_ASSERT_NOT_NULL(ftpReqEditedLayer2);
++
++	ftpLayer1->setCommandOption("Test option");
++	PTF_ASSERT_EQUAL(ftpLayer1->getDataLen(), ftpReqEditedLayer2->getDataLen());
++	PTF_ASSERT_BUF_COMPARE(ftpLayer1->getData(), ftpReqEditedLayer2->getData(), ftpLayer1->getDataLen());
++
++	// Modify existing response packets
++	READ_FILE_AND_CREATE_PACKET(4, "PacketExamples/ftpIpv4Resp.dat");
++	pcpp::Packet ftpPacket2(&rawPacket4);
++	pcpp::FtpResponseLayer *ftpLayer2 = ftpPacket2.getLayerOfType<pcpp::FtpResponseLayer>();
++	PTF_ASSERT_NOT_NULL(ftpLayer2);
++
++	READ_FILE_AND_CREATE_PACKET(5, "PacketExamples/ftpRespEdited1.dat");
++	pcpp::Packet ftpRespEdited1(&rawPacket5);
++	pcpp::FtpResponseLayer *ftpRespEditedLayer1 = ftpRespEdited1.getLayerOfType<pcpp::FtpResponseLayer>();
++	PTF_ASSERT_NOT_NULL(ftpRespEditedLayer1);
++
++	ftpLayer2->setStatusCode(pcpp::FtpResponseLayer::FtpStatusCode::CLOSING_DATA);
++	PTF_ASSERT_EQUAL(ftpLayer2->getDataLen(), ftpRespEditedLayer1->getDataLen());
++	PTF_ASSERT_BUF_COMPARE(ftpLayer2->getData(), ftpRespEditedLayer1->getData(), ftpLayer2->getDataLen());
++
++	READ_FILE_AND_CREATE_PACKET(6, "PacketExamples/ftpRespEdited2.dat");
++	pcpp::Packet ftpRespEdited2(&rawPacket6);
++	pcpp::FtpResponseLayer *ftpRespEditedLayer2 = ftpRespEdited2.getLayerOfType<pcpp::FtpResponseLayer>();
++	PTF_ASSERT_NOT_NULL(ftpRespEditedLayer2);
++
++	ftpLayer2->setStatusOption("Test option");
++	PTF_ASSERT_EQUAL(ftpLayer2->getDataLen(), ftpRespEditedLayer2->getDataLen());
++	PTF_ASSERT_BUF_COMPARE(ftpLayer2->getData(), ftpRespEditedLayer2->getData(), ftpLayer2->getDataLen());
++}
+diff --git a/Tests/Packet++Test/main.cpp b/Tests/Packet++Test/main.cpp
+index 00c67252..0ed500b7 100644
+--- a/Tests/Packet++Test/main.cpp
++++ b/Tests/Packet++Test/main.cpp
+@@ -253,5 +253,9 @@ int main(int argc, char* argv[])
+ 	PTF_RUN_TEST(TelnetCommandParsingTests, "telnet");
+ 	PTF_RUN_TEST(TelnetDataParsingTests, "telnet");
+ 
++	PTF_RUN_TEST(FtpParsingTests, "ftp");
++	PTF_RUN_TEST(FtpCreationTests, "ftp");
++	PTF_RUN_TEST(FtpEditTests, "ftp");
++
+ 	PTF_END_RUNNING_TESTS;
+ }
+diff --git a/mk/vs/Packet++.vcxproj.filters b/mk/vs/Packet++.vcxproj.filters
+index 460ab44d..683ce09a 100644
+--- a/mk/vs/Packet++.vcxproj.filters
++++ b/mk/vs/Packet++.vcxproj.filters
+@@ -48,6 +48,9 @@
+     <ClInclude Include="..\..\Packet++\header\EthLayer.h">
+       <Filter>Header Files</Filter>
+     </ClInclude>
++    <ClInclude Include="..\..\Packet++\header\FtpLayer.h">
++      <Filter>Header Files</Filter>
++    </ClInclude>
+     <ClInclude Include="..\..\Packet++\header\GreLayer.h">
+       <Filter>Header Files</Filter>
+     </ClInclude>
+@@ -81,6 +84,9 @@
+     <ClInclude Include="..\..\Packet++\header\Layer.h">
+       <Filter>Header Files</Filter>
+     </ClInclude>
++    <ClInclude Include="..\..\Packet++\header\SingleCommandTextProtocol.h">
++      <Filter>Header Files</Filter>
++    </ClInclude>
+     <ClInclude Include="..\..\Packet++\header\MplsLayer.h">
+       <Filter>Header Files</Filter>
+     </ClInclude>
+@@ -188,6 +194,9 @@
+     <ClCompile Include="..\..\Packet++\src\EthLayer.cpp">
+       <Filter>Source Files</Filter>
+     </ClCompile>
++    <ClCompile Include="..\..\Packet++\src\FtpLayer.cpp">
++      <Filter>Source Files</Filter>
++    </ClCompile>
+     <ClCompile Include="..\..\Packet++\src\GreLayer.cpp">
+       <Filter>Source Files</Filter>
+     </ClCompile>
+@@ -221,6 +230,9 @@
+     <ClCompile Include="..\..\Packet++\src\Layer.cpp">
+       <Filter>Source Files</Filter>
+     </ClCompile>
++    <ClCompile Include="..\..\Packet++\src\SingleCommandTextProtocol.cpp">
++      <Filter>Source Files</Filter>
++    </ClCompile>
+     <ClCompile Include="..\..\Packet++\src\MplsLayer.cpp">
+       <Filter>Source Files</Filter>
+     </ClCompile>
+diff --git a/mk/vs/Packet++.vcxproj.template b/mk/vs/Packet++.vcxproj.template
+index 68f3aaf6..685d0b90 100644
+--- a/mk/vs/Packet++.vcxproj.template
++++ b/mk/vs/Packet++.vcxproj.template
+@@ -190,6 +190,7 @@ xcopy "$(PcapPlusPlusHome)\Packet++\header\*" "$(PcapPlusPlusHome)\Dist\header"
+     <ClInclude Include="..\..\Packet++\header\DnsResourceData.h" />
+     <ClInclude Include="..\..\Packet++\header\EthDot3Layer.h" />
+     <ClInclude Include="..\..\Packet++\header\EthLayer.h" />
++    <ClInclude Include="..\..\Packet++\header\FtpLayer.h" />
+     <ClInclude Include="..\..\Packet++\header\GreLayer.h" />
+     <ClInclude Include="..\..\Packet++\header\GtpLayer.h" />
+     <ClInclude Include="..\..\Packet++\header\HttpLayer.h" />
+@@ -201,6 +202,7 @@ xcopy "$(PcapPlusPlusHome)\Packet++\header\*" "$(PcapPlusPlusHome)\Dist\header"
+     <ClInclude Include="..\..\Packet++\header\IPv6Extensions.h" />
+     <ClInclude Include="..\..\Packet++\header\IPv6Layer.h" />
+     <ClInclude Include="..\..\Packet++\header\Layer.h" />
++    <ClCompile Include="..\..\Packet++\header\SingleCommandTextProtocol.h" />
+     <ClInclude Include="..\..\Packet++\header\MplsLayer.h" />
+     <ClInclude Include="..\..\Packet++\header\NtpLayer.h" />
+     <ClInclude Include="..\..\Packet++\header\NullLoopbackLayer.h" />
+@@ -238,6 +240,7 @@ xcopy "$(PcapPlusPlusHome)\Packet++\header\*" "$(PcapPlusPlusHome)\Dist\header"
+     <ClCompile Include="..\..\Packet++\src\DnsResourceData.cpp" />
+     <ClCompile Include="..\..\Packet++\src\EthDot3Layer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\EthLayer.cpp" />
++    <ClCompile Include="..\..\Packet++\src\FtpLayer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\GreLayer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\GtpLayer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\HttpLayer.cpp" />
+@@ -249,6 +252,7 @@ xcopy "$(PcapPlusPlusHome)\Packet++\header\*" "$(PcapPlusPlusHome)\Dist\header"
+     <ClCompile Include="..\..\Packet++\src\IPv6Extensions.cpp" />
+     <ClCompile Include="..\..\Packet++\src\IPv6Layer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\Layer.cpp" />
++    <ClCompile Include="..\..\Packet++\src\SingleCommandTextProtocol.cpp" />
+     <ClCompile Include="..\..\Packet++\src\MplsLayer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\NtpLayer.cpp" />
+     <ClCompile Include="..\..\Packet++\src\NullLoopbackLayer.cpp" />
+diff --git a/mk/vs/Packet++Test.vcxproj.filters b/mk/vs/Packet++Test.vcxproj.filters
+index 20a9da68..36cc7484 100644
+--- a/mk/vs/Packet++Test.vcxproj.filters
++++ b/mk/vs/Packet++Test.vcxproj.filters
+@@ -38,6 +38,9 @@
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\EthAndArpTests.cpp">
+       <Filter>Source Files\Tests</Filter>
+     </ClCompile>
++    <ClCompile Include="..\..\Tests\Packet++Test\Tests\FtpTests.cpp">
++      <Filter>Source Files\Tests</Filter>
++    </ClCompile>
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\GreTests.cpp">
+       <Filter>Source Files\Tests</Filter>
+     </ClCompile>
+diff --git a/mk/vs/Packet++Test.vcxproj.template b/mk/vs/Packet++Test.vcxproj.template
+index 6b3a5937..fa32fa72 100644
+--- a/mk/vs/Packet++Test.vcxproj.template
++++ b/mk/vs/Packet++Test.vcxproj.template
+@@ -174,6 +174,7 @@
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\DhcpV6Tests.cpp" />
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\DnsTests.cpp" />
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\EthAndArpTests.cpp" />
++    <ClCompile Include="..\..\Tests\Packet++Test\Tests\FtpTests.cpp" />
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\GreTests.cpp" />
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\GtpTests.cpp" />
+     <ClCompile Include="..\..\Tests\Packet++Test\Tests\HttpTests.cpp" />
+@@ -209,4 +210,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+-- 
+2.43.2
+
+
+From 7839d0493830d19bd02f84590187553509b21ee8 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Wed, 20 Jul 2022 09:37:05 +0100
+Subject: [PATCH 3/3] Fixes Heap-buffer-overflow READ in
+ pcpp::cross_platform_memmem (#914)
+
+* Fixes Heap-buffer-overflow READ in pcpp::cross_platform_memmem
+
+Fixes Heap-buffer-overflow READ in pcpp::cross_platform_memmem:
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=43408
+
+The `haystackLen` for `cross_platform_memmem` call in `SipRequestFirstLine::parseVersion` is calculated as `m_SipRequest->getDataLen() - m_UriOffset`. However when `m_DataLen` is 4 and `m_UriOffset` is 5 it results in -1 which is converted into max uint64. This leads to memory read out of data buffer bounds.
+
+* Remove trailing tab
+
+* Add the regression test
+---
+ Packet++/src/SipLayer.cpp                          |   7 +++++++
+ ...-testcase-minimized-FuzzTarget-5421416466481152 | Bin 0 -> 72 bytes
+ 2 files changed, 7 insertions(+)
+ create mode 100644 Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5421416466481152
+
+diff --git a/Packet++/src/SipLayer.cpp b/Packet++/src/SipLayer.cpp
+index 506046d7..ff120357 100644
+--- a/Packet++/src/SipLayer.cpp
++++ b/Packet++/src/SipLayer.cpp
+@@ -291,6 +291,13 @@ SipRequestLayer::SipMethod SipRequestFirstLine::parseMethod(char* data, size_t d
+ 
+ void SipRequestFirstLine::parseVersion()
+ {
++	if (m_SipRequest->getDataLen() < m_UriOffset)
++	{
++		m_Version = "";
++		m_VersionOffset = -1;
++		return;
++	}
++
+ 	char* data = (char*)(m_SipRequest->m_Data + m_UriOffset);
+ 	char* verPos = (char*)cross_platform_memmem(data, m_SipRequest->getDataLen() - m_UriOffset, " SIP/", 5);
+ 	if (verPos == NULL)
+diff --git a/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5421416466481152 b/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5421416466481152
+new file mode 100644
+index 0000000000000000000000000000000000000000..954705c33ad6f945c952cb524b035b41064772f4
+GIT binary patch
+literal 72
+wcmca|c+)~A1{MYd5cm%!6?hmJAPkTQ1BBxWmIkr~AyN>f!bd?oPd_(*05%s6(*OVf
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.2
+

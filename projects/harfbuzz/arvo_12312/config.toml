@@ -1,0 +1,4 @@
+task_id = "arvo:12312"
+target_prog = "hb-shape-fuzzer"
+vul_commit = "a3fa7d33360a58df5333dbbd121328e580f08849"
+patch_commit = "7a6686a589ed6bf17a5af0b8012501e4d4ee2ded"

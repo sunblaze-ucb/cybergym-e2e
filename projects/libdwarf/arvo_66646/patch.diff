@@ -1,0 +1,35 @@
+From 812f5db1c0fd4369e4c3b6bb8b132c70b6940320 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Mon, 12 Feb 2024 08:10:09 -0800
+Subject: [PATCH] Fixing ossfuzz 66646. A vulnerability when reading an object
+ with a particular corruption in the DWARF.  With DW_FORM_ref1 the library was
+ not validating the referenced address before dereferencing. See libdwarf
+ vulnerability list DW202402-001 for the details. This bug has been present in
+ the library for many years.
+
+	modified:   src/lib/libdwarf/dwarf_form.c
+---
+ src/lib/libdwarf/dwarf_form.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/lib/libdwarf/dwarf_form.c b/src/lib/libdwarf/dwarf_form.c
+index dc4f77f6..d8ae1e1c 100644
+--- a/src/lib/libdwarf/dwarf_form.c
++++ b/src/lib/libdwarf/dwarf_form.c
+@@ -783,6 +783,13 @@ _dwarf_internal_global_formref_b(Dwarf_Attribute attr,
+     switch (attr->ar_attribute_form) {
+ 
+     case DW_FORM_ref1:
++        if (attr->ar_debug_ptr >= section_end) {
++            _dwarf_error_string(dbg, error, 
++                DW_DLE_ATTR_FORM_OFFSET_BAD,
++                "DW_DLE_ATTR_FORM_OFFSET_BAD: "
++                "DW_FORM_ref1 outside of the section.");
++            return DW_DLV_ERROR;
++        }
+         offset = *(Dwarf_Small *) attr->ar_debug_ptr;
+         goto fixoffset;
+ 
+-- 
+2.25.1
+

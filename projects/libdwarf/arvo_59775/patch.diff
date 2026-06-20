@@ -1,0 +1,52 @@
+From 9cae1be75ec333d2b8ab8800df4850ed77a8b025 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Tue, 13 Jun 2023 08:52:44 -0700
+Subject: [PATCH] Fixing DW202306-009 ossfuzz id: 59775
+
+A carefully fuzzed object could read one
+byte past the end of a frame section
+If the last thing in a frame section
+is DW_OP_GNU_encoded_addr (data is
+supposed to follow such). Corrupt Dwarf.
+Now we check and return an error.
+	modified:   src/lib/libdwarf/dwarf_locationop_read.c
+---
+ src/lib/libdwarf/dwarf_locationop_read.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/libdwarf/dwarf_locationop_read.c b/src/lib/libdwarf/dwarf_locationop_read.c
+index 97ebdb74..3fe83f74 100644
+--- a/src/lib/libdwarf/dwarf_locationop_read.c
++++ b/src/lib/libdwarf/dwarf_locationop_read.c
+@@ -70,6 +70,7 @@ read_encoded_addr(Dwarf_Small *loc_ptr,
+     int len = 0;
+     Dwarf_Small op = *loc_ptr;
+     Dwarf_Unsigned operand = 0;
++
+     len++;
+     if (!op) {
+         op = address_size;
+@@ -613,8 +614,18 @@ _dwarf_read_loc_expr_op(Dwarf_Debug dbg,
+             it means the following is address-size.
+             The address then follows immediately for
+             that number of bytes. */
+-        int length = 0;
+-            int reares = read_encoded_addr(loc_ptr,dbg,
++            int length = 0;
++            int reares = 0;
++
++            if (loc_ptr >= section_end) {
++                _dwarf_error_string(dbg,error,
++                    DW_DLE_LOCEXPR_OFF_SECTION_END,
++                    "DW_DLE_LOCEXPR_OFF_SECTION_END "
++                    "at DW_OP_GNU_encoded_addr. "
++                    "Corrupt DWARF");
++                return DW_DLV_ERROR;
++            }
++            reares = read_encoded_addr(loc_ptr,dbg,
+                 section_end,
+                 address_size,
+                 &operand1, &length,error);
+-- 
+2.25.1
+

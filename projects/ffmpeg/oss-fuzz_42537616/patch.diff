@@ -1,0 +1,33 @@
+From 1b8d95da3a4a5c9441238928a36b653da693c286 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 7 Aug 2024 00:18:52 +0200
+Subject: [PATCH] tools/target_dec_fuzzer: Use av_buffer_allocz() to avoid
+ missing slices to have unpredictable content
+
+This matches production code which also zeros these buffers
+
+Fixes: use of uninitialized values
+Fixes: 70885/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_VP6F_fuzzer-4610946029387776 (and likely others)
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ tools/target_dec_fuzzer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/target_dec_fuzzer.c b/tools/target_dec_fuzzer.c
+index d2d7e21dac..794b5b92cc 100644
+--- a/tools/target_dec_fuzzer.c
++++ b/tools/target_dec_fuzzer.c
+@@ -129,7 +129,7 @@ static int fuzz_video_get_buffer(AVCodecContext *ctx, AVFrame *frame)
+ 
+     frame->extended_data = frame->data;
+     for (i = 0; i < 4 && size[i]; i++) {
+-        frame->buf[i] = av_buffer_alloc(size[i]);
++        frame->buf[i] = av_buffer_allocz(size[i]);
+         if (!frame->buf[i])
+             goto fail;
+         frame->data[i] = frame->buf[i]->data;
+-- 
+2.25.1
+

@@ -1,0 +1,32 @@
+From 66ee75d76ce56a3553a99d67e74b8a9970c18f5b Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 4 Aug 2024 21:27:44 +0200
+Subject: [PATCH] avformat/mpeg: Check an avio_read() for failure
+
+Fixes: use-of-uninitialized-value
+Fixes: 70849/clusterfuzz-testcase-minimized-ffmpeg_dem_MPEGPS_fuzzer-4684401009557504
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/mpeg.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/mpeg.c b/libavformat/mpeg.c
+index c3dff3e4ea..2c766a4ee9 100644
+--- a/libavformat/mpeg.c
++++ b/libavformat/mpeg.c
+@@ -566,7 +566,9 @@ redo:
+         static const unsigned char avs_seqh[4] = { 0, 0, 1, 0xb0 };
+         unsigned char buf[8];
+ 
+-        avio_read(s->pb, buf, 8);
++        ret = avio_read(s->pb, buf, 8);
++        if (ret != 8)
++            return AVERROR_INVALIDDATA;
+         avio_seek(s->pb, -8, SEEK_CUR);
+         if (!memcmp(buf, avs_seqh, 4) && (buf[6] != 0 || buf[7] != 1))
+             codec_id = AV_CODEC_ID_CAVS;
+-- 
+2.25.1
+

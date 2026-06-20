@@ -1,0 +1,4 @@
+task_id = "arvo:23433"
+target_prog = "ccbord_fuzzer"
+vul_commit = "20e1a048e61df966dbef86cdbdfb46e8baf25f04"
+patch_commit = "8d6e1755518cfb98536d6c3daf0601f226d16842"

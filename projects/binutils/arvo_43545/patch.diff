@@ -1,0 +1,104 @@
+From e1dbfc17c5305eef8f021c1baa703151bffc1490 Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Sun, 30 Jan 2022 09:17:56 -0800
+Subject: [PATCH] Load debug section only when dumping debug sections
+
+Don't load debug sections if we aren't dumping any debug sections.
+
+	PR binutils/28843
+	* objdump.c (dump_any_debugging): New.
+	(load_debug_section): Return false if dump_any_debugging isn't
+	set.
+	(main): Set dump_any_debugging when dumping any debug sections.
+	* readelf (dump_any_debugging): New.
+	(parse_args): Set dump_any_debugging when dumping any debug
+	sections.
+	(load_debug_section): Return false if dump_any_debugging isn't
+	set.
+---
+ binutils/objdump.c | 8 ++++++++
+ binutils/readelf.c | 7 +++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/binutils/objdump.c b/binutils/objdump.c
+index 08a0fe521d8..24e91869bfd 100644
+--- a/binutils/objdump.c
++++ b/binutils/objdump.c
+@@ -131,6 +131,7 @@ static bool color_output = false;	/* --visualize-jumps=color.  */
+ static bool extended_color_output = false; /* --visualize-jumps=extended-color.  */
+ static int process_links = false;       /* --process-links.  */
+ 
++static int dump_any_debugging;
+ static int demangle_flags = DMGL_ANSI | DMGL_PARAMS;
+ 
+ /* A structure to record the sections mentioned in -j switches.  */
+@@ -3851,6 +3852,9 @@ load_debug_section (enum dwarf_section_display_enum debug, void *file)
+   asection *sec;
+   const char *name;
+ 
++  if (!dump_any_debugging)
++    return false;
++
+   /* If it is already loaded, do nothing.  */
+   if (section->start != NULL)
+     {
+@@ -5688,6 +5692,10 @@ main (int argc, char **argv)
+   if (!seenflag)
+     usage (stderr, 2);
+ 
++  dump_any_debugging = (dump_debugging
++			|| dump_dwarf_section_info
++			|| process_links);
++
+   if (formats_info)
+     exit_status = display_info ();
+   else
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index b45683cd571..e56e9b56393 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -239,6 +239,7 @@ static bool decompress_dumps = false;
+ static bool do_not_show_symbol_truncation = false;
+ static bool do_demangle = false;	/* Pretty print C++ symbol names.  */
+ static bool process_links = false;
++static bool dump_any_debugging = false;
+ static int demangle_flags = DMGL_ANSI | DMGL_PARAMS;
+ static int sym_base = 0;
+ 
+@@ -5332,6 +5333,7 @@ parse_args (struct dump_data *dumpdata, int argc, char ** argv)
+ 	case 'P':
+ 	  process_links = true;
+ 	  do_follow_links = true;
++	  dump_any_debugging = true;
+ 	  break;
+ 	case 'x':
+ 	  request_dump (dumpdata, HEX_DUMP);
+@@ -5347,6 +5349,7 @@ parse_args (struct dump_data *dumpdata, int argc, char ** argv)
+ 	  break;
+ 	case 'w':
+ 	  do_dump = true;
++	  dump_any_debugging = true;
+ 	  if (optarg == NULL)
+ 	    {
+ 	      do_debugging = true;
+@@ -5360,6 +5363,7 @@ parse_args (struct dump_data *dumpdata, int argc, char ** argv)
+ 	  break;
+ 	case OPTION_DEBUG_DUMP:
+ 	  do_dump = true;
++	  dump_any_debugging = true;
+ 	  if (optarg == NULL)
+ 	    {
+ 	      do_debugging = true;
+@@ -15913,6 +15917,9 @@ load_debug_section (enum dwarf_section_display_enum debug, void * data)
+   Elf_Internal_Shdr * sec;
+   Filedata * filedata = (Filedata *) data;
+ 
++  if (!dump_any_debugging)
++    return false;
++
+   /* Without section headers we cannot find any sections.  */
+   if (filedata->section_headers == NULL)
+     return false;
+-- 
+2.43.2
+

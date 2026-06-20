@@ -1,0 +1,26 @@
+From 4d4d171afb2a13219920cb9b30d4304bf9d0f122 Mon Sep 17 00:00:00 2001
+From: Peter Ross <pross@xvid.org>
+Date: Thu, 7 Nov 2024 10:27:06 +1100
+Subject: [PATCH] avcodec/rv60: prevent decode_cu_r segfault
+
+Fixes ticket #11289 (crash).
+---
+ libavcodec/rv60dec.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libavcodec/rv60dec.c b/libavcodec/rv60dec.c
+index 86c7aefbca..8ec95e896f 100644
+--- a/libavcodec/rv60dec.c
++++ b/libavcodec/rv60dec.c
+@@ -2355,6 +2355,8 @@ static int rv60_decode_frame(AVCodecContext *avctx, AVFrame * frame,
+     ofs = get_bits_count(&gb) / 8;
+ 
+     for (int i = 0; i < s->cu_height; i++) {
++        if (header_size + ofs >= avpkt->size)
++            return AVERROR_INVALIDDATA;
+         s->slice[i].data = avpkt->data + header_size + ofs;
+         s->slice[i].data_size = FFMIN(s->slice[i].size, avpkt->size - header_size - ofs);
+         ofs += s->slice[i].size;
+-- 
+2.25.1
+

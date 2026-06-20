@@ -1,0 +1,33 @@
+From abe85836d525ef484e79243f3f992b638930ced0 Mon Sep 17 00:00:00 2001
+From: James Bonfield <jkb@sanger.ac.uk>
+Date: Tue, 2 Jul 2024 14:35:27 +0100
+Subject: [PATCH] Protect against negative POS fields in CRAM encoder.
+
+We check pos against the ref end, and if that fits we then fetch
+`&ref[apos]` to get the reference, but this understeps the array.
+
+The fastest way to handle all this and other related errors is simply
+to sanity check the input for out of bounds POS and bail out early.
+
+Credit to OSS-Fuzz
+Fixes oss-fuzz 70014
+---
+ cram/cram_encode.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/cram/cram_encode.c b/cram/cram_encode.c
+index 4a762f7b..d59ea525 100644
+--- a/cram/cram_encode.c
++++ b/cram/cram_encode.c
+@@ -3401,6 +3401,8 @@ static int process_one_read(cram_fd *fd, cram_container *c,
+ 
+     c->num_bases   += cr->len;
+     cr->apos        = bam_pos(b)+1;
++    if (cr->apos < 0 || cr->apos > INT64_MAX/2)
++        goto err;
+     if (c->pos_sorted) {
+         if (cr->apos < s->last_apos && !fd->ap_delta) {
+             c->pos_sorted = 0;
+-- 
+2.25.1
+

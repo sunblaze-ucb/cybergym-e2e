@@ -1,0 +1,39 @@
+From c8b3d02c49943d1fef2cc060dd7115a5ae5f7afe Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Tue, 14 Mar 2023 10:25:51 +1030
+Subject: [PATCH] objdump segfault after symbol table error
+
+This memcpy segfaults if symcount is -1 (=> syms is NULL).
+      memcpy (sorted_syms, symcount ? syms : dynsyms,
+	      sorted_symcount * sizeof (asymbol *));
+
+	* objdump.c (slurp_symtab): Don't leave symcount as -1 after
+	an error.
+	(slurp_dynamic_symtab): Likewise for dynsymcount.
+---
+ binutils/objdump.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/binutils/objdump.c b/binutils/objdump.c
+index 0e8e1980b80..5dac13ba868 100644
+--- a/binutils/objdump.c
++++ b/binutils/objdump.c
+@@ -1015,6 +1015,7 @@ slurp_symtab (bfd *abfd)
+       my_bfd_nonfatal (bfd_get_filename (abfd));
+       free (sy);
+       sy = NULL;
++      symcount = 0;
+     }
+   return sy;
+ }
+@@ -1048,6 +1049,7 @@ slurp_dynamic_symtab (bfd *abfd)
+       my_bfd_nonfatal (bfd_get_filename (abfd));
+       free (sy);
+       sy = NULL;
++      dynsymcount = 0;
+     }
+   return sy;
+ }
+-- 
+2.25.1
+

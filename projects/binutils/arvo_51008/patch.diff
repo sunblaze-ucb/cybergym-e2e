@@ -1,0 +1,27 @@
+From 3cb5e955a372f0303992340a164a21ca5cf6d006 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 12 Sep 2022 18:50:53 +0930
+Subject: [PATCH] msan: vms-alpha use-of-uninitialized-value in
+ dst_retrieve_location
+
+	* vms-alpha.c (dst_define_location): Init any unused entries.
+---
+ bfd/vms-alpha.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/bfd/vms-alpha.c b/bfd/vms-alpha.c
+index 0ea9ed544f1..9db476363ee 100644
+--- a/bfd/vms-alpha.c
++++ b/bfd/vms-alpha.c
+@@ -1570,6 +1570,8 @@ dst_define_location (bfd *abfd, unsigned int loc)
+ 			       (loc + 1) * sizeof (unsigned int));
+       if (PRIV (dst_ptr_offsets) == NULL)
+ 	return false;
++      memset (PRIV (dst_ptr_offsets) + PRIV (dst_ptr_offsets_count), 0,
++	      (loc - PRIV (dst_ptr_offsets_count)) * sizeof (unsigned int));
+       PRIV (dst_ptr_offsets_count) = loc + 1;
+     }
+ 
+-- 
+2.25.1
+

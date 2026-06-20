@@ -1,0 +1,74 @@
+From 3ebb55b75f3ea0194814c787c6b5ebcaba76db07 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Mon, 11 Jul 2022 11:02:27 +0900
+Subject: [PATCH] bigint.c (mrb_bint_copy): allow dup operation for bigints.
+
+---
+ include/mruby/internal.h           |  1 +
+ mrbgems/mruby-bigint/core/bigint.c | 10 ++++++++--
+ src/class.c                        |  5 +++++
+ 3 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/include/mruby/internal.h b/include/mruby/internal.h
+index 02500521b..5215d0e51 100644
+--- a/include/mruby/internal.h
++++ b/include/mruby/internal.h
+@@ -182,6 +182,7 @@ mrb_float mrb_bint_as_float(mrb_state *mrb, mrb_value x);
+ mrb_int mrb_bint_as_int(mrb_state *mrb, mrb_value x);
+ mrb_int mrb_bint_cmp(mrb_state *mrb, mrb_value x, mrb_value y);
+ void mrb_gc_free_bint(mrb_state *mrb, struct RBasic *x);
++void mrb_bint_copy(mrb_state *mrb, mrb_value x, mrb_value y);
+ #endif
+ 
+ #endif  /* MRUBY_INTERNAL_H */
+diff --git a/mrbgems/mruby-bigint/core/bigint.c b/mrbgems/mruby-bigint/core/bigint.c
+index 4aba1c340..53464a3ab 100644
+--- a/mrbgems/mruby-bigint/core/bigint.c
++++ b/mrbgems/mruby-bigint/core/bigint.c
+@@ -23,7 +23,6 @@ mpz_init(mrb_state *mrb, mpz_t *s)
+   s->sz=2;
+ }
+ 
+-#if 0
+ static void
+ mpz_init_set(mrb_state *mrb, mpz_t *s, mpz_t *t)
+ {
+@@ -34,7 +33,6 @@ mpz_init_set(mrb_state *mrb, mpz_t *s, mpz_t *t)
+   s->sn = t->sn;
+   s->sz = t->sz;
+ }
+-#endif
+ 
+ static void
+ mpz_set_int(mrb_state *mrb, mpz_t *y, mrb_int v)
+@@ -1450,3 +1448,11 @@ mrb_bint_rshift(mrb_state *mrb, mrb_value x, mrb_int width)
+   }
+   return bint_norm(mrb, b2);
+ }
++
++void
++mrb_bint_copy(mrb_state *mrb, mrb_value x, mrb_value y)
++{
++  struct RBigint *b = RBIGINT(x);
++  struct RBigint *b2 = RBIGINT(y);
++  mpz_init_set(mrb, &b->mp, &b2->mp);
++}
+diff --git a/src/class.c b/src/class.c
+index 483a88ee0..b8a2268c2 100644
+--- a/src/class.c
++++ b/src/class.c
+@@ -2737,6 +2737,11 @@ init_copy(mrb_state *mrb, mrb_value dest, mrb_value obj)
+     case MRB_TT_ISTRUCT:
+       mrb_istruct_copy(dest, obj);
+       break;
++#ifdef MRB_USE_BIGINT
++    case MRB_TT_BIGINT:
++      mrb_bint_copy(mrb, dest, obj);
++      break;
++#endif
+ 
+     default:
+       break;
+-- 
+2.43.2
+

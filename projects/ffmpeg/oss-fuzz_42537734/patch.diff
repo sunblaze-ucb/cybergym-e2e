@@ -1,0 +1,31 @@
+From 7c1e732ad2e240af5afe9ffea443c91bb233aa65 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Fri, 16 Aug 2024 16:00:01 +0200
+Subject: [PATCH] avcodec/webp: Check ref_x/y
+
+Fixes: 70991/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_WEBP_fuzzer-5544067620995072
+Fixes: use of uninintailized value
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/webp.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libavcodec/webp.c b/libavcodec/webp.c
+index 7c2a5f0111..b624458d67 100644
+--- a/libavcodec/webp.c
++++ b/libavcodec/webp.c
+@@ -704,6 +704,9 @@ static int decode_entropy_coded_image(WebPContext *s, enum ImageRole role,
+             ref_x = FFMAX(0, ref_x);
+             ref_y = FFMAX(0, ref_y);
+ 
++            if (ref_y == y && ref_x >= x)
++                return AVERROR_INVALIDDATA;
++
+             /* copy pixels
+              * source and dest regions can overlap and wrap lines, so just
+              * copy per-pixel */
+-- 
+2.25.1
+

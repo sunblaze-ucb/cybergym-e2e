@@ -1,0 +1,5 @@
+task_id = "arvo:63587"
+target_prog = "fuzz_pkcs15_crypt"
+vul_commit = "12e01b8e3a263efa3f55c67a433ebfb711479dbb"
+patch_commit = "fbda61d0d276dc98b9d1d1e6810bbd21d19e3859"
+build_image = "n132/arvo:63587-fix"

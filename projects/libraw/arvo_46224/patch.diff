@@ -1,0 +1,30 @@
+From aa61a015845d12e19e5ee5fcfca28ef6b5cebf55 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Sun, 24 Jul 2022 15:21:43 +0100
+Subject: [PATCH] Fixes Use-of-uninitialized-value in
+ LibRaw::parse_fuji_compressed_header
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46224
+
+The `uchar header[16];` in `LibRaw::parse_fuji_compressed_header` is not initialized (contains garbage) because the stream is eof.
+---
+ src/decoders/fuji_compressed.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/decoders/fuji_compressed.cpp b/src/decoders/fuji_compressed.cpp
+index 5f1dc022..aa9fb973 100644
+--- a/src/decoders/fuji_compressed.cpp
++++ b/src/decoders/fuji_compressed.cpp
+@@ -1163,7 +1163,8 @@ void LibRaw::parse_fuji_compressed_header()
+   uchar header[16];
+ 
+   libraw_internal_data.internal_data.input->seek(libraw_internal_data.unpacker_data.data_offset, SEEK_SET);
+-  libraw_internal_data.internal_data.input->read(header, 1, sizeof(header));
++  if (libraw_internal_data.internal_data.input->read(header, 1, sizeof(header)) != sizeof(header))
++    return;
+ 
+   // read all header
+   signature = sgetn(2, header);
+-- 
+2.43.2
+

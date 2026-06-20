@@ -1,0 +1,41 @@
+From a36dd8cd208582316322b0dd6e7569785c8f2780 Mon Sep 17 00:00:00 2001
+From: Antoine Pitrou <antoine@python.org>
+Date: Mon, 22 Nov 2021 16:27:56 +0100
+Subject: [PATCH] ARROW-14791: [C++] Fix crash when validating corrupt list
+ array
+
+Should fix the following failure (found by OSS-Fuzz):
+* https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=41143
+
+Closes #11753 from pitrou/ARROW-14791-fuzz-ipc-stream
+
+Authored-by: Antoine Pitrou <antoine@python.org>
+Signed-off-by: Antoine Pitrou <antoine@python.org>
+---
+ cpp/src/arrow/array/validate.cc | 2 +-
+ testing                         | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cpp/src/arrow/array/validate.cc b/cpp/src/arrow/array/validate.cc
+index 44889e4f3..52fcad5e7 100644
+--- a/cpp/src/arrow/array/validate.cc
++++ b/cpp/src/arrow/array/validate.cc
+@@ -564,7 +564,7 @@ struct ValidateArrayImpl {
+                              " and offset: ", data.offset);
+     }
+ 
+-    if (full_validation && offsets_byte_size != 0) {
++    if (full_validation && required_offsets > 0) {
+       // Validate all offset values
+       const offset_type* offsets = data.GetValues<offset_type>(1);
+ 
+diff --git a/testing b/testing
+index 1d8525e10..93ef4a7bb 160000
+--- a/testing
++++ b/testing
+@@ -1 +1 @@
+-Subproject commit 1d8525e109a12a8c67c489eba48715a199609153
++Subproject commit 93ef4a7bbf8cc629fa1f82bf38bb6e89cda91d40
+-- 
+2.43.2
+

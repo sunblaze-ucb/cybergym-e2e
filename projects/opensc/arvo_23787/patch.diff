@@ -1,0 +1,29 @@
+From 05dcde508b8f5884242c6832cc2a4521fedd626f Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Mon, 29 Jun 2020 19:16:57 +0200
+Subject: [PATCH] authentic: Use memmove as the memory can overlap (if path is
+ > 2B)
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=23787
+---
+ src/libopensc/card-authentic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-authentic.c b/src/libopensc/card-authentic.c
+index 0f208d11..119973c9 100644
+--- a/src/libopensc/card-authentic.c
++++ b/src/libopensc/card-authentic.c
+@@ -567,7 +567,7 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
+ 					sc_file_free(file);
+ 					LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+ 				}
+-				memcpy(card->cache.current_df->path.value + cur_df_path.len,
++				memmove(card->cache.current_df->path.value + cur_df_path.len,
+ 						card->cache.current_df->path.value,
+ 						card->cache.current_df->path.len);
+ 				memcpy(card->cache.current_df->path.value, cur_df_path.value, cur_df_path.len);
+-- 
+2.43.2
+

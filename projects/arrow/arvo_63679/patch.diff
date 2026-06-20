@@ -1,0 +1,140 @@
+From 84c15da1997559c37841dc16f9e2c70c643dd9d2 Mon Sep 17 00:00:00 2001
+From: Benjamin Kietzman <bengilgit@gmail.com>
+Date: Mon, 27 Nov 2023 12:10:08 -0500
+Subject: [PATCH] GH-38738: [C++] Check variadic buffer counts in bounds
+ (#38740)
+
+### Rationale for this change
+
+Invalid variadic buffer counts can cause allocating storage for variadic buffers to fail.
+
+### What changes are included in this PR?
+
+Check variadic buffer counts are valid before they are used as an allocator argument.
+
+### Are these changes tested?
+
+They pass with the fuzzer testcase.
+
+### Are there any user-facing changes?
+
+No
+
+* Closes: #38738
+
+Lead-authored-by: Benjamin Kietzman <bengilgit@gmail.com>
+Co-authored-by: Antoine Pitrou <pitrou@free.fr>
+Signed-off-by: Benjamin Kietzman <bengilgit@gmail.com>
+---
+ cpp/CMakePresets.json                  | 15 +++++++++++++++
+ cpp/src/arrow/ipc/reader.cc            | 13 +++++++++----
+ docs/source/developers/cpp/fuzzing.rst | 24 ++++++++++++++++--------
+ 3 files changed, 40 insertions(+), 12 deletions(-)
+
+diff --git a/cpp/CMakePresets.json b/cpp/CMakePresets.json
+index f6324c1c0..a15b204c3 100644
+--- a/cpp/CMakePresets.json
++++ b/cpp/CMakePresets.json
+@@ -430,6 +430,21 @@
+       ],
+       "displayName": "Benchmarking build with with everything enabled",
+       "cacheVariables": {}
++    },
++    {
++      "name": "fuzzing",
++      "inherits": "base",
++      "displayName": "Debug build with IPC and Parquet fuzzing targets",
++      "cacheVariables": {
++        "CMAKE_BUILD_TYPE": "Debug",
++        "CMAKE_C_COMPILER": "clang",
++        "CMAKE_CXX_COMPILER": "clang++",
++        "ARROW_USE_ASAN": "ON",
++        "ARROW_USE_UBSAN": "ON",
++        "ARROW_IPC": "ON",
++        "ARROW_PARQUET": "ON",
++        "ARROW_FUZZING": "ON"
++      }
+     }
+   ]
+ }
+diff --git a/cpp/src/arrow/ipc/reader.cc b/cpp/src/arrow/ipc/reader.cc
+index 2ea2a4bd1..d272c7856 100644
+--- a/cpp/src/arrow/ipc/reader.cc
++++ b/cpp/src/arrow/ipc/reader.cc
+@@ -254,7 +254,12 @@ class ArrayLoader {
+     if (i >= static_cast<int>(variadic_counts->size())) {
+       return Status::IOError("variadic_count_index out of range.");
+     }
+-    return static_cast<size_t>(variadic_counts->Get(i));
++    int64_t count = variadic_counts->Get(i);
++    if (count < 0 || count > std::numeric_limits<int32_t>::max()) {
++      return Status::IOError(
++          "variadic_count must be representable as a positive int32_t, got ", count, ".");
++    }
++    return static_cast<size_t>(count);
+   }
+ 
+   Status GetFieldMetadata(int field_index, ArrayData* out) {
+@@ -388,10 +393,10 @@ class ArrayLoader {
+     RETURN_NOT_OK(LoadCommon(type.id()));
+     RETURN_NOT_OK(GetBuffer(buffer_index_++, &out_->buffers[1]));
+ 
+-    ARROW_ASSIGN_OR_RAISE(auto character_buffer_count,
++    ARROW_ASSIGN_OR_RAISE(auto data_buffer_count,
+                           GetVariadicCount(variadic_count_index_++));
+-    out_->buffers.resize(character_buffer_count + 2);
+-    for (size_t i = 0; i < character_buffer_count; ++i) {
++    out_->buffers.resize(data_buffer_count + 2);
++    for (size_t i = 0; i < data_buffer_count; ++i) {
+       RETURN_NOT_OK(GetBuffer(buffer_index_++, &out_->buffers[i + 2]));
+     }
+     return Status::OK();
+diff --git a/docs/source/developers/cpp/fuzzing.rst b/docs/source/developers/cpp/fuzzing.rst
+index bd7b303d4..851d58fb5 100644
+--- a/docs/source/developers/cpp/fuzzing.rst
++++ b/docs/source/developers/cpp/fuzzing.rst
+@@ -36,9 +36,9 @@ areas ingesting potentially invalid or malicious data.
+ Fuzz Targets and Utilities
+ ==========================
+ 
+-By passing the ``-DARROW_FUZZING=ON`` CMake option, you will build
+-the fuzz targets corresponding to the aforementioned Arrow features, as well
+-as additional related utilities.
++By passing the ``-DARROW_FUZZING=ON`` CMake option (or equivalently, using
++the ``fuzzing`` preset), you will build the fuzz targets corresponding to
++the aforementioned Arrow features, as well as additional related utilities.
+ 
+ Generating the seed corpus
+ --------------------------
+@@ -85,11 +85,7 @@ various sanitizer checks enabled.
+ 
+ .. code-block::
+ 
+-   $ cmake .. -GNinja \
+-       -DCMAKE_BUILD_TYPE=Debug \
+-       -DARROW_USE_ASAN=on \
+-       -DARROW_USE_UBSAN=on \
+-       -DARROW_FUZZING=on
++   $ cmake .. --preset=fuzzing
+ 
+ Then, assuming you have downloaded the crashing data file (let's call it
+ ``testcase-arrow-ipc-file-fuzz-123465``), you can reproduce the crash
+@@ -101,3 +97,15 @@ by running the affected fuzz target on that file:
+ 
+ (you may want to run that command under a debugger so as to inspect the
+ program state more closely)
++
++Using conda
++-----------
++
++The fuzzing executables must be compiled with clang and linked to libraries
++which provide a fuzzing runtime. If you are using conda to provide your
++dependencies, you may need to install these before building the fuzz targets:
++
++.. code-block::
++
++   $ conda install clang clangxx compiler-rt
++   $ cmake .. --preset=fuzzing
+-- 
+2.25.1
+

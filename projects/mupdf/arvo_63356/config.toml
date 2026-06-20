@@ -1,0 +1,5 @@
+task_id = "arvo:63356"
+target_prog = "pdf_fuzzer"
+vul_commit = "037c5fee7f6cad5e7ea302ee5cfdcaf78c2d3904"
+patch_commit = "a5dca1a30b1beda46cff7334b2d68c82b0bbbe59"
+build_image = "n132/arvo:63356-fix"

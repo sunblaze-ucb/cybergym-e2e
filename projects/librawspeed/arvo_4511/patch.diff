@@ -1,0 +1,52 @@
+From b08b150e21a096e49f56dc044537295991986fa4 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Sun, 3 Dec 2017 18:15:33 +0300
+Subject: [PATCH] PanasonicDecompressor: attemp to sanitize load_flags.
+
+---
+ src/librawspeed/decompressors/PanasonicDecompressor.cpp | 5 ++++-
+ src/librawspeed/decompressors/PanasonicDecompressor.h   | 1 +
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/librawspeed/decompressors/PanasonicDecompressor.cpp b/src/librawspeed/decompressors/PanasonicDecompressor.cpp
+index a1f91b5..cb7ba3b 100644
+--- a/src/librawspeed/decompressors/PanasonicDecompressor.cpp
++++ b/src/librawspeed/decompressors/PanasonicDecompressor.cpp
+@@ -46,11 +46,13 @@ PanasonicDecompressor::PanasonicDecompressor(const RawImage& img,
+   if (width == 0 || height == 0 || width > 5488 || height > 3904)
+     ThrowRDE("Unexpected image dimensions found: (%u; %u)", width, height);
+ 
++  if (BufSize < load_flags)
++    ThrowRDE("Bad load_flags: %u, less than BufSize (%u)", load_flags, BufSize);
++
+   input.check(load_flags);
+ }
+ 
+ struct PanasonicDecompressor::PanaBitpump {
+-  static constexpr uint32 BufSize = 0x4000;
+   ByteStream input;
+   std::vector<uchar8> buf;
+   int vbits = 0;
+@@ -76,6 +78,7 @@ struct PanasonicDecompressor::PanaBitpump {
+        * part of the file. Since there is no chance of affecting output buffer
+        * size we allow the decoder to decode this
+        */
++      assert(BufSize >= load_flags);
+       auto size = std::min(input.getRemainSize(), BufSize - load_flags);
+       memcpy(buf.data() + load_flags, input.getData(size), size);
+ 
+diff --git a/src/librawspeed/decompressors/PanasonicDecompressor.h b/src/librawspeed/decompressors/PanasonicDecompressor.h
+index d2da035..2fdb9fd 100644
+--- a/src/librawspeed/decompressors/PanasonicDecompressor.h
++++ b/src/librawspeed/decompressors/PanasonicDecompressor.h
+@@ -29,6 +29,7 @@ namespace rawspeed {
+ class RawImage;
+ 
+ class PanasonicDecompressor final : public AbstractParallelizedDecompressor {
++  static constexpr uint32 BufSize = 0x4000;
+   struct PanaBitpump;
+ 
+   void decompressThreaded(const RawDecompressorThread* t) const final;
+-- 
+2.7.4
+

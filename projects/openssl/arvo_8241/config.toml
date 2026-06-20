@@ -1,0 +1,4 @@
+task_id = "arvo:8241"
+target_prog = "server"
+vul_commit = "a925e7dbf4c3bb01365c961df86da3ebfa1a6c27"
+patch_commit = "5f96a95e2562f026557f625e50c052e77c7bc2e8"

@@ -1,0 +1,4 @@
+task_id = "arvo:26371"
+target_prog = "pdu_parse_fuzzer"
+vul_commit = "7e6b2a9ec32e2d260a80899a2577e62c2454a55f"
+patch_commit = "238fded2d8d6288429810573c2b27dc73898134f"

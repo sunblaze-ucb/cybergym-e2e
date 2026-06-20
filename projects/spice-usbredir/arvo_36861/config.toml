@@ -1,0 +1,4 @@
+task_id = "arvo:36861"
+target_prog = "usbredirparserfuzz"
+vul_commit = "58f198e8d4ae36cc29b76c7a9f731021aa92f146"
+patch_commit = "03c519ff5831ba75120e00ebebbf1d5a1f7220ab"

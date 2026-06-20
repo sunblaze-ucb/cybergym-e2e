@@ -1,0 +1,105 @@
+From c9facb4b7a64f8d0417fbbc5f0707b2162f8db75 Mon Sep 17 00:00:00 2001
+From: Alex Tutubalin <lexa@lexa.ru>
+Date: Fri, 3 May 2024 14:28:59 +0300
+Subject: [PATCH] Clean wrong aber values; allocate extra data to image to
+ avoid overrun on specially crafted test images
+
+---
+ src/demosaic/misc_demosaic.cpp       |  3 ++-
+ src/demosaic/xtrans_demosaic.cpp     |  2 +-
+ src/postprocessing/dcraw_process.cpp |  4 ++++
+ src/preprocessing/raw2image.cpp      | 16 +++++++++++-----
+ 4 files changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/src/demosaic/misc_demosaic.cpp b/src/demosaic/misc_demosaic.cpp
+index 76b83786..c1266ba5 100644
+--- a/src/demosaic/misc_demosaic.cpp
++++ b/src/demosaic/misc_demosaic.cpp
+@@ -47,7 +47,8 @@ void LibRaw::pre_interpolate()
+     }
+     else
+     {
+-      img = (ushort(*)[4])calloc(height, width * sizeof *img);
++      int extra = filters ? (filters == 9 ? 6 : 2) : 0;
++      img = (ushort(*)[4])calloc((height+extra), (width+extra) * sizeof *img);
+       for (row = 0; row < height; row++)
+         for (col = 0; col < width; col++)
+         {
+diff --git a/src/demosaic/xtrans_demosaic.cpp b/src/demosaic/xtrans_demosaic.cpp
+index 8bd1842c..2bb7e9b7 100644
+--- a/src/demosaic/xtrans_demosaic.cpp
++++ b/src/demosaic/xtrans_demosaic.cpp
+@@ -36,7 +36,7 @@ void LibRaw::xtrans_interpolate(int passes)
+   short allhex[3][3][2][8];
+   ushort sgrow = 0, sgcol = 0;
+ 
+-  if (width < LIBRAW_AHD_TILE || height < LIBRAW_AHD_TILE)
++  if (width < LIBRAW_AHD_TILE || height < LIBRAW_AHD_TILE || filters != 9)
+     throw LIBRAW_EXCEPTION_IO_CORRUPT; // too small image
+                                        /* Check against right pattern */
+   for (int row = 0; row < 6; row++)
+diff --git a/src/postprocessing/dcraw_process.cpp b/src/postprocessing/dcraw_process.cpp
+index 8b3d77cf..ca646f18 100644
+--- a/src/postprocessing/dcraw_process.cpp
++++ b/src/postprocessing/dcraw_process.cpp
+@@ -33,6 +33,10 @@ int LibRaw::dcraw_process(void)
+     if (~O.cropbox[2] && ~O.cropbox[3])
+       no_crop = 0;
+ 
++	for(int c = 0; c < 4; c++)
++		if (O.aber[c]< 0.001 || O.aber[c] > 1000.f)
++			O.aber[c] = 1.0;
++
+     libraw_decoder_info_t di;
+     get_decoder_info(&di);
+ 
+diff --git a/src/preprocessing/raw2image.cpp b/src/preprocessing/raw2image.cpp
+index 703d02c1..0c6475bc 100644
+--- a/src/preprocessing/raw2image.cpp
++++ b/src/preprocessing/raw2image.cpp
+@@ -41,6 +41,10 @@ void LibRaw::raw2image_start()
+     break;
+   }
+ 
++  for (int c = 0; c < 4; c++)
++    if (O.aber[c] < 0.001 || O.aber[c] > 1000.f)
++      O.aber[c] = 1.0;
++
+   // adjust for half mode!
+   IO.shrink =
+ 	  !imgdata.rawdata.color4_image && !imgdata.rawdata.color3_image &&
+@@ -78,15 +82,16 @@ int LibRaw::raw2image(void)
+     }
+ 
+     // free and re-allocate image bitmap
++	int extra = P1.filters ? (P1.filters == 9 ? 6 : 2) : 0;
+     if (imgdata.image)
+     {
+       imgdata.image = (ushort(*)[4])realloc(
+-          imgdata.image, S.iheight * S.iwidth * sizeof(*imgdata.image));
+-      memset(imgdata.image, 0, S.iheight * S.iwidth * sizeof(*imgdata.image));
++          imgdata.image, (S.iheight+extra) * (S.iwidth+extra) * sizeof(*imgdata.image));
++      memset(imgdata.image, 0, (S.iheight+extra) * (S.iwidth+extra) * sizeof(*imgdata.image));
+     }
+     else
+       imgdata.image =
+-          (ushort(*)[4])calloc(S.iheight * S.iwidth, sizeof(*imgdata.image));
++          (ushort(*)[4])calloc((S.iheight+extra) * (S.iwidth+extra), sizeof(*imgdata.image));
+ 
+ 
+     libraw_decoder_info_t decoder_info;
+@@ -384,8 +389,9 @@ int LibRaw::raw2image_ex(int do_subtract_black)
+       }
+     }
+ 
+-    int alloc_width = S.iwidth;
+-    int alloc_height = S.iheight;
++	int extra = P1.filters ? (P1.filters == 9 ? 6 : 2) : 0;
++    int alloc_width = S.iwidth + extra;
++    int alloc_height = S.iheight + extra;
+ 
+     if (IO.fuji_width && do_crop)
+     {
+-- 
+2.25.1
+

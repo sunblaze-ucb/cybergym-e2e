@@ -1,0 +1,28 @@
+From 7e436f2bd9f31a106d3c426ccb1fc1881cba254f Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Sat, 30 Jan 2021 16:30:11 -0800
+Subject: [PATCH] Fixed ASAN sanitizer-check failure when trying to read
+ usermeta past frame length.
+
+---
+ blosc/frame.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index 6704e9fa..67c56f95 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -1111,6 +1111,10 @@ int32_t frame_get_usermeta(blosc2_frame* frame, uint8_t** usermeta) {
+     *usermeta = NULL;
+     return 0;
+   }
++  if (trailer_offset + FRAME_TRAILER_USERMETA_OFFSET + usermeta_len > frame_len) {
++    BLOSC_TRACE_ERROR("Invalid usermeta offset exceeds frame length.");
++    return -1;
++  }
+ 
+   *usermeta = malloc(usermeta_len);
+   if (frame->sdata != NULL) {
+-- 
+2.43.2
+

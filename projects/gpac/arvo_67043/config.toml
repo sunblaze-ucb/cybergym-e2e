@@ -1,0 +1,5 @@
+task_id = "arvo:67043"
+target_prog = "fuzz_parse"
+vul_commit = "bcf2ca8b787b165351831a4333106588a042d3de"
+patch_commit = "ff627002687235bc6c585fc7ce24137cc6eeb73b"
+build_image = "n132/arvo:67043-fix"

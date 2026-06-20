@@ -1,0 +1,4 @@
+task_id = "arvo:31179"
+target_prog = "flipdetect_fuzzer"
+vul_commit = "9ca045147dedbecf48d678bf6885bf2ca62e29dd"
+patch_commit = "43050bffb966f7438ff177a6f78bc90915889df7"

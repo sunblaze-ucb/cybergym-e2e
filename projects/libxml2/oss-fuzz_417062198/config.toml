@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:417062198"
+target_prog = "api"
+vul_commit = "f0983199e821ef7a5fe57c7eeb7fb06dd9664138"
+patch_commit = "4df8d55742718420f64dffb54f96f785b4244866"
+build_image = "cybergym/e2e:libxml2"

@@ -1,0 +1,45 @@
+diff --git a/pcap-common.c b/pcap-common.c
+index b12ee215..d0f3ddf4 100644
+--- a/pcap-common.c
++++ b/pcap-common.c
+@@ -1836,7 +1836,8 @@ fixup_pcap_pkthdr(int linktype, struct pcap_pkthdr *hdr, const u_char *data)
+ 	const pcap_usb_header_mmapped *usb_hdr;
+ 
+ 	usb_hdr = (const pcap_usb_header_mmapped *) data;
+-	if (linktype == DLT_USB_LINUX_MMAPPED) {
++	if (linktype == DLT_USB_LINUX_MMAPPED &&
++	    hdr->caplen >= sizeof (pcap_usb_header_mmapped)) {
+ 		/*
+ 		 * In older versions of libpcap, in memory-mapped captures,
+ 		 * the "on-the-bus length" for completion events for
+@@ -1849,6 +1850,8 @@ fixup_pcap_pkthdr(int linktype, struct pcap_pkthdr *hdr, const u_char *data)
+ 		 * is 0 if we *do* have data), and the total on-the-network
+ 		 * length is equal to the value calculated from the raw URB
+ 		 * length, then it might be one of those transfers.
++		 *
++		 * We only do this if we hae the full USB pseudo-header.
+ 		 */
+ 		if (!usb_hdr->data_flag &&
+ 		    hdr->len == sizeof(pcap_usb_header_mmapped) +
+diff --git a/pcap-usb-linux-common.c b/pcap-usb-linux-common.c
+index d5d9e538..6bd044c9 100644
+--- a/pcap-usb-linux-common.c
++++ b/pcap-usb-linux-common.c
+@@ -41,13 +41,11 @@ fix_linux_usb_mmapped_length(struct pcap_pkthdr *pkth, const u_char *bp)
+ 	const pcap_usb_header_mmapped *hdr;
+ 	u_int bytes_left;
+ 
++	/*
++	 * All callers of this routine must ensure that pkth->caplen is
++	 * >= sizeof (pcap_usb_header_mmapped).
++	 */
+ 	bytes_left = pkth->caplen;
+-	if (bytes_left < sizeof (pcap_usb_header_mmapped)) {
+-		/*
+-		 * We don't have the full metadata header, so give up.
+-		 */
+-		return;
+-	}
+ 	bytes_left -= sizeof (pcap_usb_header_mmapped);
+ 
+ 	hdr = (const pcap_usb_header_mmapped *) bp;

@@ -1,0 +1,4 @@
+task_id = "arvo:6581"
+target_prog = "pkcs8"
+vul_commit = "5fcc1c70d7ae2b2bac8598629e576a7a484b770a"
+patch_commit = "74ca458b14d265b68ad25cf918aa216b3fa51103"

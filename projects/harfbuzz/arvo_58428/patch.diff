@@ -1,0 +1,33 @@
+From a4b4536a17cd308fdc59639d67d64049d4964326 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Thu, 27 Apr 2023 13:14:52 -0600
+Subject: [PATCH] Revert "[glyf] Micro-optimize"
+
+This reverts commit 2bbb605d08298047164a20a242f4cfcfbe68c309.
+
+In case of phantoms_only we were leaving array uninitialized.
+This is why the fedora-valgrind bot broke.
+---
+ src/OT/glyf/SimpleGlyph.hh | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/src/OT/glyf/SimpleGlyph.hh b/src/OT/glyf/SimpleGlyph.hh
+index 59547a3b1..183e7caf2 100644
+--- a/src/OT/glyf/SimpleGlyph.hh
++++ b/src/OT/glyf/SimpleGlyph.hh
+@@ -191,11 +191,9 @@ struct SimpleGlyph
+     unsigned int num_points = endPtsOfContours[num_contours - 1] + 1;
+ 
+     points_.alloc (num_points + 4, true); // Allocate for phantom points, to avoid a possible copy
+-    if (!points_.resize (num_points, false)) return false;
++    if (!points_.resize (num_points)) return false;
+     if (phantom_only) return true;
+ 
+-    for (unsigned i = 0; i < points_.length; i++)
+-      points_.arrayZ[i].is_end_point = false;
+     for (int i = 0; i < num_contours; i++)
+       points_[endPtsOfContours[i]].is_end_point = true;
+ 
+-- 
+2.25.1
+

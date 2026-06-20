@@ -1,0 +1,37 @@
+From 24dff940cc4c71a9c3cb5475aee231b19163a12c Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Sat, 23 Jul 2022 08:28:42 -0700
+Subject: [PATCH] Fix for DW202207-001 Corrupted string in .gnu.debuglink could
+ cause a segmentation violation, resulting in DenialOfService. 	modified:  
+ src/lib/libdwarf/dwarf_debuglink.c
+
+---
+ src/lib/libdwarf/dwarf_debuglink.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/lib/libdwarf/dwarf_debuglink.c b/src/lib/libdwarf/dwarf_debuglink.c
+index f07bafbd..e3b9029b 100644
+--- a/src/lib/libdwarf/dwarf_debuglink.c
++++ b/src/lib/libdwarf/dwarf_debuglink.c
+@@ -75,10 +75,18 @@ is_full_path(char *path,int joinchar)
+ {
+     unsigned char c = path[0];
+     unsigned char c1 = 0;
++    if (!c) {
++        /* empty string. */
++        return FALSE;
++    }
+     if (c == joinchar) {
+         return TRUE;
+     }
+     c1 = path[1];
++    if (!c1) {
++        /* No second character */
++        return FALSE;
++    }
+     if (c1 == ':') {
+         /*  Windows full path, we assume
+             We just assume nobody would be silly enough
+-- 
+2.43.2
+

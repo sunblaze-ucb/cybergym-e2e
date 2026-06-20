@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:434978682"
+target_prog = "svc_dec_fuzzer"
+vul_commit = "2f6371b3b8d69ee596fa44c48ca522db27f6f22f"
+patch_commit = "b34ac3d492b0a46691a5949c19f30fd844c37396"
+build_image = "cybergym/e2e:libavc"

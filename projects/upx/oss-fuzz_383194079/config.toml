@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:383194079"
+target_prog = "test_packed_file_fuzzer"
+vul_commit = "7b06ba0b78d4acb82eac48477f774531b4d9d9ca"
+patch_commit = "a49d023bd04c585ac4c342c90d214c9aef2c8b08"
+build_image = "cybergym/oss-fuzz:383194079-fix"

@@ -1,0 +1,4 @@
+task_id = "arvo:5256"
+target_prog = "RawParserFuzzer-GetDecoder-Decode"
+vul_commit = "6af0e8550b6bb50580aeef8f14ccdff86999ca68"
+patch_commit = "dbe7591e54bad5e6430d38be6bed051582da76b9"

@@ -1,0 +1,73 @@
+From 4c1acb8f31a64c07f4a8f8fb07c087bc67e766a7 Mon Sep 17 00:00:00 2001
+From: James Bonfield <jkb@sanger.ac.uk>
+Date: Mon, 14 Oct 2024 14:38:33 +0100
+Subject: [PATCH] Fix issue created in PR#1848
+
+We shouldn't be attempting to create embedded reference sequences for
+CRAM containers with reads mapped to chr -1 (ie unmapped).  We don't
+permit embed_ref in multi-ref mode and it's nonsensical for entirely
+unmapped data.
+
+The only real fix needed here is "c->ref_id < 0" just before
+calling cram_generate_reference(), but checking elsewhere can sidestep
+other potential issues and we have safety in checking in more than one
+place.
+
+Credit to OSS_Fuzz
+Fixes oss-fuzz issue 372547397
+---
+ cram/cram_encode.c | 10 ++++++++--
+ cram/cram_io.c     |  2 ++
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/cram/cram_encode.c b/cram/cram_encode.c
+index 3cad124c..f4a75a67 100644
+--- a/cram/cram_encode.c
++++ b/cram/cram_encode.c
+@@ -1842,7 +1842,7 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
+     // Don't try embed ref if we repeatedly fail
+     pthread_mutex_lock(&fd->ref_lock);
+     int failed_embed = (fd->no_ref_counter >= 5); // maximum 5 tries
+-    if (!failed_embed && c->embed_ref == -2) {
++    if (!failed_embed && c->embed_ref == -2 && c->ref_id >= 0) {
+         hts_log_warning("Retrying embed_ref=2 mode for #%d/5", fd->no_ref_counter);
+         fd->no_ref = c->no_ref = 0;
+         fd->embed_ref = c->embed_ref = 2;
+@@ -1921,6 +1921,12 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
+                 // Do not confuse with fd->ref_free which is a pointer to a
+                 // reference string to free.
+                 c->ref_free = 1;
++            } else {
++                // Double check for broken input.  We shouldn't have
++                // embedded references enabled for unmapped data, but our
++                // data could be broken.
++                embed_ref = 0;
++                no_ref = c->no_ref = 1;
+             }
+         }
+         c->ref_seq_id = c->ref_id;
+@@ -1967,7 +1973,7 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
+ 
+         // Embed consensus / MD-generated ref
+         if (embed_ref == 2) {
+-            if (cram_generate_reference(c, s, r1) < 0) {
++            if (c->ref_id < 0 || cram_generate_reference(c, s, r1) < 0) {
+                 // Should this be a permanent thing via fd->no_ref?
+                 // Doing so means we cannot easily switch back again should
+                 // things fix themselves later on.  This is likely not a
+diff --git a/cram/cram_io.c b/cram/cram_io.c
+index 94b31f0c..7009887a 100644
+--- a/cram/cram_io.c
++++ b/cram/cram_io.c
+@@ -4954,6 +4954,8 @@ int cram_write_SAM_hdr(cram_fd *fd, sam_hdr_t *hdr) {
+                         hts_log_warning("NOTE: the CRAM file will be bigger "
+                                         "than using an external reference");
+                         pthread_mutex_lock(&fd->ref_lock);
++                        // Best guess.  It may be unmapped data with broken
++                        // headers, in which case this will get ignored.
+                         fd->embed_ref = 2;
+                         pthread_mutex_unlock(&fd->ref_lock);
+                         break;
+-- 
+2.25.1
+

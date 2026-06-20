@@ -1,0 +1,5 @@
+task_id = "arvo:56682"
+target_prog = "parse_fuzz_test"
+vul_commit = "cc49d1deb347df76347af95a8a979b69226318d2"
+patch_commit = "d4c238573e9222afe73f1c6113d285a9df75e8a7"
+build_image = "n132/arvo:56682-fix"

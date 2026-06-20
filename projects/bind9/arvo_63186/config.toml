@@ -1,0 +1,5 @@
+task_id = "arvo:63186"
+target_prog = "dns_message_checksig_fuzzer"
+vul_commit = "a87436d3d5dfb63b770e2de2a89c281da5774225"
+patch_commit = "3a206da456723cc38a8a27e1edde1e48da33489a"
+build_image = "n132/arvo:63186-fix"

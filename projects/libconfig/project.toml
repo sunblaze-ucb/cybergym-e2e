@@ -1,0 +1,7 @@
+name = "libconfig"
+language = "c"
+homepage = "https://hyperrealm.github.io/libconfig/"
+main_repo = "https://github.com/hyperrealm/libconfig.git"
+repo_to_patch = "libconfig"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["fuzz", "tests", "test.cfg", "tinytest"]

@@ -1,0 +1,5 @@
+task_id = "arvo:46917"
+target_prog = "exif_from_data_fuzzer"
+vul_commit = "30e50906596aa69a484c1044abb07eaa0ffda2dd"
+patch_commit = "4f42b6ea0641aaad1bf9835988616c52ac111fc3"
+build_image = "n132/arvo:46917-fix"

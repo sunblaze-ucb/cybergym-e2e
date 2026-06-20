@@ -1,0 +1,51 @@
+From bbbe3bda1856d98153b7a533a691ec43e58d9c4d Mon Sep 17 00:00:00 2001
+From: Alex Hultman <alexhultman@gmail.com>
+Date: Wed, 1 Jan 2020 18:15:56 +0100
+Subject: [PATCH] Be strict about maxPayloadLength in inflate
+
+---
+ fuzzing/PerMessageDeflate.cpp |  2 +-
+ src/PerMessageDeflate.h       | 11 +++++++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/fuzzing/PerMessageDeflate.cpp b/fuzzing/PerMessageDeflate.cpp
+index 1867994..f16796e 100644
+--- a/fuzzing/PerMessageDeflate.cpp
++++ b/fuzzing/PerMessageDeflate.cpp
+@@ -24,7 +24,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+         std::string_view inflation = staticData.inflationStream.inflate(&staticData.zlibContext, std::string_view((char *) data, size), 256);
+         if (inflation.length() > 256) {
+             /* Cause ASAN to freak out */
+-            //delete (int *) (void *) 1;
++            delete (int *) (void *) 1;
+         }
+     });
+ 
+diff --git a/src/PerMessageDeflate.h b/src/PerMessageDeflate.h
+index 4a631ab..e0ed2fb 100644
+--- a/src/PerMessageDeflate.h
++++ b/src/PerMessageDeflate.h
+@@ -161,9 +161,20 @@ struct InflationStream {
+ 
+         if (zlibContext->dynamicInflationBuffer.length()) {
+             zlibContext->dynamicInflationBuffer.append(zlibContext->inflationBuffer, LARGE_BUFFER_SIZE - inflationStream.avail_out);
++
++            /* Let's be strict about the max size */
++            if (zlibContext->dynamicInflationBuffer.length() > maxPayloadLength) {
++                return {nullptr, 0};
++            }
++
+             return {zlibContext->dynamicInflationBuffer.data(), zlibContext->dynamicInflationBuffer.length()};
+         }
+ 
++        /* Let's be strict about the max size */
++        if ((LARGE_BUFFER_SIZE - inflationStream.avail_out) > maxPayloadLength) {
++            return {nullptr, 0};
++        }
++
+         return {zlibContext->inflationBuffer, LARGE_BUFFER_SIZE - inflationStream.avail_out};
+     }
+ 
+-- 
+2.7.4
+

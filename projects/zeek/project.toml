@@ -1,0 +1,7 @@
+name = "zeek"
+language = "c++"
+homepage = "https://www.zeek.org"
+main_repo = "https://github.com/zeek/zeek"
+repo_to_patch = "zeek"
+build_image = "n132/arvo:55430-fix"
+immutable_files = ["ci", "testing", "src/fuzzers"]

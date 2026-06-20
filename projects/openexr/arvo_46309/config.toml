@@ -1,0 +1,4 @@
+task_id = "arvo:46309"
+target_prog = "openexr_exrcheck_fuzzer"
+vul_commit = "f09788d9dbc3f1a7a79d669c2d51e5679c492c70"
+patch_commit = "36af3db60e2c4dff4c3efe51cd83a28add116871"

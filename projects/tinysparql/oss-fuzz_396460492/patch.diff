@@ -1,0 +1,29 @@
+From 113041f26cb9fec77fd9a2251147c98280419cec Mon Sep 17 00:00:00 2001
+From: Carlos Garnacho <carlosg@gnome.org>
+Date: Wed, 19 Feb 2025 14:53:51 +0100
+Subject: [PATCH] library: Check buffer size parsing tokens in Turtle
+ deserializer
+
+Check that there is enough buffer to fit the string we are looking for.
+
+oss-fuzz#396460492
+---
+ src/libtinysparql/tracker-deserializer-turtle.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/libtinysparql/tracker-deserializer-turtle.c b/src/libtinysparql/tracker-deserializer-turtle.c
+index da1effc6d..1dae935ed 100644
+--- a/src/libtinysparql/tracker-deserializer-turtle.c
++++ b/src/libtinysparql/tracker-deserializer-turtle.c
+@@ -228,6 +228,8 @@ parse_token (TrackerDeserializerTurtle *deserializer,
+ 	                                              &size);
+ 	if (size == 0)
+ 		return FALSE;
++	if (size < (gsize) len)
++		return FALSE;
+ 	if (strncasecmp (buffer, token, len) != 0)
+ 		return FALSE;
+ 	if (!seek_input (deserializer, len))
+-- 
+2.25.1
+

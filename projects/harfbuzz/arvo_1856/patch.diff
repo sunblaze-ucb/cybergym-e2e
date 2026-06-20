@@ -1,0 +1,28 @@
+From e5930722d485207ca158612a2b08816337fed7e8 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Tue, 14 Nov 2017 15:47:55 -0800
+Subject: [PATCH] Fix invalid buffer access in OOM times
+
+Hopefully fully fixes
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=1856
+---
+ src/hb-ot-layout-gsubgpos-private.hh | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/hb-ot-layout-gsubgpos-private.hh b/src/hb-ot-layout-gsubgpos-private.hh
+index b0cffa3..dcaa261 100644
+--- a/src/hb-ot-layout-gsubgpos-private.hh
++++ b/src/hb-ot-layout-gsubgpos-private.hh
+@@ -1002,7 +1002,8 @@ static inline bool apply_lookup (hb_apply_context_t *c,
+     if (idx == 0 && lookupRecord[i].lookupListIndex == c->lookup_index)
+       continue;
+ 
+-    buffer->move_to (match_positions[idx]);
++    if (unlikely (!buffer->move_to (match_positions[idx])))
++      break;
+ 
+     unsigned int orig_len = buffer->backtrack_len () + buffer->lookahead_len ();
+     if (!c->recurse (lookupRecord[i].lookupListIndex))
+-- 
+2.7.4
+

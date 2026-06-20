@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:372547409"
+target_prog = "api"
+vul_commit = "a4c16a140cf3e0ba40f70d09b728f3a9385c3eca"
+patch_commit = "bf3619c3282143fee564ca5ff0634559cce3923d"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:29e93eebdbb2d06bec5dd86fa1f66d2120cf693615424b616de194a6dc69bea5"

@@ -1,0 +1,49 @@
+From ac7b9359e84d796bfb1ff1fd3f7c9eaf9a506799 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Mon, 10 May 2021 07:41:00 -0700
+Subject: [PATCH] Added typesize check when reading frame header info.
+ https://oss-fuzz.com/testcase-detail/6103287616110592
+
+---
+ blosc/frame.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index 83e4a7b6..29a106ac 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -409,7 +409,15 @@ int get_header_info(blosc2_frame_s *frame, int32_t *header_len, int64_t *frame_l
+ 
+   // Fetch some internal lengths
+   from_big(header_len, framep + FRAME_HEADER_LEN, sizeof(*header_len));
++  if (*header_len < FRAME_HEADER_MINLEN) {
++    BLOSC_TRACE_ERROR("Header length is zero or smaller than min allowed.");
++    return BLOSC2_ERROR_INVALID_HEADER;
++  }
+   from_big(frame_len, framep + FRAME_LEN, sizeof(*frame_len));
++  if (*header_len > *frame_len) {
++    BLOSC_TRACE_ERROR("Header length exceeds length of the frame.");
++    return BLOSC2_ERROR_INVALID_HEADER;
++  }
+   from_big(nbytes, framep + FRAME_NBYTES, sizeof(*nbytes));
+   from_big(cbytes, framep + FRAME_CBYTES, sizeof(*cbytes));
+   from_big(blocksize, framep + FRAME_BLOCKSIZE, sizeof(*blocksize));
+@@ -418,11 +426,10 @@ int get_header_info(blosc2_frame_s *frame, int32_t *header_len, int64_t *frame_l
+   }
+   if (typesize != NULL) {
+     from_big(typesize, framep + FRAME_TYPESIZE, sizeof(*typesize));
+-  }
+-
+-  if (*header_len < FRAME_HEADER_MINLEN || *header_len > *frame_len) {
+-    BLOSC_TRACE_ERROR("Header length is invalid or exceeds length of the frame.");
+-    return BLOSC2_ERROR_INVALID_HEADER;
++    if (*typesize <= 0 || *typesize > BLOSC_MAX_TYPESIZE) {
++      BLOSC_TRACE_ERROR("`typesize` is zero or greater than max allowed.");
++      return BLOSC2_ERROR_INVALID_HEADER;
++    }
+   }
+ 
+   // Codecs
+-- 
+2.43.2
+

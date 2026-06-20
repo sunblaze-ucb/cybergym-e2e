@@ -1,0 +1,39 @@
+From 50471f96c4a68874575ab21f799c5999ed920838 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 4 Aug 2024 22:15:08 +0200
+Subject: [PATCH] avcodec/vc1dec: Clear mb_type_base and ttblk_base
+
+Fixes: two use-of-uninitialized-value
+Fixes: 70856/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_VC1IMAGE_fuzzer-5539349918187520
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/vc1dec.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libavcodec/vc1dec.c b/libavcodec/vc1dec.c
+index 4b31860c3f..5f1a5bd437 100644
+--- a/libavcodec/vc1dec.c
++++ b/libavcodec/vc1dec.c
+@@ -379,7 +379,7 @@ static av_cold int vc1_decode_init_alloc_tables(VC1Context *v)
+     if (!v->block || !v->cbp_base)
+         return AVERROR(ENOMEM);
+     v->cbp              = v->cbp_base + 2 * s->mb_stride;
+-    v->ttblk_base       = av_malloc(sizeof(v->ttblk_base[0]) * 3 * s->mb_stride);
++    v->ttblk_base       = av_mallocz(sizeof(v->ttblk_base[0]) * 3 * s->mb_stride);
+     if (!v->ttblk_base)
+         return AVERROR(ENOMEM);
+     v->ttblk            = v->ttblk_base + 2 * s->mb_stride;
+@@ -393,7 +393,7 @@ static av_cold int vc1_decode_init_alloc_tables(VC1Context *v)
+     v->luma_mv          = v->luma_mv_base + 2 * s->mb_stride;
+ 
+     /* allocate block type info in that way so it could be used with s->block_index[] */
+-    v->mb_type_base = av_malloc(s->b8_stride * (mb_height * 2 + 1) + s->mb_stride * (mb_height + 1) * 2);
++    v->mb_type_base = av_mallocz(s->b8_stride * (mb_height * 2 + 1) + s->mb_stride * (mb_height + 1) * 2);
+     if (!v->mb_type_base)
+         return AVERROR(ENOMEM);
+     v->mb_type[0]   = v->mb_type_base + s->b8_stride + 1;
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:41221"
+target_prog = "parquet-arrow-fuzz"
+vul_commit = "eb2fa2df6dedf2743047df9dd19d7ed4f4482c22"
+patch_commit = "587ce1dc5fcf4172591bdfdcb8882d47507d7daa"
+build_image = "n132/arvo:41221-fix"

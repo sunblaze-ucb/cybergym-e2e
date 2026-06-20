@@ -1,0 +1,113 @@
+From 9f9026899dc94f5a3e740ba5cabc2647f1e9a0bd Mon Sep 17 00:00:00 2001
+From: Erik Boasson <eb@ilities.com>
+Date: Tue, 13 Sep 2022 14:10:08 +0200
+Subject: [PATCH] Initialise interface_names in network partition
+
+Without this, a well-constructed bad config triggers a bad free.  With
+thanks to OSS-Fuzz.
+
+Signed-off-by: Erik Boasson <eb@ilities.com>
+---
+ docs/manual/options.md          |  2 +-
+ etc/cyclonedds.rnc              |  2 +-
+ etc/cyclonedds.xsd              |  2 +-
+ src/core/ddsc/tests/config.c    | 20 ++++++++++++++++++++
+ src/core/ddsi/defconfig.c       |  2 +-
+ src/core/ddsi/src/ddsi_config.c |  1 +
+ 6 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/docs/manual/options.md b/docs/manual/options.md
+index 990b6010..61b12c8b 100644
+--- a/docs/manual/options.md
++++ b/docs/manual/options.md
+@@ -1877,7 +1877,7 @@ The default value is: "none".
+ <!--- generated from ddsi_config.h[75edea6617af11bacc46f91e519773f6df580655] -->
+ <!--- generated from ddsi_cfgunits.h[fc550f1620aa20dcd9244ef4e24299d5001efbb4] -->
+ <!--- generated from ddsi_cfgelems.h[cd3baa0178cce15e0974acd0a14723100d5308b8] -->
+-<!--- generated from ddsi_config.c[4a8bce69542a6f2373c37c4a711a2a5d7b4c3bf7] -->
++<!--- generated from ddsi_config.c[ed9898f72f9dbcfa20ce7706835da091efcea0ca] -->
+ <!--- generated from _confgen.h[01ffa8a2e53b2309451756861466551cfe28c8ce] -->
+ <!--- generated from _confgen.c[112cf655ac336075d1b301972ac38840ac2119d6] -->
+ <!--- generated from generate_rnc.c[a2ec6e48d33ac14a320c8ec3f320028a737920e0] -->
+diff --git a/etc/cyclonedds.rnc b/etc/cyclonedds.rnc
+index f724bc4c..f87b41af 100644
+--- a/etc/cyclonedds.rnc
++++ b/etc/cyclonedds.rnc
+@@ -1303,7 +1303,7 @@ MIIEpAIBAAKCAQEA3HIh...AOBaaqSV37XBUJg==<br>
+ # generated from ddsi_config.h[75edea6617af11bacc46f91e519773f6df580655] 
+ # generated from ddsi_cfgunits.h[fc550f1620aa20dcd9244ef4e24299d5001efbb4] 
+ # generated from ddsi_cfgelems.h[cd3baa0178cce15e0974acd0a14723100d5308b8] 
+-# generated from ddsi_config.c[4a8bce69542a6f2373c37c4a711a2a5d7b4c3bf7] 
++# generated from ddsi_config.c[ed9898f72f9dbcfa20ce7706835da091efcea0ca] 
+ # generated from _confgen.h[01ffa8a2e53b2309451756861466551cfe28c8ce] 
+ # generated from _confgen.c[112cf655ac336075d1b301972ac38840ac2119d6] 
+ # generated from generate_rnc.c[a2ec6e48d33ac14a320c8ec3f320028a737920e0] 
+diff --git a/etc/cyclonedds.xsd b/etc/cyclonedds.xsd
+index 5c882a78..1a43dd1a 100644
+--- a/etc/cyclonedds.xsd
++++ b/etc/cyclonedds.xsd
+@@ -1976,7 +1976,7 @@ MIIEpAIBAAKCAQEA3HIh...AOBaaqSV37XBUJg==&lt;br&gt;
+ <!--- generated from ddsi_config.h[75edea6617af11bacc46f91e519773f6df580655] -->
+ <!--- generated from ddsi_cfgunits.h[fc550f1620aa20dcd9244ef4e24299d5001efbb4] -->
+ <!--- generated from ddsi_cfgelems.h[cd3baa0178cce15e0974acd0a14723100d5308b8] -->
+-<!--- generated from ddsi_config.c[4a8bce69542a6f2373c37c4a711a2a5d7b4c3bf7] -->
++<!--- generated from ddsi_config.c[ed9898f72f9dbcfa20ce7706835da091efcea0ca] -->
+ <!--- generated from _confgen.h[01ffa8a2e53b2309451756861466551cfe28c8ce] -->
+ <!--- generated from _confgen.c[112cf655ac336075d1b301972ac38840ac2119d6] -->
+ <!--- generated from generate_rnc.c[a2ec6e48d33ac14a320c8ec3f320028a737920e0] -->
+diff --git a/src/core/ddsc/tests/config.c b/src/core/ddsc/tests/config.c
+index a0f866fd..9c259ad2 100644
+--- a/src/core/ddsc/tests/config.c
++++ b/src/core/ddsc/tests/config.c
+@@ -481,3 +481,23 @@ CU_Test(ddsc_config, multiple_domains, .init = ddsrt_init, .fini = ddsrt_fini)
+   dds_set_log_sink (NULL, NULL);
+   dds_set_trace_sink (NULL, NULL);
+ }
++
++CU_Test(ddsc_config, bad_configs_listelems)
++{
++  // The first one is thanks to OSS-Fuzz, the fact that it is so easy
++  // to forget an initialisation that can trigger this means it is
++  // worthwhile trying a few more case
++  const char *configs[] = {
++    "<Partitioning><NetworkPartitions><NetworkPartition",
++    "<Partitioning><PartitionMappings><PartitionMapping",
++    "<Partitioning><IgnoredPartitions><IgnoredPartition",
++    "<Threads><Thread",
++    "<NetworkInterfaces><NetworkInterface",
++    "<Discovery><Peers><Peer",
++    NULL
++  };
++  for (int i = 0; configs[i]; i++)
++  {
++    CU_ASSERT_FATAL (dds_create_domain (0, configs[i]) < 0);
++  }
++}
+diff --git a/src/core/ddsi/defconfig.c b/src/core/ddsi/defconfig.c
+index 326311f8..52c9e689 100644
+--- a/src/core/ddsi/defconfig.c
++++ b/src/core/ddsi/defconfig.c
+@@ -107,7 +107,7 @@ void ddsi_config_init_default (struct ddsi_config *cfg)
+ /* generated from ddsi_config.h[75edea6617af11bacc46f91e519773f6df580655] */
+ /* generated from ddsi_cfgunits.h[fc550f1620aa20dcd9244ef4e24299d5001efbb4] */
+ /* generated from ddsi_cfgelems.h[cd3baa0178cce15e0974acd0a14723100d5308b8] */
+-/* generated from ddsi_config.c[4a8bce69542a6f2373c37c4a711a2a5d7b4c3bf7] */
++/* generated from ddsi_config.c[ed9898f72f9dbcfa20ce7706835da091efcea0ca] */
+ /* generated from _confgen.h[01ffa8a2e53b2309451756861466551cfe28c8ce] */
+ /* generated from _confgen.c[112cf655ac336075d1b301972ac38840ac2119d6] */
+ /* generated from generate_rnc.c[a2ec6e48d33ac14a320c8ec3f320028a737920e0] */
+diff --git a/src/core/ddsi/src/ddsi_config.c b/src/core/ddsi/src/ddsi_config.c
+index c80e467c..5c9c6820 100644
+--- a/src/core/ddsi/src/ddsi_config.c
++++ b/src/core/ddsi/src/ddsi_config.c
+@@ -720,6 +720,7 @@ static int if_network_partition (struct cfgst *cfgst, void *parent, struct cfgel
+   if (new == NULL)
+     return -1;
+   new->address_string = NULL;
++  new->interface_names = NULL;
+   new->uc_addresses = NULL;
+   new->asm_addresses = NULL;
+ #ifdef DDS_HAS_SSM
+-- 
+2.25.1
+

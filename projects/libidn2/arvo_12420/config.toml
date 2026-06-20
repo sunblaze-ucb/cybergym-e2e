@@ -1,0 +1,4 @@
+task_id = "arvo:12420"
+target_prog = "libidn2_to_ascii_8z_fuzzer"
+vul_commit = "0965b23044e5b55a3beb01d6a6c62eb2b9a7b0c9"
+patch_commit = "e4d1558aa2c1c04a05066ee8600f37603890ba8c"

@@ -1,0 +1,5 @@
+task_id = "arvo:66079"
+target_prog = "decompress_packed_file_fuzzer"
+vul_commit = "69c51eee4df002cc4f2c3650012c54cddae256fc"
+patch_commit = "ac72c027937ff7c39b8b2c060fc7df1e1fdee489"
+build_image = "n132/arvo:66079-fix"

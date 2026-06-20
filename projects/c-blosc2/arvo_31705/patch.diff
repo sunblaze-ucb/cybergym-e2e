@@ -1,0 +1,26 @@
+From 1a79d783cc791faf12fa9f6f6f92c26fb8be4967 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Fri, 12 Mar 2021 17:48:39 -0800
+Subject: [PATCH] Fixed ASAN null-deference read trying to free chunk that has
+ already been free. https://oss-fuzz.com/testcase-detail/5107303620673536
+
+---
+ blosc/frame.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index 43af22eb..eb91fc44 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -2032,7 +2032,7 @@ int frame_get_lazychunk(blosc2_frame_s *frame, int nchunk, uint8_t **chunk, bool
+     fclose(fp);
+   }
+   if (rc < 0) {
+-    if (needs_free) {
++    if (*needs_free) {
+       free(*chunk);
+       *chunk = NULL;
+     }
+-- 
+2.43.2
+

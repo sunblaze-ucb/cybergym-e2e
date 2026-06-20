@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:394644267"
+target_prog = "fuzz_macro_dwarf5"
+vul_commit = "0b5b12d25eda70aecc15d6023bc59f8ee8707ccc"
+patch_commit = "156156a80affdc63b851fbf7fdc01e4d41849eb0"
+build_image = "cybergym/e2e:libdwarf"

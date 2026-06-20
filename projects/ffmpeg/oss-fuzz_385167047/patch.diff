@@ -1,0 +1,31 @@
+From 788abe0d253b2034af15876d7889265d4746df2b Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 26 Dec 2024 03:07:51 +0100
+Subject: [PATCH] avformat/ipmovie: Check signature_buffer read
+
+Fixes: use of uninitilaized data
+Fixes: 385167047/clusterfuzz-testcase-minimized-ffmpeg_dem_IPMOVIE_fuzzer-5941477505564672
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/ipmovie.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/ipmovie.c b/libavformat/ipmovie.c
+index 5d1748953a..3701be276f 100644
+--- a/libavformat/ipmovie.c
++++ b/libavformat/ipmovie.c
+@@ -614,7 +614,8 @@ static int ipmovie_read_header(AVFormatContext *s)
+ 
+     ipmovie->avf = s;
+ 
+-    avio_read(pb, signature_buffer, sizeof(signature_buffer));
++    if (avio_read(pb, signature_buffer, sizeof(signature_buffer)) != sizeof(signature_buffer))
++        return AVERROR_INVALIDDATA;
+     while (memcmp(signature_buffer, signature, sizeof(signature))) {
+         memmove(signature_buffer, signature_buffer + 1, sizeof(signature_buffer) - 1);
+         signature_buffer[sizeof(signature_buffer) - 1] = avio_r8(pb);
+-- 
+2.25.1
+

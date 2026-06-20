@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42536279"
+target_prog = "svc_dec_fuzzer"
+vul_commit = "72315c11ac595a73d3b629cc36647327156d5875"
+patch_commit = "b0117e32b9555e7069c2aef571d921bff22f502f"
+build_image = "cybergym/oss-fuzz:42536279-fix"

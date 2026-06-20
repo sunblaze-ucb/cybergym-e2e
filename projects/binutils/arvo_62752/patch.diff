@@ -1,0 +1,92 @@
+From ae0d827fa483c4e569803d99f8dff14794c63a17 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Tue, 10 Oct 2023 18:18:18 +1030
+Subject: [PATCH] asan: buffer overflow in elf32_arm_get_synthetic_symtab
+
+Guard against fuzzed files where .plt size isn't commensurate with
+plt relocations.
+
+	* elf32-arm.c (elf32_arm_plt0_size): Add data_size param.
+	Return -1 if data_size is too small.
+	(elf32_arm_plt_size): Likewise.  Delete temp var.  Formatting.
+	(elf32_arm_get_synthetic_symtab): Adjust to suit.
+---
+ bfd/elf32-arm.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/bfd/elf32-arm.c b/bfd/elf32-arm.c
+index f3ad270a6a0..18c30dbef86 100644
+--- a/bfd/elf32-arm.c
++++ b/bfd/elf32-arm.c
+@@ -19971,11 +19971,15 @@ read_code16 (const bfd *abfd, const bfd_byte *addr)
+    or (bfd_vma) -1 if size can not be determined.  */
+ 
+ static bfd_vma
+-elf32_arm_plt0_size (const bfd *abfd, const bfd_byte *addr)
++elf32_arm_plt0_size (const bfd *abfd, const bfd_byte *addr,
++		     bfd_size_type data_size)
+ {
+   bfd_vma first_word;
+   bfd_vma plt0_size;
+ 
++  if (data_size < 4)
++    return (bfd_vma) -1;
++
+   first_word = read_code32 (abfd, addr);
+ 
+   if (first_word == elf32_arm_plt0_entry[0])
+@@ -19994,24 +19998,28 @@ elf32_arm_plt0_size (const bfd *abfd, const bfd_byte *addr)
+    or (bfd_vma) -1 if size can not be determined.  */
+ 
+ static bfd_vma
+-elf32_arm_plt_size (const bfd *abfd, const bfd_byte *start, bfd_vma offset)
++elf32_arm_plt_size (const bfd *abfd, const bfd_byte *start, bfd_vma offset,
++		    bfd_size_type data_size)
+ {
+   bfd_vma first_insn;
+   bfd_vma plt_size = 0;
+-  const bfd_byte *addr = start + offset;
+ 
+   /* PLT entry size if fixed on Thumb-only platforms.  */
+   if (read_code32 (abfd, start) == elf32_thumb2_plt0_entry[0])
+-      return 4 * ARRAY_SIZE (elf32_thumb2_plt_entry);
++    return 4 * ARRAY_SIZE (elf32_thumb2_plt_entry);
+ 
+   /* Respect Thumb stub if necessary.  */
+-  if (read_code16 (abfd, addr) == elf32_arm_plt_thumb_stub[0])
++  if (offset + 2 > data_size)
++    return (bfd_vma) -1;
++  if (read_code16 (abfd, start + offset) == elf32_arm_plt_thumb_stub[0])
+     {
+       plt_size += 2 * ARRAY_SIZE (elf32_arm_plt_thumb_stub);
+     }
+ 
+   /* Strip immediate from first add.  */
+-  first_insn = read_code32 (abfd, addr + plt_size) & 0xffffff00;
++  if (offset + plt_size + 4 > data_size)
++    return (bfd_vma) -1;
++  first_insn = read_code32 (abfd, start + offset + plt_size) & 0xffffff00;
+ 
+ #ifdef FOUR_WORD_PLT
+   if (first_insn == elf32_arm_plt_entry[0])
+@@ -20088,7 +20096,7 @@ elf32_arm_get_synthetic_symtab (bfd *abfd,
+ 	size += sizeof ("+0x") - 1 + 8;
+     }
+ 
+-  offset = elf32_arm_plt0_size (abfd, data);
++  offset = elf32_arm_plt0_size (abfd, data, plt->size);
+   if (offset == (bfd_vma) -1
+       || (s = *ret = (asymbol *) bfd_malloc (size)) == NULL)
+     {
+@@ -20103,7 +20111,7 @@ elf32_arm_get_synthetic_symtab (bfd *abfd,
+     {
+       size_t len;
+ 
+-      bfd_vma plt_size = elf32_arm_plt_size (abfd, data, offset);
++      bfd_vma plt_size = elf32_arm_plt_size (abfd, data, offset, plt->size);
+       if (plt_size == (bfd_vma) -1)
+ 	break;
+ 
+-- 
+2.25.1
+

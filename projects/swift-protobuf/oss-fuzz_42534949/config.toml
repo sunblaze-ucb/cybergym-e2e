@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42534949"
+target_prog = "FuzzTextFormat_release"
+vul_commit = "3a85c2c8e6eb64924373a969c942955efaa2f931"
+patch_commit = "98413d980d7d0cee8f470444b845b41a374b5052"
+build_image = "cybergym/oss-fuzz:42534949-fix"

@@ -1,0 +1,36 @@
+From c14eccefaf0ba0286d2e9f3ae7b8dd1f3e055a27 Mon Sep 17 00:00:00 2001
+From: Jonas Karlsson <jonaskarlsson@fripost.org>
+Date: Wed, 9 Mar 2022 22:19:10 +0100
+Subject: [PATCH] Fix 'i >= 0' always true bug
+
+If 'disk_filename' does not contain a dot (.) then 'i' would overflow.
+Making 'i' an int makes sure the for loop works as intended.
+---
+ code/Common/ZipArchiveIOSystem.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/code/Common/ZipArchiveIOSystem.cpp b/code/Common/ZipArchiveIOSystem.cpp
+index c322b140f..ba90ae9b3 100644
+--- a/code/Common/ZipArchiveIOSystem.cpp
++++ b/code/Common/ZipArchiveIOSystem.cpp
+@@ -122,7 +122,7 @@ voidpf IOSystem2Unzip::open(voidpf opaque, const char *filename, int mode) {
+ voidpf IOSystem2Unzip::opendisk(voidpf opaque, voidpf stream, uint32_t number_disk, int mode) {
+     ZipFile *io_stream = (ZipFile *)stream;
+     voidpf ret = NULL;
+-    size_t i;
++    int i;
+ 
+     char *disk_filename = (char*)malloc(io_stream->m_Filename.length() + 1);
+     strncpy(disk_filename, io_stream->m_Filename.c_str(), io_stream->m_Filename.length() + 1);
+@@ -130,7 +130,7 @@ voidpf IOSystem2Unzip::opendisk(voidpf opaque, voidpf stream, uint32_t number_di
+     {
+         if (disk_filename[i] != '.')
+             continue;
+-        snprintf(&disk_filename[i], io_stream->m_Filename.length() - i, ".z%02u", number_disk + 1);
++        snprintf(&disk_filename[i], io_stream->m_Filename.length() - size_t(i), ".z%02u", number_disk + 1);
+         break;
+     }
+ 
+-- 
+2.43.2
+

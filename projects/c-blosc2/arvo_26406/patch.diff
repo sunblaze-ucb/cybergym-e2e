@@ -1,0 +1,26 @@
+From f00715216733649e4ba1bcf29bc6f90f974558a2 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Sun, 8 Nov 2020 14:14:49 -0800
+Subject: [PATCH] Fixed use-of-uninitialized value msan error when copying dist
+ bytes in miniz. richgel999/miniz#170
+
+---
+ internal-complibs/miniz-2.0.8/miniz.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/internal-complibs/miniz-2.0.8/miniz.c b/internal-complibs/miniz-2.0.8/miniz.c
+index 428ae51e..ab0c7378 100644
+--- a/internal-complibs/miniz-2.0.8/miniz.c
++++ b/internal-complibs/miniz-2.0.8/miniz.c
+@@ -2663,7 +2663,7 @@ tinfl_status tinfl_decompress(tinfl_decompressor *r, const mz_uint8 *pIn_buf_nex
+                 }
+ 
+                 dist_from_out_buf_start = pOut_buf_cur - pOut_buf_start;
+-                if ((dist > dist_from_out_buf_start) && (decomp_flags & TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF))
++                if ((dist > dist_from_out_buf_start || dist_from_out_buf_start == 0) && (decomp_flags & TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF))
+                 {
+                     TINFL_CR_RETURN_FOREVER(37, TINFL_STATUS_FAILED);
+                 }
+-- 
+2.43.2
+

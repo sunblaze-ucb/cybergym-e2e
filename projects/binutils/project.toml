@@ -1,0 +1,7 @@
+name = "binutils"
+language = "c++"
+homepage = "https://www.gnu.org/software/binutils/"
+main_repo = "git://sourceware.org/git/binutils-gdb.git"
+repo_to_patch = "binutils-gdb"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["binutils/testsuite"]

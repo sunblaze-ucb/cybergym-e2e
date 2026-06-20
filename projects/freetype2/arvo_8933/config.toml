@@ -1,0 +1,4 @@
+task_id = "arvo:8933"
+target_prog = "ftfuzzer"
+vul_commit = "8f403ab8a8bb211aff88897319a15a418f85c86e"
+patch_commit = "1079063701986505980f5c5183b3a92700dc1cf5"

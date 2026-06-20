@@ -1,0 +1,56 @@
+From 669751dd889a2daf135580caf5cb54f41fa0bc2d Mon Sep 17 00:00:00 2001
+From: mandlil <138015259+mandlil@users.noreply.github.com>
+Date: Thu, 9 Oct 2025 10:41:49 +0000
+Subject: [PATCH] Vulnerability: Memory Corruption in libphonenumber
+ AsYouTypeFormatter::AttemptToExtractIdd (#3924)
+
+---
+ cpp/src/phonenumbers/asyoutypeformatter.cc       |  2 +-
+ cpp/test/phonenumbers/asyoutypeformatter_test.cc | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/cpp/src/phonenumbers/asyoutypeformatter.cc b/cpp/src/phonenumbers/asyoutypeformatter.cc
+index 3fd323fa0..9cbc256f3 100644
+--- a/cpp/src/phonenumbers/asyoutypeformatter.cc
++++ b/cpp/src/phonenumbers/asyoutypeformatter.cc
+@@ -712,9 +712,9 @@ char AsYouTypeFormatter::NormalizeAndAccrueDigitsAndPlusSign(
+     string number;
+     UnicodeString(next_char).toUTF8String(number);
+     phone_util_.NormalizeDigitsOnly(&number);
+-    accrued_input_without_formatting_.append(next_char);
+     national_number_.append(number);
+     normalized_char = number[0];
++    accrued_input_without_formatting_.append(normalized_char);
+   }
+   if (remember_position) {
+     position_to_remember_ = accrued_input_without_formatting_.length();
+diff --git a/cpp/test/phonenumbers/asyoutypeformatter_test.cc b/cpp/test/phonenumbers/asyoutypeformatter_test.cc
+index 8c23cddb8..303d1ec66 100644
+--- a/cpp/test/phonenumbers/asyoutypeformatter_test.cc
++++ b/cpp/test/phonenumbers/asyoutypeformatter_test.cc
+@@ -916,6 +916,22 @@ TEST_F(AsYouTypeFormatterTest, AYTF_LongIDD_AU) {
+   EXPECT_EQ("0011 244 250 253 222", formatter_->InputDigit('2', &result_));
+ }
+ 
++TEST_F(AsYouTypeFormatterTest, AYTF_With_Special_Characters) {
++  formatter_.reset(phone_util_.GetAsYouTypeFormatter(RegionCode::JP()));
++  // +81००23456
++  formatter_->Clear();
++  EXPECT_EQ("+", formatter_->InputDigit('+', &result_));
++  EXPECT_EQ("+8", formatter_->InputDigit('8', &result_));
++  EXPECT_EQ("+81 ", formatter_->InputDigit('1', &result_));
++  EXPECT_EQ("+81 0", formatter_->InputDigit(UnicodeString("\u0966")[0], &result_));
++  EXPECT_EQ("+81 00", formatter_->InputDigit(UnicodeString("\u0966")[0], &result_));
++  EXPECT_EQ("+81००2", formatter_->InputDigit('2', &result_));
++  EXPECT_EQ("+81००23", formatter_->InputDigit('3', &result_));
++  EXPECT_EQ("+81००234", formatter_->InputDigit('4', &result_));
++  EXPECT_EQ("+81००2345", formatter_->InputDigit('5', &result_));
++  EXPECT_EQ("+81००23456", formatter_->InputDigit('6', &result_));
++}
++
+ TEST_F(AsYouTypeFormatterTest, AYTF_LongIDD_KR) {
+   formatter_.reset(phone_util_.GetAsYouTypeFormatter(RegionCode::KR()));
+   // 00300 1 650 253 2250
+-- 
+2.25.1
+

@@ -1,0 +1,29 @@
+From 06b279a676ce5928f86e61329c27d22b957c1374 Mon Sep 17 00:00:00 2001
+From: Dan Bloomberg <dan.bloomberg@gmail.com>
+Date: Sun, 29 Mar 2020 20:14:17 -0700
+Subject: [PATCH] Fuzzer found buffer overflow reading old jpeg tiff format -
+ hypothesize the depth is less than 8
+
+---
+ src/tiffio.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/tiffio.c b/src/tiffio.c
+index 1d3e1e8..82975a5 100644
+--- a/src/tiffio.c
++++ b/src/tiffio.c
+@@ -618,6 +618,11 @@ PIXCMAP   *cmap;
+         }
+ 
+         if (spp == 1) {  /* 8 bpp, old jpeg format */
++            if (pixGetDepth(pix) != 8) {
++                LEPT_FREE(tiffdata);
++                pixDestroy(&pix);
++                return (PIX *)ERROR_PTR("invalid ojpeg file", procName, NULL);
++            }
+             pixdata = pixGetData(pix);
+             for (i = 0; i < h; i++) {
+                 line = pixdata + i * wpl;
+-- 
+2.7.4
+

@@ -1,0 +1,41 @@
+From 36b004e286eae95018d2bb1b5e7b5ba3a7c6510a Mon Sep 17 00:00:00 2001
+From: Dongge Liu <donggeliu@google.com>
+Date: Mon, 18 Aug 2025 16:29:45 +1000
+Subject: [PATCH] Fixed a heap-buffer-overflow in the Half-Life 1 MDL loader.
+ (#6321)
+
+The loader attempted to read the MDL header without verifying if the input buffer was large enough.
+Added a check in MDLImporter::InternReadFile_HL1 to ensure the buffer size is sufficient before proceeding with loading.
+
+Co-authored-by: Kim Kulling <kimkulling@users.noreply.github.com>
+---
+ code/AssetLib/MDL/MDLLoader.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/code/AssetLib/MDL/MDLLoader.cpp b/code/AssetLib/MDL/MDLLoader.cpp
+index 1c55df8d4..3bf3566f9 100644
+--- a/code/AssetLib/MDL/MDLLoader.cpp
++++ b/code/AssetLib/MDL/MDLLoader.cpp
+@@ -51,6 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include "MDLLoader.h"
+ #include "AssetLib/MD2/MD2FileData.h"
+ #include "HalfLife/HL1MDLLoader.h"
++#include "HalfLife/HL1FileData.h"
+ #include "MDLDefaultColorMap.h"
+ 
+ #include <assimp/StringUtils.h>
+@@ -1980,6 +1981,11 @@ void MDLImporter::InternReadFile_HL1(const std::string &pFile, const uint32_t iM
+     if (iMagicWord == AI_MDL_MAGIC_NUMBER_BE_HL2b || iMagicWord == AI_MDL_MAGIC_NUMBER_LE_HL2b)
+         throw DeadlyImportError("Impossible to properly load a model from an MDL sequence file.");
+ 
++    // Check if the buffer is large enough to hold the header
++    if (iFileSize < sizeof(HalfLife::Header_HL1)) {
++        throw DeadlyImportError("HL1 MDL file is too small to contain header.");
++    }
++
+     // Read the MDL file.
+     HalfLife::HL1MDLLoader loader(
+             pScene,
+-- 
+2.25.1
+

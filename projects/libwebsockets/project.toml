@@ -1,0 +1,7 @@
+name = "libwebsockets"
+language = "c"
+homepage = "https://libwebsockets.org"
+main_repo = "https://github.com/warmcat/libwebsockets.git"
+repo_to_patch = "libwebsockets"
+build_image = "n132/arvo:48959-fix"
+immutable_files = ["test-apps"]

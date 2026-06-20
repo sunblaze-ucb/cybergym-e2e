@@ -1,0 +1,49 @@
+From 7fbd454d9f70f0f0c0a0c27a7d541fed4d038c2a Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Tue, 21 Mar 2023 13:26:36 +0100
+Subject: [PATCH] parser: Grow input buffer earlier when reading characters
+
+Make more bytes available after invoking CUR_CHAR or NEXT.
+---
+ HTMLparser.c      | 2 +-
+ parserInternals.c | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/HTMLparser.c b/HTMLparser.c
+index 3bebda6e..b8b6bd23 100644
+--- a/HTMLparser.c
++++ b/HTMLparser.c
+@@ -411,7 +411,7 @@ htmlCurrentChar(xmlParserCtxtPtr ctxt, int *len) {
+ 	return(ctxt->token);
+     }
+ 
+-    if ((ctxt->input->end - ctxt->input->cur < 4) &&
++    if ((ctxt->input->end - ctxt->input->cur < INPUT_CHUNK) &&
+         (xmlParserGrow(ctxt) < 0))
+         return(0);
+ 
+diff --git a/parserInternals.c b/parserInternals.c
+index a06bb76a..52491505 100644
+--- a/parserInternals.c
++++ b/parserInternals.c
+@@ -527,7 +527,7 @@ xmlNextChar(xmlParserCtxtPtr ctxt)
+ 	return;
+     }
+ 
+-    if (ctxt->input->end - ctxt->input->cur < 4) {
++    if (ctxt->input->end - ctxt->input->cur < INPUT_CHUNK) {
+         if (xmlParserGrow(ctxt) < 0)
+             return;
+         if (ctxt->input->cur >= ctxt->input->end)
+@@ -674,7 +674,7 @@ xmlCurrentChar(xmlParserCtxtPtr ctxt, int *len) {
+     if (ctxt->instate == XML_PARSER_EOF)
+ 	return(0);
+ 
+-    if ((ctxt->input->end - ctxt->input->cur < 4) &&
++    if ((ctxt->input->end - ctxt->input->cur < INPUT_CHUNK) &&
+         (xmlParserGrow(ctxt) < 0))
+         return(0);
+ 
+-- 
+2.25.1
+

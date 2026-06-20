@@ -1,0 +1,4 @@
+task_id = "arvo:58287"
+target_prog = "fuzz_decode"
+vul_commit = "e92540a70e3686109c52c0d31c849f6236f11194"
+patch_commit = "5cee79dded54abbe3a5fbf5f87ca1f3951bd0347"

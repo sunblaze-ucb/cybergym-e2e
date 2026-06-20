@@ -1,0 +1,5 @@
+task_id = "arvo:38872"
+target_prog = "sleuthkit_fls_ext_fuzzer"
+vul_commit = "ebdaf6ddd59f4181750596af110bbf97c4665af1"
+patch_commit = "675093ee08b1cc970419946760ca6340edfca272"
+build_image = "n132/arvo:38872-fix"

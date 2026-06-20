@@ -1,0 +1,5 @@
+task_id = "arvo:51089"
+target_prog = "gs_device_pdfwrite_fuzzer"
+vul_commit = "8126e9fdff42fb5d33d5d2bee8372a73e02f10e1"
+patch_commit = "92b792f6a34d2436772dd141760faf925e139c01"
+build_image = "n132/arvo:51089-fix"

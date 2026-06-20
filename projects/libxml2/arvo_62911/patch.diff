@@ -1,0 +1,29 @@
+From 71aae4e98b7e325463e528242ca363b0380a6c92 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Mon, 2 Oct 2023 14:42:51 +0200
+Subject: [PATCH] dict: Compare strings with strncmp
+
+Using memcmp can result in OOB reads.
+
+Short-lived regression found by OSS-Fuzz.
+---
+ dict.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/dict.c b/dict.c
+index 36b49541..a6a3c9bf 100644
+--- a/dict.c
++++ b/dict.c
+@@ -538,7 +538,8 @@ xmlDictFindEntry(const xmlDict *dict, const xmlChar *prefix,
+                     /*
+                      * name is not necessarily null-terminated.
+                      */
+-                    if ((memcmp(entry->name, name, len) == 0) &&
++                    if ((strncmp((const char *) entry->name,
++                                 (const char *) name, len) == 0) &&
+                         (entry->name[len] == 0)) {
+                         found = 1;
+                         break;
+-- 
+2.25.1
+

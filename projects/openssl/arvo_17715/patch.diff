@@ -1,0 +1,136 @@
+From aec9667bd19a8ca9bdd519db3a231a95b9e92674 Mon Sep 17 00:00:00 2001
+From: Matt Caswell <matt@openssl.org>
+Date: Wed, 30 Oct 2019 13:23:18 +0000
+Subject: [PATCH] Don't assume the type we read was the type we expected
+
+i2v_GENERAL_NAME and GENERAL_NAME_print were assuming that the type of
+of a GENERAL_NAME (OTHERNAME) that we read in was the type we expected
+it to be. If its something else then this can cause unexpected
+behaviour. In the added fuzz test case an OOB read was occurring.
+
+This issue was recently added by commit 4baee2d.
+
+Credit to OSSFuzz for finding this issue.
+
+Reviewed-by: Dmitry Belyavskiy <beldmit@gmail.com>
+Reviewed-by: Viktor Dukhovni <viktor@openssl.org>
+(Merged from https://github.com/openssl/openssl/pull/10300)
+---
+ crypto/x509/v3_alt.c                               |  47 ++++++++++++++++-----
+ .../x509/9901a721c7fe85b8208198cc5e77ac719f592577  | Bin 0 -> 1329 bytes
+ 2 files changed, 37 insertions(+), 10 deletions(-)
+ create mode 100644 fuzz/corpora/x509/9901a721c7fe85b8208198cc5e77ac719f592577
+
+diff --git a/crypto/x509/v3_alt.c b/crypto/x509/v3_alt.c
+index 1feb2d6..f31b884 100644
+--- a/crypto/x509/v3_alt.c
++++ b/crypto/x509/v3_alt.c
+@@ -86,19 +86,31 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(X509V3_EXT_METHOD *method,
+     case GEN_OTHERNAME:
+         switch (OBJ_obj2nid(gen->d.otherName->type_id)) {
+         case NID_id_on_SmtpUTF8Mailbox:
+-            if (!X509V3_add_value_uchar("othername: SmtpUTF8Mailbox:", gen->d.otherName->value->value.utf8string->data, &ret))
++            if (gen->d.otherName->value->type != V_ASN1_UTF8STRING
++                    || !X509V3_add_value_uchar("othername: SmtpUTF8Mailbox:",
++                            gen->d.otherName->value->value.utf8string->data,
++                            &ret))
+                 return NULL;
+             break;
+         case NID_XmppAddr:
+-            if (!X509V3_add_value_uchar("othername: XmppAddr:", gen->d.otherName->value->value.utf8string->data, &ret))
++            if (gen->d.otherName->value->type != V_ASN1_UTF8STRING
++                    || !X509V3_add_value_uchar("othername: XmppAddr:",
++                            gen->d.otherName->value->value.utf8string->data,
++                            &ret))
+                 return NULL;
+             break;
+         case NID_SRVName:
+-            if (!X509V3_add_value_uchar("othername: SRVName:", gen->d.otherName->value->value.ia5string->data, &ret))
++            if (gen->d.otherName->value->type != V_ASN1_IA5STRING
++                    || !X509V3_add_value_uchar("othername: SRVName:",
++                            gen->d.otherName->value->value.ia5string->data,
++                            &ret))
+                 return NULL;
+             break;
+         case NID_ms_upn:
+-            if (!X509V3_add_value_uchar("othername: UPN:", gen->d.otherName->value->value.utf8string->data, &ret))
++            if (gen->d.otherName->value->type != V_ASN1_UTF8STRING
++                    || !X509V3_add_value_uchar("othername: UPN:",
++                            gen->d.otherName->value->value.utf8string->data,
++                            &ret))
+                 return NULL;
+             break;
+         default:
+@@ -174,21 +186,36 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(X509V3_EXT_METHOD *method,
+ int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen)
+ {
+     unsigned char *p;
+-    int i;
++    int i, nid;
++
+     switch (gen->type) {
+     case GEN_OTHERNAME:
+-        switch (OBJ_obj2nid(gen->d.otherName->type_id)) {
++        nid = OBJ_obj2nid(gen->d.otherName->type_id);
++        /* Validate the types are as we expect before we use them */
++        if ((nid == NID_SRVName
++             && gen->d.otherName->value->type != V_ASN1_IA5STRING)
++                || (nid != NID_SRVName
++                    && gen->d.otherName->value->type != V_ASN1_UTF8STRING)) {
++            BIO_printf(out, "othername:<unsupported>");
++            break;
++        }
++
++        switch (nid) {
+         case NID_id_on_SmtpUTF8Mailbox:
+-            BIO_printf(out, "othername:SmtpUTF8Mailbox:%s", gen->d.otherName->value->value.utf8string->data);
++            BIO_printf(out, "othername:SmtpUTF8Mailbox:%s",
++                       gen->d.otherName->value->value.utf8string->data);
+             break;
+         case NID_XmppAddr:
+-            BIO_printf(out, "othername:XmppAddr:%s", gen->d.otherName->value->value.utf8string->data);
++            BIO_printf(out, "othername:XmppAddr:%s",
++                       gen->d.otherName->value->value.utf8string->data);
+             break;
+         case NID_SRVName:
+-            BIO_printf(out, "othername:SRVName:%s", gen->d.otherName->value->value.ia5string->data);
++            BIO_printf(out, "othername:SRVName:%s",
++                       gen->d.otherName->value->value.ia5string->data);
+             break;
+         case NID_ms_upn:
+-            BIO_printf(out, "othername:UPN:%s", gen->d.otherName->value->value.utf8string->data);
++            BIO_printf(out, "othername:UPN:%s",
++                       gen->d.otherName->value->value.utf8string->data);
+             break;
+         default:
+             BIO_printf(out, "othername:<unsupported>");
+diff --git a/fuzz/corpora/x509/9901a721c7fe85b8208198cc5e77ac719f592577 b/fuzz/corpora/x509/9901a721c7fe85b8208198cc5e77ac719f592577
+new file mode 100644
+index 0000000000000000000000000000000000000000..40369cd29465015a9f158d13a945bbe9c741f6b0
+GIT binary patch
+literal 1329
+zcmXqLV%0ThVisM%%*3d`#H^s8V8F}938bKa!JyJmz<`epBqPiY6*QDHkb#JZ!qlPA
+zhDrts5P3-yab%96qJcb;MPfq8k`T6moH(zck%6(HiJ`Hng@JJtm}_Zh0OcBp8;TkT
+zLoDJ!)^5<msD$PX<|amd24pn@#Qsl#y#(~Koe~v{W8Jeca)DLB-vH<NF<o;W)#aL~
+z&t8|-S{Ue|qrQ@t)BVHArhpHkOw5c7jEkEX<$xh2Wx&J694af!$oQXy$$-JY1jJKi
+z(KXO!<IrYfWMyS%W`eUA**Fv0JQ&-4II%FYaRH@S7@N$wn3)Z@LAv-^SeThu7Z@1B
+z)H5=&s2ivnD8u*$jBVl>B_#z``uh3F#RYoFiOH!&C3^Wq>G}qZ6G27@vNU!YG`2PI
+zWaQ_iCnhBpfg~45!3^MFUBJhKB8N{U6RJvq^73*$6m#W}%oXCnkO!q9tu~Lg@4Sq_
+zaA06=Vq#>N?y&h^|Km1Mj^%qB0*c)hTksrEoG5%uAj!npI>SQf&_S-mxi{bcjQp&W
+zI`Q~n_5TcW9BZ;~+G@Tp{B+>|+gnq<+i%`?#KcoMY4gF2?;k=<=V4^kwA_Dk-^H1`
+z{D0Q4y*_3vXPEu(>pUsHSu2!^Pc?oQDEoG2-k$cE+g(g{XkT%dwo|z+HMX_!y{rG!
+zwuN@<#J-y3O5YUmw^7*>V6#p9(CZf=IzQB1svc-%eci=1@$|Qslb(n!+0v)+L{^$N
+zyfWa173ZmKVJ8BA-}?T4HLJN@u3+(%?fadl$i5KI_$$1x#_s3Aoi?BUeK^oEafhf_
+zaf3ttq1<D9c0WsR7`}DTQDom=-&JujciDz5w|8enZrX8_GkNLT`78H1U$T08Yg6cU
+zw;jj$f}>5%g8#igyxnM8Qd-c0>w6m8JR)06yH~L9(fZ3NH#<;d^}*Yosn5>Y@LW0k
+zWPcr7!X%@US5my)FMm~fbNS{Zp@f5$f|vdqXs{}aU$)TOBxe<qu<6A7`DP7#SJVm?
+z25#E=QMCA|TG!@J?;0vAyeIAwu_{iP!MtzP<(5N7r&qjQ(4+F`vy{lHwTwUCm~`re
+ztep^hs`t631?vR0O9p8lcL@Hz^7zN;tBrg|4vGKR(tG5tF8A#%(z|$<n!LMnZ9yqZ
+e?f1=QW%B~gthV^<$1s)q@FS6BaRpCrmjM7QgqtV;
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

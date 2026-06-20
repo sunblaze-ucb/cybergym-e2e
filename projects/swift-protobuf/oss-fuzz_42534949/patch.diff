@@ -1,0 +1,34 @@
+From 98413d980d7d0cee8f470444b845b41a374b5052 Mon Sep 17 00:00:00 2001
+From: Thomas Van Lenten <thomasvl@google.com>
+Date: Wed, 1 May 2024 15:09:50 -0400
+Subject: [PATCH] Back up if it wasn't an infinity value.
+
+If there was a leading minus sign, the parsing still advanced, which isn't the
+intent.
+---
+ Sources/SwiftProtobuf/TextFormatScanner.swift | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Sources/SwiftProtobuf/TextFormatScanner.swift b/Sources/SwiftProtobuf/TextFormatScanner.swift
+index b3b2e89c..f0c0699d 100644
+--- a/Sources/SwiftProtobuf/TextFormatScanner.swift
++++ b/Sources/SwiftProtobuf/TextFormatScanner.swift
+@@ -898,6 +898,7 @@ internal struct TextFormatScanner {
+         if p == end {
+             return nil
+         }
++        let start = p
+         let c = p[0]
+         let negated: Bool
+         if c == asciiMinus {
+@@ -913,6 +914,7 @@ internal struct TextFormatScanner {
+             || skipOptionalKeyword(bytes: infinity)) {
+             return negated ? -Float.infinity : Float.infinity
+         }
++        p = start
+         return nil
+     }
+ 
+-- 
+2.25.1
+

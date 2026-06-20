@@ -1,0 +1,4 @@
+task_id = "arvo:56076"
+target_prog = "h5_extended_fuzzer"
+vul_commit = "8562645b8a0b7808bdf9f03a367aeed31a9229be"
+patch_commit = "9e765b9c43c89ad88971e8f0ecae7d610f2cd463"

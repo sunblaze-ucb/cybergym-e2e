@@ -1,0 +1,140 @@
+From 82f4e69094b7d6e4200d14ba64ac9937f337710d Mon Sep 17 00:00:00 2001
+From: Mallikarjun Kamble <mallikarjun.kamble@ittiam.com>
+Date: Fri, 27 Oct 2023 17:40:44 +0530
+Subject: [PATCH] svcdec: Fixes for NULL dereferencing in inter-layer functions
+
+Resolution level initialization is tracked in inter layer prediction functions
+
+Bug = ossfuzz:62290
+Test: svc_dec_fuzzer
+---
+ decoder/svc/isvcd_api.c             |  1 +
+ decoder/svc/isvcd_parse_ebslice.c   |  1 +
+ decoder/svc/isvcd_parse_epslice.c   |  4 +++
+ decoder/svc/isvcd_process_epslice.c | 42 ++++++++++++++++++++++++++---
+ decoder/svc/isvcd_structs.h         |  1 +
+ 5 files changed, 46 insertions(+), 3 deletions(-)
+
+diff --git a/decoder/svc/isvcd_api.c b/decoder/svc/isvcd_api.c
+index c449fba..f3ac778 100644
+--- a/decoder/svc/isvcd_api.c
++++ b/decoder/svc/isvcd_api.c
+@@ -5183,6 +5183,7 @@ WORD32 isvcd_video_decode(iv_obj_t *dec_hdl, void *pv_api_ip, void *pv_api_op)
+                 UWORD8 u1_layer_nal_data_present = 0;
+                 ps_svcd_ctxt->u1_cur_layer_id = u1_res_id;
+                 ps_svc_lyr_dec = ps_svcd_ctxt->ps_svc_dec_lyr + u1_res_id;
++                ps_svc_lyr_dec->u1_res_init_done = 0;
+                 ps_dec = &ps_svc_lyr_dec->s_dec;
+ 
+                 ps_dec->i4_decode_header = ps_dec_zero_lyr->i4_decode_header;
+diff --git a/decoder/svc/isvcd_parse_ebslice.c b/decoder/svc/isvcd_parse_ebslice.c
+index d805764..604d0fd 100644
+--- a/decoder/svc/isvcd_parse_ebslice.c
++++ b/decoder/svc/isvcd_parse_ebslice.c
+@@ -622,6 +622,7 @@ WORD32 isvcd_mv_pred_ref_tfr_nby2_ebmb(dec_struct_t *ps_dec, UWORD8 u1_mb_idx, U
+             }
+         }
+     }
++
+     return OK;
+ }
+ 
+diff --git a/decoder/svc/isvcd_parse_epslice.c b/decoder/svc/isvcd_parse_epslice.c
+index bfd32bb..7603049 100644
+--- a/decoder/svc/isvcd_parse_epslice.c
++++ b/decoder/svc/isvcd_parse_epslice.c
+@@ -3188,6 +3188,8 @@ WORD32 isvcd_parse_interlayer_resamp_func_init(svc_dec_lyr_struct_t *ps_svc_lyr_
+     dec_struct_t *ps_dec = &ps_svc_lyr_dec->s_dec;
+     dec_slice_params_t *ps_slice = ps_dec->ps_cur_slice;
+     WORD32 ret = OK;
++    if(ps_svc_lyr_dec->u1_res_init_done == 1)
++        return ret;
+ 
+     if(TARGET_LAYER != ps_svc_lyr_dec->u1_layer_identifier)
+     {
+@@ -3209,6 +3211,8 @@ WORD32 isvcd_parse_interlayer_resamp_func_init(svc_dec_lyr_struct_t *ps_svc_lyr_
+         if(ret != OK) return NOT_OK;
+         ret = isvcd_residual_samp_res_init(ps_svc_lyr_dec);
+         if(ret != OK) return NOT_OK;
++
++        ps_svc_lyr_dec->u1_res_init_done = 1;
+     }
+ 
+     return ret;
+diff --git a/decoder/svc/isvcd_process_epslice.c b/decoder/svc/isvcd_process_epslice.c
+index cbcce8c..62bc5bf 100644
+--- a/decoder/svc/isvcd_process_epslice.c
++++ b/decoder/svc/isvcd_process_epslice.c
+@@ -158,11 +158,46 @@ WORD32 isvcd_interlyr_motion_mode_pred(svc_dec_lyr_struct_t *ps_svc_lyr_dec,
+         /* get the current layer ctxt */
+         ps_lyr_mem = &ps_ctxt->as_res_lyr_mem[ps_ctxt->i4_res_id];
+ 
+-        ps_ctxt->i4_listx = i4_listx;
++        /* In case of error mb_mode is set to skip */
++        if(ps_svc_lyr_dec->u1_res_init_done == 0)
++        {
++            mv_pred_t *ps_motion_pred;
++            ps_motion_pred = ps_ctxt->ps_motion_pred_struct;
++            ps_motion_pred = ps_ctxt->ps_motion_pred_struct;
++            memset(ps_motion_pred, 0, sizeof(mv_pred_t));
++
++            i4_mb_mode = -1;
++            ps_cur_mb_info->u1_mb_type = MB_SKIP;
++            ps_mb_part_info->u1_num_part = 1;
++
++            ps_cur_mb_info->u1_mb_mc_mode = PRED_16x16;
++            ps_mb_part_info->u1_col_info[0] = (PRED_16x16 << 6);
++            ps_mb_part_info->i1_ref_idx[0][0] = 0;
++
++            ps_svc_cur_mb_info->u1_residual_prediction_flag = 0;
++            ps_svc_cur_mb_info->au1_motion_pred_flag[0] = 0;
++            ps_svc_cur_mb_info->au1_motion_pred_flag[1] = 0;
++            ps_svc_cur_mb_info->u1_base_mode_flag = 0;
++
++            ps_part->u1_partwidth = 4;  // interms of 4x4
++            ps_part->u1_partheight = 4;
++            ps_part->u1_pred_mode = PRED_L0;
++            ps_part->u1_is_direct = 0;
++            ps_part->u1_sub_mb_num = 0;
++
++            if(2 == i4_listx)
++            {
++                ps_mb_part_info->i1_ref_idx[1][0] = -1;
++            }
++        }
++        else
++        {
++            ps_ctxt->i4_listx = i4_listx;
+ 
+-        i4_mb_mode =
+-            ps_lyr_mem->pf_inter_lyr_pred(ps_svc_lyr_dec->pv_mode_mv_sample_ctxt, ps_cur_mb_info,
++            i4_mb_mode =
++                ps_lyr_mem->pf_inter_lyr_pred(ps_svc_lyr_dec->pv_mode_mv_sample_ctxt, ps_cur_mb_info,
+                                           ps_svc_cur_mb_info, ps_dec, ps_mb_part_info, ps_part);
++        }
+     }
+     return i4_mb_mode;
+ }
+@@ -485,6 +520,7 @@ WORD32 isvcd_mv_pred_ref_tfr_nby2_epmb(dec_struct_t *ps_dec, UWORD8 u1_mb_idx, U
+             }
+         }
+     }
++
+     return OK;
+ }
+ /*!
+diff --git a/decoder/svc/isvcd_structs.h b/decoder/svc/isvcd_structs.h
+index 1959202..fefd32d 100644
+--- a/decoder/svc/isvcd_structs.h
++++ b/decoder/svc/isvcd_structs.h
+@@ -660,6 +660,7 @@ typedef struct _SvcDecLyrStruct
+     WORD32 i4_frm_svc_base_mode_cabac_size;
+     UWORD32 u4_pps_id_for_layer;
+     UWORD8 u1_error_in_cur_frame;
++    UWORD8 u1_res_init_done;
+ } svc_dec_lyr_struct_t;
+ 
+ typedef struct
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:31541"
+target_prog = "fuzz_lua"
+vul_commit = "c0ed74c1e130aa6d80e5ffc7b6e32b433aca1765"
+patch_commit = "901d76009346d76996679c02deee708bf225e91e"

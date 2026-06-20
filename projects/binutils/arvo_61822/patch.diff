@@ -1,0 +1,41 @@
+From 54d57acf610e5db2e70afa234fd4018207606774 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 28 Aug 2023 20:53:02 +0930
+Subject: [PATCH] Re: comdat_hash memory leaks
+
+I missed another field that needs freeing.  Also, oss-fuzz found a
+case with a C_FILE sym using multiple auxents for a long file name
+which overflowed the single auxent buffer.  I'm going to fix that
+problem in swap_aux_in too, but we may as well avoid it here too,
+saving unnecessary work.
+
+	* coffcode.h (comdat_delf): Free comdat_name.
+	(fill_comdat_hash): Only look at symbols with one auxent.
+---
+ bfd/coffcode.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/coffcode.h b/bfd/coffcode.h
+index 03c1788a1c9..908dc93c64a 100644
+--- a/bfd/coffcode.h
++++ b/bfd/coffcode.h
+@@ -872,6 +872,7 @@ static void
+ comdat_delf (void *ent)
+ {
+   struct comdat_hash_entry *e = ent;
++  free (e->comdat_name);
+   free (e->symname);
+   free (e);
+ }
+@@ -964,7 +965,7 @@ fill_comdat_hash (bfd *abfd)
+ 
+       if (*slot == NULL)
+ 	{
+-	  if (isym.n_numaux == 0)
++	  if (isym.n_numaux != 1)
+ 	    aux.x_scn.x_comdat = 0;
+ 	  else
+ 	    {
+-- 
+2.25.1
+

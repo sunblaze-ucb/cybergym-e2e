@@ -1,0 +1,32 @@
+From 6a8c41dcacbba011e553fbf35518577321d1aadb Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Fri, 8 Aug 2025 12:25:55 +0200
+Subject: [PATCH] avcodec/dxv: Check that we initialize op_data
+
+Fixes: 431665305/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_DXV_DEC_fuzzer-5339599339847680
+Fixes: use of uninitialized memory
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/dxv.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/libavcodec/dxv.c b/libavcodec/dxv.c
+index 7e11bef733..9bef92d7b2 100644
+--- a/libavcodec/dxv.c
++++ b/libavcodec/dxv.c
+@@ -275,7 +275,9 @@ static int dxv_decompress_opcodes(GetByteContext *gb, void *dstp, size_t op_size
+ 
+     if ((flag & 3) == 0) {
+         bytestream2_skip(gb, 1);
+-        bytestream2_get_buffer(gb, dstp, op_size);
++        int read_size = bytestream2_get_buffer(gb, dstp, op_size);
++        if (read_size != op_size)
++            return AVERROR_INVALIDDATA;
+     } else if ((flag & 3) == 1) {
+         bytestream2_skip(gb, 1);
+         memset(dstp, bytestream2_get_byte(gb), op_size);
+-- 
+2.25.1
+

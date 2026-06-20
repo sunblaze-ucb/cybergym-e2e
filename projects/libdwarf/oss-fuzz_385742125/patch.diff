@@ -1,0 +1,28 @@
+From 375d102768ee1ff953f97a93345318db3f63ea3c Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Thu, 26 Dec 2024 09:43:48 -0800
+Subject: [PATCH] Fix for ossfuzz 385742125  DW202412-010. A mistake made in
+ 2021 resulted in adding to an end-section pointer (in .debug_abbrev), and it
+ was an error to do that. The heavily fuzzed test object exposed the bug so
+ -fsanitize noticed. 	modified:   src/lib/libdwarf/dwarf_util.c
+
+---
+ src/lib/libdwarf/dwarf_util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/lib/libdwarf/dwarf_util.c b/src/lib/libdwarf/dwarf_util.c
+index 6eefd468..6409c060 100644
+--- a/src/lib/libdwarf/dwarf_util.c
++++ b/src/lib/libdwarf/dwarf_util.c
+@@ -1016,7 +1016,7 @@ printf("debugging: initial size %u\n",HT_DEFAULT_TABLE_SIZE);
+                 &context->cc_dwp_offsets,
+                 DW_SECT_ABBREV,&size);
+             /*  ASSERT: size != 0 */
+-            end_abbrev_ptr = abbrev_ptr + size;
++            /*  Do nothing with size. */
+         }
+     }
+ 
+-- 
+2.25.1
+

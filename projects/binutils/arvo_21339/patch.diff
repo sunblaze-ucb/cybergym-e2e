@@ -1,0 +1,43 @@
+From ff7685105468702de87b75599b1ea88cc309541c Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 26 Mar 2020 17:57:18 +1030
+Subject: [PATCH] Re: i386msdos uninitialised read
+
+Another fix.
+
+	* i386msdos.c (msdos_object_p): Catch -1 return from bfd_bread.
+---
+ bfd/ChangeLog   | 4 ++++
+ bfd/i386msdos.c | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/ChangeLog b/bfd/ChangeLog
+index b5a2e7d..441725f 100644
+--- a/bfd/ChangeLog
++++ b/bfd/ChangeLog
+@@ -1,5 +1,9 @@
+ 2020-03-26  Alan Modra  <amodra@gmail.com>
+ 
++	* i386msdos.c (msdos_object_p): Catch -1 return from bfd_bread.
++
++2020-03-26  Alan Modra  <amodra@gmail.com>
++
+ 	* vms-alpha.c (dst_define_location): Limit size of dst_ptr_offsets
+ 	array.
+ 	(_bfd_vms_slurp_object_records): Rename "err" to "ok".
+diff --git a/bfd/i386msdos.c b/bfd/i386msdos.c
+index e9307a7..38bb441 100644
+--- a/bfd/i386msdos.c
++++ b/bfd/i386msdos.c
+@@ -50,7 +50,7 @@ msdos_object_p (bfd *abfd)
+   bfd_size_type size;
+ 
+   if (bfd_seek (abfd, (file_ptr) 0, SEEK_SET) != 0
+-      || (size = bfd_bread (&hdr, sizeof (hdr), abfd)) < DOS_HDR_SIZE)
++      || (size = bfd_bread (&hdr, sizeof (hdr), abfd)) + 1 < DOS_HDR_SIZE + 1)
+     {
+       if (bfd_get_error () != bfd_error_system_call)
+ 	bfd_set_error (bfd_error_wrong_format);
+-- 
+2.7.4
+

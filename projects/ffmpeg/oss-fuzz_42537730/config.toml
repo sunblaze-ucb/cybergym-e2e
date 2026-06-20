@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537730"
+target_prog = "ffmpeg_dem_IVR_fuzzer"
+vul_commit = "9de721de709fa9cc06a3ce3f542a1e7d45b2b0bf"
+patch_commit = "9578c135d00dd9cc01491b8559d7fad5a387e90d"
+build_image = "cybergym/oss-fuzz:42537730-fix"

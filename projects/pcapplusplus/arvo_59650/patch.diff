@@ -1,0 +1,44 @@
+From 0725fa175ab2a7cb78a6c48d3b4d113eb7221810 Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Fri, 4 Aug 2023 03:51:24 +0200
+Subject: [PATCH] Fix Heap-buffer-overflow (read) in TcpLayer::isDataValid.
+ Closes #1130 (#1162)
+
+---
+ Packet++/header/TLVData.h | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/Packet++/header/TLVData.h b/Packet++/header/TLVData.h
+index 1e4d79c3..f1731e43 100644
+--- a/Packet++/header/TLVData.h
++++ b/Packet++/header/TLVData.h
+@@ -288,18 +288,18 @@ namespace pcpp
+ 			if (record.isNull())
+ 				return resRec;
+ 
+-			// record pointer is out-bounds of the TLV records memory
+-			if ((record.getRecordBasePtr() - tlvDataBasePtr) < 0)
+-				return resRec;
+-
+-			// record pointer is out-bounds of the TLV records memory
+-			if (record.getRecordBasePtr() - tlvDataBasePtr + (int)record.getTotalSize() >= (int)tlvDataLen)
+-				return resRec;
+-
+ 			resRec.assign(record.getRecordBasePtr() + record.getTotalSize());
+ 			if (resRec.getTotalSize() == 0)
+ 				resRec.assign(NULL);
+ 
++			// resRec pointer is out-bounds of the TLV records memory
++			if ((resRec.getRecordBasePtr() - tlvDataBasePtr) < 0)
++				resRec.assign(NULL);
++
++			// resRec pointer is out-bounds of the TLV records memory
++			if (!resRec.isNull() && resRec.getRecordBasePtr() + resRec.getTotalSize() > tlvDataBasePtr + tlvDataLen)
++				resRec.assign(NULL);
++
+ 			return resRec;
+ 		}
+ 
+-- 
+2.25.1
+

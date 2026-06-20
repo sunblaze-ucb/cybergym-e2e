@@ -1,0 +1,50 @@
+From 5ba34b1fe741d69d43a6c8cf767756997eadd87c Mon Sep 17 00:00:00 2001
+From: Dan Bloomberg <dan.bloomberg@gmail.com>
+Date: Mon, 22 Jun 2020 23:02:43 -0700
+Subject: [PATCH] Issue 23654 in oss-fuzz: Heap-buffer-overflow in
+ pixReadFromTiffStream   * Increase scanline buffer for reading gray+alpha and
+ converting to RGBA
+
+---
+ prog/dewarptest1.c | 4 ++--
+ src/tiffio.c       | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/prog/dewarptest1.c b/prog/dewarptest1.c
+index e22558e..076c608 100644
+--- a/prog/dewarptest1.c
++++ b/prog/dewarptest1.c
+@@ -52,6 +52,8 @@ PIX        *pixs2, *pixn2, *pixg2, *pixb2, *pixd2;
+ 
+     setLeptDebugOK(1);
+     lept_mkdir("lept/model");
++    lept_rmdir("lept/dewmod");
++    lept_mkdir("lept/dewmod");
+ 
+ /*    pixs = pixRead("1555.007.jpg"); */
+     pixs = pixRead("cat.035.jpg");
+@@ -160,8 +162,6 @@ PIX        *pixs2, *pixn2, *pixg2, *pixb2, *pixd2;
+                       "/tmp/lept/dewarptest1.pdf");
+     lept_stderr("pdf file made: /tmp/lept/model/dewarptest1.pdf\n");
+ 
+-    lept_rmdir("lept/dewmod");
+-    lept_rmdir("lept/dewtest");
+     pixDestroy(&pixs);
+     pixDestroy(&pixn);
+     pixDestroy(&pixg);
+diff --git a/src/tiffio.c b/src/tiffio.c
+index e649367..951ac08 100644
+--- a/src/tiffio.c
++++ b/src/tiffio.c
+@@ -602,7 +602,7 @@ PIXCMAP   *cmap;
+     } else if (spp == 2 && bps == 8) {  /* gray plus alpha */
+         L_INFO("gray+alpha is not supported; converting to RGBA\n", procName);
+         pixSetSpp(pix, 4);
+-        linebuf = (l_uint8 *)LEPT_CALLOC(tiffbpl + 1, sizeof(l_uint8));
++        linebuf = (l_uint8 *)LEPT_CALLOC(2 * tiffbpl + 1, sizeof(l_uint8));
+         pixdata = pixGetData(pix);
+         for (i = 0; i < h; i++) {
+             if (TIFFReadScanline(tif, linebuf, i, 0) < 0) {
+-- 
+2.43.2
+

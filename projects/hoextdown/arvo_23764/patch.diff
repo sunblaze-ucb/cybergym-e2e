@@ -1,0 +1,28 @@
+From 7c7dc6ac9adce5413ab54dcd604db95a9b935b05 Mon Sep 17 00:00:00 2001
+From: Martin von Gagern <gagern@google.com>
+Date: Mon, 29 Jun 2020 13:15:08 +0100
+Subject: [PATCH] Avoid out-of-bounds read in code fence detection
+
+---
+ src/document.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/document.c b/src/document.c
+index fcd1696..a504c2e 100644
+--- a/src/document.c
++++ b/src/document.c
+@@ -1789,8 +1789,10 @@ is_codefence(uint8_t *data, size_t size, size_t *width, uint8_t *chr)
+ 	if (data[2] == ' ') { i++; } } }
+ 
+ 	/* looking at the hrule uint8_t */
++	if (i + 2 >= size)
++		return 0;
+ 	c = data[i];
+-	if (i + 2 >= size || !(c=='~' || c=='`'))
++	if (!(c=='~' || c=='`'))
+ 		return 0;
+ 
+ 	/* the fence must be that same character */
+-- 
+2.43.2
+

@@ -1,0 +1,44 @@
+From 100b122fc125bdf1fe768a3331a0cd413c3d1261 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 26 Dec 2019 16:04:20 +1030
+Subject: [PATCH] ubsan: crx: index 5 out of bounds for type 'operand_desc
+ const[5]'
+
+	* crx-dis.c (get_number_of_operands): Don't access operands[]
+	out of bounds.
+---
+ opcodes/ChangeLog | 5 +++++
+ opcodes/crx-dis.c | 2 +-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/opcodes/ChangeLog b/opcodes/ChangeLog
+index 07f30e2..25c29b2 100644
+--- a/opcodes/ChangeLog
++++ b/opcodes/ChangeLog
+@@ -1,5 +1,10 @@
+ 2019-12-26  Alan Modra  <amodra@gmail.com>
+ 
++	* crx-dis.c (get_number_of_operands): Don't access operands[]
++	out of bounds.
++
++2019-12-26  Alan Modra  <amodra@gmail.com>
++
+ 	* v850-dis.c (disassemble): Avoid signed overflow.  Don't use
+ 	long vars when unsigned int will do.
+ 
+diff --git a/opcodes/crx-dis.c b/opcodes/crx-dis.c
+index 3834748..e44fca1 100644
+--- a/opcodes/crx-dis.c
++++ b/opcodes/crx-dis.c
+@@ -105,7 +105,7 @@ get_number_of_operands (void)
+ {
+   int i;
+ 
+-  for (i = 0; instruction->operands[i].op_type && i < MAX_OPERANDS; i++)
++  for (i = 0; i < MAX_OPERANDS && instruction->operands[i].op_type; i++)
+     ;
+ 
+   return i;
+-- 
+2.7.4
+

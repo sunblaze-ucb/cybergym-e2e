@@ -1,0 +1,40 @@
+From ce2250c6645897d1ff6a44c8167dde76730a0372 Mon Sep 17 00:00:00 2001
+From: Alex <93376818+sashashura@users.noreply.github.com>
+Date: Tue, 30 Aug 2022 16:51:32 +0100
+Subject: [PATCH] Fixes Use-of-uninitialized-value in
+ LibRaw::phase_one_flat_field
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46615
+
+When `LibRaw::read_shorts` fails to read from stream because it is already `eof` it doesn't initialize the output `pixel` buffer.
+The the unitialized buffer is used like:
+```cpp
+  ushort head[8];
+...
+  read_shorts(head, 8);
+  if (head[2] == 0 || head[3] == 0 || head[4] == 0 || head[5] == 0)
+    return;
+  wide = head[2] / head[4] + (head[2] % head[4] != 0);
+  high = head[3] / head[5] + (head[3] % head[5] != 0);
+```
+The stream reaches eof higher in the stack in `phase_one_correct`.
+---
+ src/decoders/load_mfbacks.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/decoders/load_mfbacks.cpp b/src/decoders/load_mfbacks.cpp
+index 44e8db82..b81d2150 100644
+--- a/src/decoders/load_mfbacks.cpp
++++ b/src/decoders/load_mfbacks.cpp
+@@ -230,6 +230,8 @@ int LibRaw::phase_one_correct()
+       data = get4();
+       save = ftell(ifp);
+       fseek(ifp, meta_offset + data, SEEK_SET);
++      if (ifp->eof())
++        return LIBRAW_DATA_ERROR;
+       if (tag == 0x0400)
+       { /* Sensor defects */
+         while ((len -= 8) >= 0)
+-- 
+2.43.2
+

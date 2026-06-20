@@ -1,0 +1,25 @@
+From ce433f8048b120b2a0413b4ac3ef59fca35a9788 Mon Sep 17 00:00:00 2001
+From: Dirk Lemstra <dirk@git.imagemagick.org>
+Date: Sun, 4 Mar 2018 16:54:57 +0100
+Subject: [PATCH] Reset buffer to avoid use of uninitialized value
+ (https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=5710).
+
+---
+ coders/wpg.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/coders/wpg.c b/coders/wpg.c
+index f560cd0..f0cfdc9 100644
+--- a/coders/wpg.c
++++ b/coders/wpg.c
+@@ -446,6 +446,7 @@ static int UnpackWPGRaster(Image *image,int bpp,ExceptionInfo *exception)
+   BImgBuff=(unsigned char *) AcquireQuantumMemory((size_t) ldblk,
+     8*sizeof(*BImgBuff));
+   if(BImgBuff==NULL) return(-2);
++  (void) ResetMagickMemory(BImgBuff,0,(size_t) ldblk*8*sizeof(*BImgBuff));
+ 
+   while(y<(ssize_t) image->rows)
+     {
+-- 
+2.7.4
+

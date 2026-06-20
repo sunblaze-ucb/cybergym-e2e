@@ -1,0 +1,69 @@
+From 0ba15ba096b9cd58354cf8960e04f295af3de59c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Veronika=20Hanul=C3=ADkov=C3=A1?= <vhanulik@redhat.com>
+Date: Tue, 23 Apr 2024 14:41:25 +0200
+Subject: [PATCH] Check SW2 when SW1 is 0x90
+
+The starcos_gen_key() correctly checks for SW to be
+0x9000, but the starcos_gen_key() does not check for
+SW2. The error is not propagated and key generation
+works with not allocated values.
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=68040
+---
+ src/libopensc/card-atrust-acos.c |  2 +-
+ src/libopensc/card-starcos.c     |  2 +-
+ src/libopensc/iso7816.c          | 10 +++++-----
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/libopensc/card-atrust-acos.c b/src/libopensc/card-atrust-acos.c
+index ecfb7e9ee..1f044d6ca 100644
+--- a/src/libopensc/card-atrust-acos.c
++++ b/src/libopensc/card-atrust-acos.c
+@@ -803,7 +803,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
+ 
+ 	sc_log(card->ctx,  "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+ 
+-	if (sw1 == 0x90)
++	if (sw1 == 0x90 && sw2 == 0x00)
+ 		return SC_SUCCESS;
+ 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
+ 	{
+diff --git a/src/libopensc/card-starcos.c b/src/libopensc/card-starcos.c
+index baf673b00..48eb49cba 100644
+--- a/src/libopensc/card-starcos.c
++++ b/src/libopensc/card-starcos.c
+@@ -1974,7 +1974,7 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
+ 	sc_log(card->ctx,
+ 		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+ 
+-	if (sw1 == 0x90)
++	if (sw1 == 0x90 && sw2 == 0x00)
+ 		return SC_SUCCESS;
+ 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
+ 	{
+diff --git a/src/libopensc/iso7816.c b/src/libopensc/iso7816.c
+index 2fea84078..6a49d64df 100644
+--- a/src/libopensc/iso7816.c
++++ b/src/libopensc/iso7816.c
+@@ -117,12 +117,12 @@ iso7816_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+ 		sc_log(card->ctx, "Wrong length; correct length is %d", sw2);
+ 		return SC_ERROR_WRONG_LENGTH;
+ 	}
+-	if (sw1 == 0x90)
++	if (sw1 == 0x90 && sw2 == 0x00)
+ 		return SC_SUCCESS;
+-        if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
+-             sc_log(card->ctx, "PIN not verified (remaining tries: %d)", (sw2 & 0x0f));
+-             return SC_ERROR_PIN_CODE_INCORRECT;
+-        }
++	if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
++			sc_log(card->ctx, "PIN not verified (remaining tries: %d)", (sw2 & 0x0f));
++			return SC_ERROR_PIN_CODE_INCORRECT;
++	}
+ 	for (i = 0; i < err_count; i++)   {
+ 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
+ 			sc_log(card->ctx, "%s", iso7816_errors[i].errorstr);
+-- 
+2.25.1
+

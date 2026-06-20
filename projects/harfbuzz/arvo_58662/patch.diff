@@ -1,0 +1,28 @@
+From 86658df5d29308d66ddead03f1112442df04ec27 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Fri, 5 May 2023 16:10:46 -0600
+Subject: [PATCH] [ClassDef] Fix a fuzzer issue
+
+Don't qsort an array that failed to allocate!
+
+Fixes https://oss-fuzz.com/testcase-detail/6512559172485120
+---
+ src/hb-ot-layout-common.hh | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index 2c9e75914..7439d528e 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -1804,6 +1804,8 @@ struct ClassDefFormat2_4
+       prev_gid = cur_gid;
+     }
+ 
++    if (unlikely (c->in_error ())) return_trace (false);
++
+     if (likely (record)) record->last = prev_gid;
+     rangeRecord.len = num_ranges;
+     rangeRecord.as_array ().qsort (RangeRecord<Types>::cmp_range); // To handle unsorted glyph order.
+-- 
+2.25.1
+

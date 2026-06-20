@@ -1,0 +1,63 @@
+From 7790ee8736a316f037c18c436d7d2d7a1118abaf Mon Sep 17 00:00:00 2001
+From: Ilija Tovilo <ilija.tovilo@me.com>
+Date: Mon, 22 May 2023 22:02:27 +0200
+Subject: [PATCH] Fix concat_function use-after-free on out-of-memory error
+ (#11297)
+
+Introduced by GH-10049
+---
+ Zend/tests/bug79836_4.phpt | 18 ++++++++++++++++++
+ Zend/zend_operators.c      |  7 +++++--
+ 2 files changed, 23 insertions(+), 2 deletions(-)
+ create mode 100644 Zend/tests/bug79836_4.phpt
+
+diff --git a/Zend/tests/bug79836_4.phpt b/Zend/tests/bug79836_4.phpt
+new file mode 100644
+index 0000000000..2d6b862f42
+--- /dev/null
++++ b/Zend/tests/bug79836_4.phpt
+@@ -0,0 +1,18 @@
++--TEST--
++Bug #79836 (use-after-free in concat_function)
++--INI--
++memory_limit=10M
++--FILE--
++<?php
++class Foo {
++    public function __toString() {
++        return str_repeat('a', 10);
++    }
++}
++
++$i = str_repeat('a', 5 * 1024 * 1024);
++$e = new Foo();
++$e .= $i;
++?>
++--EXPECTF--
++Fatal error: Allowed memory size of %d bytes exhausted%s(tried to allocate %d bytes) in %s on line %d
+diff --git a/Zend/zend_operators.c b/Zend/zend_operators.c
+index 7e5e5ff3e0..0b7902d4e3 100644
+--- a/Zend/zend_operators.c
++++ b/Zend/zend_operators.c
+@@ -2048,13 +2048,16 @@ has_op2_string:;
+ 		}
+ 
+ 		if (result == op1) {
++			/* special case, perform operations on result */
++			result_str = zend_string_extend(op1_string, result_len, 0);
++			/* Free result after zend_string_extend(), as it may throw an out-of-memory error. If we
++			 * free it before we would leave the released variable on the stack with shutdown trying
++			 * to free it again. */
+ 			if (free_op1_string) {
+ 				/* op1_string will be used as the result, so we should not free it */
+ 				i_zval_ptr_dtor(result);
+ 				free_op1_string = false;
+ 			}
+-			/* special case, perform operations on result */
+-			result_str = zend_string_extend(op1_string, result_len, 0);
+ 			/* account for the case where result_str == op1_string == op2_string and the realloc is done */
+ 			if (op1_string == op2_string) {
+ 				if (free_op2_string) {
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:64574"
+target_prog = "jq_fuzz_parse_extended"
+vul_commit = "c9a51565214eece8f1053089739aea73145bfd6b"
+patch_commit = "71c2ab509a8628dbbad4bc7b3f98a64aa90d3297"

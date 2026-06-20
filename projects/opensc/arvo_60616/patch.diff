@@ -1,0 +1,32 @@
+From 638a5007a5d240d6fa901aa822cfeef94fe36e85 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Veronika=20Hanul=C3=ADkov=C3=A1?= <vhanulik@redhat.com>
+Date: Thu, 10 Aug 2023 12:20:33 +0200
+Subject: [PATCH] pkcs15-pubkey.c: Avoid double-free
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=60616
+---
+ src/libopensc/pkcs15-pubkey.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/libopensc/pkcs15-pubkey.c b/src/libopensc/pkcs15-pubkey.c
+index 7107c47c..49b51496 100644
+--- a/src/libopensc/pkcs15-pubkey.c
++++ b/src/libopensc/pkcs15-pubkey.c
+@@ -351,8 +351,12 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
+ err:
+ 	if (r < 0) {
+ 		sc_pkcs15_free_pubkey_info(info);
+-		if (der->len)
++		if (der->len) {
+ 			free(der->value);
++			/* der points to obj->content */
++			obj->content.value = NULL;
++			obj->content.len = 0;
++		}
+ 	}
+ 
+ 	LOG_FUNC_RETURN(ctx, r);
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:411460530"
+target_prog = "ot-cli-received-fuzzer"
+vul_commit = "20aefc221554c7a01d14adf56a63bfe9545f0cf9"
+patch_commit = "b0176443cc91c2f63ae1950c3ec391c6d7166c4c"
+build_image = "cybergym/e2e:openthread"

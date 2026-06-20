@@ -1,0 +1,27 @@
+From c16d4e6588a19f4b85aa584174335f62efe28aaf Mon Sep 17 00:00:00 2001
+From: Veronika Hanulikova <xhanulik@fi.muni.cz>
+Date: Wed, 8 Feb 2023 14:34:03 +0100
+Subject: [PATCH] Check path length to prevent buffer underflow
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=53417
+---
+ src/pkcs15init/pkcs15-lib.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/pkcs15init/pkcs15-lib.c b/src/pkcs15init/pkcs15-lib.c
+index 3df03c6e..ee27abb0 100644
+--- a/src/pkcs15init/pkcs15-lib.c
++++ b/src/pkcs15init/pkcs15-lib.c
+@@ -708,6 +708,8 @@ sc_pkcs15init_rmdir(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+ 
+ 	/* Select the parent DF */
+ 	path = df->path;
++	if (path.len <= 2)
++		return SC_ERROR_INVALID_ARGUMENTS;
+ 	path.len -= 2;
+ 	r = sc_select_file(p15card->card, &path, &parent);
+ 	if (r < 0)
+-- 
+2.25.1
+

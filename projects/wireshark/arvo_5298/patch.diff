@@ -1,0 +1,47 @@
+From b81c5ad26f879bc0e949a4dc42cb5e234c2ad371 Mon Sep 17 00:00:00 2001
+From: Jakub Zawadzki <darkjames-ws@darkjames.pl>
+Date: Tue, 30 Jan 2018 23:23:17 +0100
+Subject: [PATCH] ieee1905: add missing NULL terminatator to
+ ieee1905_reporting_policy_flags[].
+
+Add missing NULL terminator to ieee1905_reporting_policy_flags[], in order to fix buffer overflow.
+
+ASAN report:
+
+ERROR: AddressSanitizer: global-buffer-overflow on address 0x0000092a4af8 at pc 0x00000062afd2 bp 0x7ffce7e468d0 sp 0x7ffce7e468c8
+READ of size 8 at 0x0000092a4af8 thread T0
+    #0 0x62afd1 in proto_item_add_bitmask_tree /src/wireshark/epan/proto.c:10406:9
+    #1 0x62953f in proto_tree_add_bitmask_with_flags /src/wireshark/epan/proto.c:10786:3
+    #2 0xfb8271 in dissect_metric_reporting_policy /src/wireshark/epan/dissectors/packet-ieee1905.c:2762:9
+    #3 0xfb2997 in dissect_ieee1905_tlv_data /src/wireshark/epan/dissectors/packet-ieee1905.c:4390:18
+    #4 0xfb23c8 in dissect_ieee1905 /src/wireshark/epan/dissectors/packet-ieee1905.c:4577:18
+
+Found by oss-fuzz/5298.
+
+Change-Id: I35dbd6d29d0a3a5560286146fbed172c810e5b2d
+Link: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=5298
+Reviewed-on: https://code.wireshark.org/review/25520
+Petri-Dish: Jakub Zawadzki <darkjames-ws@darkjames.pl>
+Tested-by: Petri Dish Buildbot
+Reviewed-by: Jakub Zawadzki <darkjames-ws@darkjames.pl>
+---
+ epan/dissectors/packet-ieee1905.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/epan/dissectors/packet-ieee1905.c b/epan/dissectors/packet-ieee1905.c
+index 40837e7..1567bc5 100644
+--- a/epan/dissectors/packet-ieee1905.c
++++ b/epan/dissectors/packet-ieee1905.c
+@@ -2716,7 +2716,8 @@ dissect_metric_reporting_policy(tvbuff_t *tvb, packet_info *pinfo _U_,
+     static const int *ieee1905_reporting_policy_flags[] = {
+         &hf_ieee1905_assoc_sta_traffic_stats_inclusion,
+         &hf_ieee1905_assoc_sta_link_metrics_inclusion,
+-        &hf_ieee1905_reporting_policy_flags_reserved
++        &hf_ieee1905_reporting_policy_flags_reserved,
++        NULL
+     };
+ 
+     proto_tree_add_item(tree, hf_ieee1905_ap_metrics_reporting_interval,
+-- 
+2.7.4
+

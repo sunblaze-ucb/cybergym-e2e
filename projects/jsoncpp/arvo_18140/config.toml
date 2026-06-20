@@ -1,0 +1,4 @@
+task_id = "arvo:18140"
+target_prog = "jsoncpp_fuzzer"
+vul_commit = "ddc0748c4fcaf5f9f47398cd1d6fe1c618a6cfba"
+patch_commit = "2e33c218cbd53b8d016e9230c2f600411b6146b8"

@@ -1,0 +1,26 @@
+From 6bcbfed8bb955a4412e0ca79da0244f97076ba18 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 11 Nov 2022 08:08:07 +0900
+Subject: [PATCH] mruby-sprintf/sprintf.c: check integer overflow before
+ casting.
+
+---
+ mrbgems/mruby-sprintf/src/sprintf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-sprintf/src/sprintf.c b/mrbgems/mruby-sprintf/src/sprintf.c
+index 7104a185a..25127334d 100644
+--- a/mrbgems/mruby-sprintf/src/sprintf.c
++++ b/mrbgems/mruby-sprintf/src/sprintf.c
+@@ -259,7 +259,7 @@ get_num(mrb_state *mrb, const char *p, const char *end, int *valp)
+ {
+   char *e;
+   mrb_int n;
+-  if (!mrb_read_int(p, end, &e, &n)) {
++  if (!mrb_read_int(p, end, &e, &n) || INT_MAX < n) {
+     return NULL;
+   }
+   *valp = (int)n;
+-- 
+2.25.1
+

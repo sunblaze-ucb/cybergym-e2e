@@ -1,0 +1,35 @@
+From 3f5a2b75b2914b41ee600ab6226f1b4061bf267e Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 11 Jan 2022 14:36:16 +0000
+Subject: [PATCH] OSS-fuzz #43268.pdf - beware of repair rebuilding xref
+
+The file is broken (of course) and causes a repair during the course
+of reading an object form the file while dereferencing an indirect
+reference.
+
+The repair causes the xref table to be discarded and rebuilt, and that
+causes the reference to the xref entry to become invalid. Simply update
+the reference after reading an object to ensure it is up to date.
+---
+ pdf/pdf_deref.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/pdf/pdf_deref.c b/pdf/pdf_deref.c
+index 979052022..1740c6135 100644
+--- a/pdf/pdf_deref.c
++++ b/pdf/pdf_deref.c
+@@ -891,6 +891,11 @@ int pdfi_dereference(pdf_context *ctx, uint64_t obj, uint64_t gen, pdf_obj **obj
+ 
+             code = pdfi_read_object(ctx, SubFile_stream, entry->u.uncompressed.offset);
+ 
++            /* pdfi_read_object() could do a repair, which would invalidate the xref and rebuild it.
++             * reload the xref entry to be certain it is valid.
++             */
++            entry = &ctx->xref_table->xref[obj];
++
+             pdfi_countdown(EODString);
+             pdfi_close_file(ctx, SubFile_stream);
+             if (code < 0) {
+-- 
+2.43.2
+

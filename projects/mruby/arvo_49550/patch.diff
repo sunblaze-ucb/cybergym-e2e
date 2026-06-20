@@ -1,0 +1,26 @@
+From d0780c0525830b51162fd04e5f618181cec8620b Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 28 Jul 2022 15:21:32 +0900
+Subject: [PATCH] vm.c: should cast bigint length to unsigned.
+
+Otherwise length>127 would be considered as negative.
+---
+ src/vm.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/vm.c b/src/vm.c
+index 424567a18..765f1384f 100644
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -1357,7 +1357,7 @@ RETRY_TRY_BLOCK:
+ #ifdef MRB_USE_BIGINT
+         {
+           const char *s = pool[b].u.str;
+-          regs[a] = mrb_bint_new_str(mrb, s+2, (mrb_int)s[0], (mrb_int)s[1]);
++          regs[a] = mrb_bint_new_str(mrb, s+2, (uint8_t)s[0], s[1]);
+         }
+         break;
+ #else
+-- 
+2.43.2
+

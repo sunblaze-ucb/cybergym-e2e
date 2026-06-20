@@ -1,0 +1,5 @@
+task_id = "arvo:52465"
+target_prog = "snmp_api_fuzzer"
+vul_commit = "763e9cd5c005c95729c89085a854f159e88da32c"
+patch_commit = "6cac0c842537b9b6aaa104d909a06b85192793a6"
+build_image = "n132/arvo:52465-fix"

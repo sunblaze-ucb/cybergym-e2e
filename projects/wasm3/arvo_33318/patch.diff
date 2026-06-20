@@ -1,0 +1,386 @@
+From b48695bb940e55c0baa0a3d5740cf48e03643b58 Mon Sep 17 00:00:00 2001
+From: Volodymyr Shymanskyy <vshymanskyi@gmail.com>
+Date: Sat, 17 Apr 2021 21:10:17 +0300
+Subject: [PATCH] Detect stack overflow in EvaluateExpression
+
+---
+ source/m3_api_defs.h |  4 ++++
+ source/m3_compile.c  | 52 +++++++++++++++++++++-----------------------
+ source/m3_compile.h  |  2 ++
+ source/m3_core.c     |  2 +-
+ source/m3_env.c      | 38 +++++++++++++++++---------------
+ source/m3_info.c     |  6 ++---
+ source/m3_module.c   | 10 +++++----
+ source/wasm3.h       |  1 +
+ 8 files changed, 63 insertions(+), 52 deletions(-)
+
+diff --git a/source/m3_api_defs.h b/source/m3_api_defs.h
+index 9d52bac..221d962 100644
+--- a/source/m3_api_defs.h
++++ b/source/m3_api_defs.h
+@@ -32,16 +32,20 @@
+ #define m3ApiSuccess()             { return m3Err_none; }
+ 
+ # if defined(M3_BIG_ENDIAN)
++#  define m3ApiReadMem8(ptr)         (* (u8 *)(ptr))
+ #  define m3ApiReadMem16(ptr)        __builtin_bswap16((* (u16 *)(ptr)))
+ #  define m3ApiReadMem32(ptr)        __builtin_bswap32((* (u32 *)(ptr)))
+ #  define m3ApiReadMem64(ptr)        __builtin_bswap64((* (u64 *)(ptr)))
++#  define m3ApiWriteMem8(ptr, val)   { * (u8  *)(ptr)  = (val); }
+ #  define m3ApiWriteMem16(ptr, val)  { * (u16 *)(ptr) = __builtin_bswap16((val)); }
+ #  define m3ApiWriteMem32(ptr, val)  { * (u32 *)(ptr) = __builtin_bswap32((val)); }
+ #  define m3ApiWriteMem64(ptr, val)  { * (u64 *)(ptr) = __builtin_bswap64((val)); }
+ # else
++#  define m3ApiReadMem8(ptr)         (* (u8 *)(ptr))
+ #  define m3ApiReadMem16(ptr)        (* (u16 *)(ptr))
+ #  define m3ApiReadMem32(ptr)        (* (u32 *)(ptr))
+ #  define m3ApiReadMem64(ptr)        (* (u64 *)(ptr))
++#  define m3ApiWriteMem8(ptr, val)   { * (u8  *)(ptr) = (val); }
+ #  define m3ApiWriteMem16(ptr, val)  { * (u16 *)(ptr) = (val); }
+ #  define m3ApiWriteMem32(ptr, val)  { * (u32 *)(ptr) = (val); }
+ #  define m3ApiWriteMem64(ptr, val)  { * (u64 *)(ptr) = (val); }
+diff --git a/source/m3_compile.c b/source/m3_compile.c
+index e057719..0ebf47c 100644
+--- a/source/m3_compile.c
++++ b/source/m3_compile.c
+@@ -333,7 +333,7 @@ u16  GetMaxUsedSlotPlusOne  (IM3Compilation o)
+ 
+         o->slotMaxAllocatedIndexPlusOne--;
+     }
+-    
++
+ #   ifdef DEBUG
+         u16 maxSlot = o->slotMaxAllocatedIndexPlusOne;
+         while (maxSlot < d_m3MaxFunctionSlots)
+@@ -438,11 +438,8 @@ M3Result  Push  (IM3Compilation o, u8 i_type, u16 i_slot)
+         }
+         else
+         {
+-            if (o->function)
+-            {
+-                // op_Entry uses this value to track and detect stack overflow
+-                o->function->maxStackSlots = M3_MAX (o->function->maxStackSlots, i_slot + 1);
+-            }
++            // op_Entry and EvaluateExpression use this value to track and detect stack overflow
++            o->maxStackSlots = M3_MAX (o->maxStackSlots, i_slot + 1);
+         }
+ 
+         if (d_m3LogWasmStack) dump_type_stack (o);
+@@ -699,9 +696,9 @@ bool  PatchBranches  (IM3Compilation o)
+ 
+     IM3BranchPatch patches = o->block.patches;
+     o->block.patches = NULL;
+-    
++
+     bool didPatch = patches;
+-    
++
+     while (patches)
+     {                                                           m3log (compile, "patching location: %p to pc: %p", patches, pc);
+         patches->location = pc;
+@@ -906,7 +903,7 @@ M3Result  MoveStackTopToSlot  (IM3Compilation o, u16 i_slot, bool i_doPushPop)
+         u8 type = GetStackTopType (o);
+ 
+ _       (CopyStackTopToSlot (o, i_slot));
+-        
++
+         if (i_doPushPop)
+         {
+ _           (Pop (o));
+@@ -935,7 +932,7 @@ _           (CopyStackTopToRegister (o, i_doPushPop))
+         else
+ _           (MoveStackTopToSlot (o, i_targetBlock->topSlot, i_doPushPop))
+     }
+-    
++
+     _catch: return result;
+ }
+ 
+@@ -1052,14 +1049,14 @@ M3Result  ValidateBlockEnd  (IM3Compilation o)
+             /*
+              according to reference implementations: the type stack should still be validated
+              here, which is totally senseless in practice.
+-            
++
+              the spec behavior which I had to deduce from the ocaml and wat2wasm tools is:
+              a polymorphic stack can pop any type requested, but if values have been pushed
+              since going polymorphic, those type are not polymorphic.
+             */
+-            
++
+ _           (UnwindBlockStack (o));
+-            
++
+             if (IsFpType (stackType))
+ _               (PushRegister (o, stackType))
+             else
+@@ -1094,7 +1091,7 @@ M3Result  Compile_End  (IM3Compilation o, m3opcode_t i_opcode)
+     if (o->block.depth == 0)
+     {
+         ValidateBlockEnd (o);
+-        
++
+         u8 type = GetSingleRetType (o->block.type);
+ 
+         u32 numReturns = GetFuncTypeNumReturns (o->block.type);
+@@ -1106,7 +1103,7 @@ M3Result  Compile_End  (IM3Compilation o, m3opcode_t i_opcode)
+ 
+             if (not o->block.isPolymorphic)
+                 ResolveBlockResults (o, & o->block, true);
+-        
++
+             // if there are branches to the function end, then their values are in a register
+             // if the block happens to have its top in a register too, then we can patch the branch
+             // to here. Otherwise, an ReturnStackTop is appended to the end of the function (at B) and
+@@ -1246,9 +1243,9 @@ M3Result  EmitPatchingBranch  (IM3Compilation o, IM3CompilationScope i_scope)
+     M3Result result ;
+ 
+ _try {
+-    
++
+ _   (EmitOp (o, op_Branch));
+-    
++
+     // IM3BranchPatch is two word struct; reserve two words
+     IM3BranchPatch patch = (IM3BranchPatch) ReservePointer (o);                     m3log (compile, "branch patch required at: %p", patch);
+                                             ReservePointer (o);
+@@ -1294,26 +1291,26 @@ _       (EmitOp (o, op));
+     else // forward branch
+     {
+         pc_t * jumpTo = NULL;
+-        
++
+         if (i_opcode == c_waOp_branchIf)
+         {
+             // OPTZ: need a flipped BranchIf without ResolveBlockResults prologue
+             // when no stack results
+-            
++
+             IM3Operation op = IsStackTopInRegister (o) ? op_BranchIfPrologue_r : op_BranchIfPrologue_s;
+ 
+     _       (EmitOp (o, op));
+             EmitSlotNumOfStackTopAndPop (o); // condition
+-            
++
+             // this is continuation point, if the branch isn't taken
+             jumpTo = (pc_t *) ReservePointer (o);
+         }
+ 
+         if (not IsStackPolymorphic (o))
+ _           (ResolveBlockResults (o, scope, false));
+-        
++
+ _       (EmitPatchingBranch (o, scope));
+-        
++
+         if (jumpTo)
+         {
+             * jumpTo = GetPC (o);
+@@ -1361,7 +1358,7 @@ _       (GetBlockScope (o, & scope, target));
+ 
+         // create a ContinueLoop operation on a fresh page
+ _       (AcquireCompilationCodePage (o, & continueOpPage));
+-        
++
+         pc_t startPC = GetPagePC (continueOpPage);
+         IM3CodePage savedPage = o->page;
+         o->page = continueOpPage;
+@@ -1378,7 +1375,7 @@ _           (ResolveBlockResults (o, scope, false));
+ 
+ _           (EmitPatchingBranch (o, scope));
+         }
+-        
++
+         ReleaseCompilationCodePage (o);     // FIX: continueOpPage can get lost if thrown
+         o->page = savedPage;
+ 
+@@ -2185,7 +2182,7 @@ const M3OpInfo c_operations [] =
+ 
+     d_m3DebugOp (CopySlot_32),      d_m3DebugOp (PreserveCopySlot_32), d_m3DebugOp (If_s),          d_m3DebugOp (BranchIfPrologue_s),
+     d_m3DebugOp (CopySlot_64),      d_m3DebugOp (PreserveCopySlot_64), d_m3DebugOp (If_r),          d_m3DebugOp (BranchIfPrologue_r),
+-    
++
+     d_m3DebugOp (Select_i32_rss),   d_m3DebugOp (Select_i32_srs),   d_m3DebugOp (Select_i32_ssr),   d_m3DebugOp (Select_i32_sss),
+     d_m3DebugOp (Select_i64_rss),   d_m3DebugOp (Select_i64_srs),   d_m3DebugOp (Select_i64_ssr),   d_m3DebugOp (Select_i64_sss),
+ 
+@@ -2450,11 +2447,11 @@ _   (CompileLocals (o));
+ _   (Compile_ReserveConstants (o));
+ 
+     // start tracking the max stack used (Push() also updates this value) so that op_Entry can precisely detect stack overflow
+-    o->function->maxStackSlots = o->slotMaxAllocatedIndexPlusOne = o->slotFirstDynamicIndex;
++    o->maxStackSlots = o->slotMaxAllocatedIndexPlusOne = o->slotFirstDynamicIndex;
+ 
+     o->block.topSlot = o->slotFirstDynamicIndex;
+     o->block.initStackIndex = o->stackFirstDynamicIndex = o->stackIndex;                           m3log (compile, "start stack index: %d;  top slot num: %d", (u32) o->stackFirstDynamicIndex, (u32) o->block.topSlot);
+-    
++
+ _   (EmitOp (o, op_Entry));
+     EmitPointer (o, io_function);
+ 
+@@ -2464,6 +2461,7 @@ _   (CompileBlockStatements (o));
+     _throwif(m3Err_wasmMalformed, o->previousOpcode != c_waOp_end);
+ 
+     io_function->compiled = pc;
++    io_function->maxStackSlots = o->maxStackSlots;
+ 
+     u16 numConstantSlots = o->slotMaxConstIndex - o->slotFirstConstIndex;       m3log (compile, "unique constant slots: %d; unused slots: %d", numConstantSlots, o->slotFirstDynamicIndex - o->slotMaxConstIndex);
+ 
+diff --git a/source/m3_compile.h b/source/m3_compile.h
+index 9acec94..e7ed9a9 100644
+--- a/source/m3_compile.h
++++ b/source/m3_compile.h
+@@ -103,6 +103,8 @@ typedef struct
+     u16                 slotFirstLocalIndex;
+     u16                 slotFirstDynamicIndex;      // numArgs + numLocals + numReservedConstants. the first mutable slot available to the compiler.
+ 
++    u16                 maxStackSlots;
++
+     m3slot_t            constants                   [d_m3MaxConstantTableSize];
+ 
+     // 'wasmStack' holds slot locations
+diff --git a/source/m3_core.c b/source/m3_core.c
+index b1e3cea..0d9ffed 100644
+--- a/source/m3_core.c
++++ b/source/m3_core.c
+@@ -117,7 +117,7 @@ void *  m3_Malloc  (size_t i_size)
+ void  m3_FreeImpl  (void * io_ptr)
+ {
+ //    if (io_ptr) printf("== free %p\n", io_ptr);
+-    free ((void*)io_ptr);
++    free (io_ptr);
+ }
+ 
+ void *  m3_Realloc  (void * i_ptr, size_t i_newSize, size_t i_oldSize)
+diff --git a/source/m3_env.c b/source/m3_env.c
+index e47751f..9a3e233 100644
+--- a/source/m3_env.c
++++ b/source/m3_env.c
+@@ -286,6 +286,10 @@ M3Result  EvaluateExpression  (IM3Module i_module, void * o_expressed, u8 i_type
+         pc_t m3code = GetPagePC (o->page);
+         result = CompileBlock (o, ftype, c_waOp_block);
+ 
++        if (not result && o->maxStackSlots >= runtime.numStackSlots) {
++            result = m3Err_trapStackOverflow;
++        }
++
+         if (not result)
+         {
+             m3ret_t r = Call (m3code, stack, NULL, d_m3OpDefaultArgs);
+@@ -542,28 +546,28 @@ M3Result  m3_LoadModule  (IM3Runtime io_runtime, IM3Module io_module)
+ {
+     M3Result result = m3Err_none;
+ 
+-    if (not io_module->runtime)
+-    {
+-        io_module->runtime = io_runtime;
+-        M3Memory * memory = & io_runtime->memory;
++    if (UNLIKELY(io_module->runtime)) {
++        return m3Err_moduleAlreadyLinked;
++    }
+ 
+-_       (InitMemory (io_runtime, io_module));
+-_       (InitGlobals (io_module));
+-_       (InitDataSegments (memory, io_module));
+-_       (InitElements (io_module));
++    io_module->runtime = io_runtime;
++    M3Memory * memory = & io_runtime->memory;
+ 
+-        io_module->next = io_runtime->modules;
+-        io_runtime->modules = io_module;
++_   (InitMemory (io_runtime, io_module));
++_   (InitGlobals (io_module));
++_   (InitDataSegments (memory, io_module));
++_   (InitElements (io_module));
+ 
+-        // Start func might use imported functions, which are not liked here yet,
+-        // so it will be called before a function call is attempted (in m3_FindFuSnction)
+-    }
+-    else result = m3Err_moduleAlreadyLinked;
++    // Start func might use imported functions, which are not liked here yet,
++    // so it will be called before a function call is attempted (in m3_FindFunction)
+ 
+-    if (result)
+-        io_module->runtime = NULL;
++    io_module->next = io_runtime->modules;
++    io_runtime->modules = io_module;
++    return result; // ok
+ 
+-    _catch: return result;
++_catch:
++    io_module->runtime = NULL;
++    return result;
+ }
+ 
+ IM3Global  m3_FindGlobal  (IM3Module               io_module,
+diff --git a/source/m3_info.c b/source/m3_info.c
+index 0174f4e..e36605b 100644
+--- a/source/m3_info.c
++++ b/source/m3_info.c
+@@ -385,9 +385,9 @@ void  dump_type_stack  (IM3Compilation o)
+ 
+     for (u32 r = 0; r < 2; ++r)
+         d_m3Assert (regAllocated [r] == 0);         // reg allocation & stack out of sync
+-    
++
+     u16 maxSlot = GetMaxUsedSlotPlusOne (o);
+-    
++
+     if (maxSlot > o->slotFirstDynamicIndex)
+     {
+         d_m3Log (stack, "                      -");
+@@ -408,7 +408,7 @@ void  dump_type_stack  (IM3Compilation o)
+         {
+             printf ("%3d|", o->m3Slots [i]);
+         }
+-        
++
+         printf ("\n");
+     }
+     d_m3Log(stack, "\n");
+diff --git a/source/m3_module.c b/source/m3_module.c
+index 1566fb0..eeb6fdb 100644
+--- a/source/m3_module.c
++++ b/source/m3_module.c
+@@ -37,9 +37,6 @@ void  m3_FreeModule  (IM3Module i_module)
+         for (u32 i = 0; i < i_module->numGlobals; ++i)
+         {
+             m3_Free (i_module->globals[i].name);
+-        }
+-        for (u32 i = 0; i < i_module->numGlobals; ++i)
+-        {
+             FreeImportInfo(&(i_module->globals[i].import));
+         }
+         m3_Free (i_module->globals);
+@@ -119,11 +116,16 @@ IM3Function  Module_GetFunction  (IM3Module i_module, u32 i_functionIndex)
+ const char*  m3_GetModuleName  (IM3Module i_module)
+ {
+     if (!i_module || !i_module->name)
+-        return "<unknown>";
++        return ".unnamed";
+ 
+     return i_module->name;
+ }
+ 
++void  m3_SetModuleName  (IM3Module i_module, const char* name)
++{
++    if (i_module) i_module->name = name;
++}
++
+ IM3Runtime  m3_GetModuleRuntime  (IM3Module i_module)
+ {
+     return i_module ? i_module->runtime : NULL;
+diff --git a/source/wasm3.h b/source/wasm3.h
+index caf7cbd..32fb3e1 100644
+--- a/source/wasm3.h
++++ b/source/wasm3.h
+@@ -246,6 +246,7 @@ d_m3ErrorConst  (trapStackOverflow,             "[trap] stack overflow")
+                                                      const void *           i_userdata);
+ 
+     const char*         m3_GetModuleName            (IM3Module i_module);
++    void                m3_SetModuleName            (IM3Module i_module, const char* name);
+     IM3Runtime          m3_GetModuleRuntime         (IM3Module i_module);
+ 
+ //-------------------------------------------------------------------------------------------------------------------------------
+-- 
+2.43.2
+

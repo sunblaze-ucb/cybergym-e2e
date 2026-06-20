@@ -1,0 +1,7 @@
+name = "libsndfile"
+language = "c"
+homepage = "https://libsndfile.github.io/libsndfile/"
+main_repo = "https://github.com/libsndfile/libsndfile"
+repo_to_patch = "libsndfile"
+immutable_files = ["tests/", "ossfuzz/"]
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

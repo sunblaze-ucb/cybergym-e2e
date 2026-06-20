@@ -1,0 +1,35 @@
+From 3107b453bcceb0e2d2590fef3612859f2f802d72 Mon Sep 17 00:00:00 2001
+From: Guido van Rossum <guido@python.org>
+Date: Wed, 23 Aug 2023 15:36:19 -0700
+Subject: [PATCH] gh-108253: Fix reads of uninitialized memory in funcobject.c
+ (#108383)
+
+---
+ Objects/funcobject.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Objects/funcobject.c b/Objects/funcobject.c
+index 2820e47bdf..648b660859 100644
+--- a/Objects/funcobject.c
++++ b/Objects/funcobject.c
+@@ -131,7 +131,7 @@ _PyFunction_FromConstructor(PyFrameConstructor *constr)
+     op->func_annotations = NULL;
+     op->func_typeparams = NULL;
+     op->vectorcall = _PyFunction_Vectorcall;
+-    _PyFunction_SetVersion(op, 0);
++    op->func_version = 0;
+     _PyObject_GC_TRACK(op);
+     handle_func_event(PyFunction_EVENT_CREATE, op, NULL);
+     return op;
+@@ -207,7 +207,7 @@ PyFunction_NewWithQualName(PyObject *code, PyObject *globals, PyObject *qualname
+     op->func_annotations = NULL;
+     op->func_typeparams = NULL;
+     op->vectorcall = _PyFunction_Vectorcall;
+-    _PyFunction_SetVersion(op, 0);
++    op->func_version = 0;
+     _PyObject_GC_TRACK(op);
+     handle_func_event(PyFunction_EVENT_CREATE, op, NULL);
+     return (PyObject *)op;
+-- 
+2.25.1
+

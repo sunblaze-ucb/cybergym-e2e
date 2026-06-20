@@ -1,0 +1,5 @@
+task_id = "arvo:42639"
+target_prog = "fuzz_bfd"
+vul_commit = "7e6ba6a2a56e6195da36329bdeb1654e20aad198"
+patch_commit = "3dc8d5eadaecc37722ec6979acf320cf0b969be8"
+build_image = "n132/arvo:42639-fix"

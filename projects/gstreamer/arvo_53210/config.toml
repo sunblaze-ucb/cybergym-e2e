@@ -1,0 +1,4 @@
+task_id = "arvo:53210"
+target_prog = "gst-discoverer"
+vul_commit = "fa30504ec2bb0615b6537fc65387f7cf7809c4c2"
+patch_commit = "97c6d7495e6edb009789cf43ea79e26c54f88538"

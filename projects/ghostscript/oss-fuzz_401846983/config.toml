@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:401846983"
+target_prog = "gs_device_ps2write_fuzzer"
+vul_commit = "c1b396aa911b0333343f0030507c3be53cb4324b"
+patch_commit = "fdb12a8b24defc5d0e71099104ae75424a41ccae"
+build_image = "cybergym/e2e:ghostscript"

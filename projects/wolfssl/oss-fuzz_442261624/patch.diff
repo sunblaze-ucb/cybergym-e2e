@@ -1,0 +1,62 @@
+From 7fdd17723329a2e2da9b677aeb44ec7a74dd500a Mon Sep 17 00:00:00 2001
+From: sebastian-carpenter <sebastian@wolfssl.com>
+Date: Tue, 4 Nov 2025 16:01:41 -0700
+Subject: [PATCH] fixed oss-fuzz warnings
+
+---
+ src/internal.c |  6 +++++-
+ src/keys.c     | 14 ++++++++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/src/internal.c b/src/internal.c
+index a5485493b..7b77096e6 100644
+--- a/src/internal.c
++++ b/src/internal.c
+@@ -23523,7 +23523,7 @@ static int SSL_hmac(WOLFSSL* ssl, byte* digest, const byte* in, word32 sz,
+ 
+         wc_Md5Free(&md5);
+     }
+-    else {
++    else if (ssl->specs.mac_algorithm == sha_mac) {
+         ret =  wc_InitSha_ex(&sha, ssl->heap, ssl->devId);
+         if (ret != 0)
+             return ret;
+@@ -23573,6 +23573,10 @@ static int SSL_hmac(WOLFSSL* ssl, byte* digest, const byte* in, word32 sz,
+ 
+         wc_ShaFree(&sha);
+     }
++    else {
++        WOLFSSL_ERROR_VERBOSE(VERIFY_MAC_ERROR);
++        return VERIFY_MAC_ERROR;
++    }
+     return 0;
+ }
+ #endif /* !NO_OLD_TLS && !WOLFSSL_AEAD_ONLY */
+diff --git a/src/keys.c b/src/keys.c
+index 714d9dd85..fbe325147 100644
+--- a/src/keys.c
++++ b/src/keys.c
+@@ -44,6 +44,20 @@ int SetCipherSpecs(WOLFSSL* ssl)
+                                 ssl->options.cipherSuite, &ssl->specs,
+                                 &ssl->options);
+     if (ret == 0) {
++    #ifdef WOLFSSL_ALLOW_SSLV3
++         /* SSLv3 (RFC 6101) defines MAC algorithms as MD5 and SHA-1. SHA-256
++          * was introduced in TLS 1.2 (RFC 5246). SSL_hmac for old SSLv3
++          * connections can not handle newer cipher suites that use digest sizes
++          * larger than SHA-1 */
++        if (ssl->version.major == SSLv3_MAJOR &&
++                    ssl->version.minor == SSLv3_MINOR &&
++                    ssl->specs.hash_size > WC_SHA_DIGEST_SIZE) {
++                WOLFSSL_MSG("SSLv3 does not support SHA-256 or higher MAC");
++                WOLFSSL_ERROR_VERBOSE(UNSUPPORTED_SUITE);
++                return UNSUPPORTED_SUITE;
++        }
++    #endif /* WOLFSSL_ALLOW_SSLV3 */
++
+         /* set TLS if it hasn't been turned off */
+         if (ssl->version.major == SSLv3_MAJOR &&
+                 ssl->version.minor >= TLSv1_MINOR) {
+-- 
+2.25.1
+

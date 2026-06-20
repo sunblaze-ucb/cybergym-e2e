@@ -1,0 +1,48 @@
+From 2624ae15b4d115a02623ec9f231237c429337a02 Mon Sep 17 00:00:00 2001
+From: Shashank Pathmudi <shashank.pathmudi@ittiam.com>
+Date: Mon, 18 Dec 2023 16:04:32 +0530
+Subject: [PATCH] Fix for Heap-buffer-overflow WRITE 8 in ixheaacd_init_sbr
+
+These changes handle the Heap-buffer-overflow WRITE 8 runtime error reported
+due to unsupported channel configuration for USAC.
+
+Bug: ossFuzz:64960
+Test: poc in bug
+---
+ decoder/ixheaacd_headerdecode.c | 5 +++++
+ decoder/ixheaacd_init_config.c  | 3 +++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/decoder/ixheaacd_headerdecode.c b/decoder/ixheaacd_headerdecode.c
+index 41c4594..03fb067 100644
+--- a/decoder/ixheaacd_headerdecode.c
++++ b/decoder/ixheaacd_headerdecode.c
+@@ -535,6 +535,11 @@ WORD32 ixheaacd_ga_hdr_dec(ia_aac_dec_state_struct *aac_state_struct,
+ 
+   aac_state_struct->ch_config = ixheaacd_read_bits_buf(it_bit_buff, 4);
+ 
++  if (aac_state_struct->audio_object_type == AOT_USAC &&
++      ((aac_state_struct->ch_config >= 3) && (aac_state_struct->ch_config != 8))) {
++    return IA_XHEAAC_DEC_INIT_FATAL_DEC_INIT_FAIL;
++  }
++
+   pstr_audio_specific_config->channel_configuration =
+       aac_state_struct->ch_config;
+ 
+diff --git a/decoder/ixheaacd_init_config.c b/decoder/ixheaacd_init_config.c
+index d5373a8..f58b72e 100644
+--- a/decoder/ixheaacd_init_config.c
++++ b/decoder/ixheaacd_init_config.c
+@@ -644,6 +644,9 @@ WORD32 ixheaacd_config(ia_bit_buf_struct *it_bit_buff, ia_usac_config_struct *ps
+     if (BS_MAX_NUM_OUT_CHANNELS < pstr_usac_conf->num_out_channels) {
+       return IA_XHEAAC_DEC_INIT_FATAL_STREAM_CHAN_GT_MAX;
+     }
++    if (pstr_usac_conf->num_out_channels < 1) {
++      return IA_XHEAAC_DEC_INIT_FATAL_DEC_INIT_FAIL;
++    }
+     for (i = 0; i < pstr_usac_conf->num_out_channels; i++)
+       pstr_usac_conf->output_channel_pos[i] =
+           ixheaacd_read_bits_buf(it_bit_buff, 5);
+-- 
+2.25.1
+

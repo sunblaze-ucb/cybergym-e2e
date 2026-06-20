@@ -1,0 +1,33 @@
+From 22346a74c07ceb90296be872be2d53eb92252a54 Mon Sep 17 00:00:00 2001
+From: DavidKorczynski <david@adalogics.com>
+Date: Thu, 6 May 2021 19:52:11 +0100
+Subject: [PATCH] parser: json: fix double-free (#3453)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_parser_json.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/flb_parser_json.c b/src/flb_parser_json.c
+index 1afc39a6a..972197708 100644
+--- a/src/flb_parser_json.c
++++ b/src/flb_parser_json.c
+@@ -111,6 +111,7 @@ int flb_parser_json_do(struct flb_parser *parser,
+     *out_size = tmp_out_size;
+     if (mp_buf != tmp_out_buf) {
+         flb_free(mp_buf);
++        mp_buf = NULL;
+     }
+ 
+     /* Do time resolution ? */
+@@ -141,6 +142,7 @@ int flb_parser_json_do(struct flb_parser *parser,
+         /* Ensure the pointer we are about to read is not NULL */
+         if (k->via.str.ptr == NULL) {
+             flb_free(mp_buf);
++            flb_free(tmp_out_buf);
+             *out_buf = NULL;
+             msgpack_unpacked_destroy(&result);
+             return -1;
+-- 
+2.43.2
+

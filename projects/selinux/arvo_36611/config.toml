@@ -1,0 +1,5 @@
+task_id = "arvo:36611"
+target_prog = "secilc-fuzzer"
+vul_commit = "b57535318af6f3f5e79c90caed06423b1f50abb1"
+patch_commit = "05d1c66aaae2b1ce3eaac7d241f24be121fddb39"
+build_image = "n132/arvo:36611-fix"

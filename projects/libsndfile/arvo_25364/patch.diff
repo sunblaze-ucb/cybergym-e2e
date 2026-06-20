@@ -1,0 +1,40 @@
+From 739bc8cdac8d56c2c5f097a50cbf20fa941ff59d Mon Sep 17 00:00:00 2001
+From: evpobr <evpobr@gmail.com>
+Date: Thu, 18 Nov 2021 10:07:00 +0500
+Subject: [PATCH] Fix unintialized variable in psf_binheader_readf()
+
+Thanks to @shao-hua-li
+---
+ CHANGELOG.md | 2 ++
+ src/common.c | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9eacc3d0..9faf4c64 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -103,6 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+   See https://github.com/msys2/MINGW-packages/issues/5803 for details.
+ 
++* Fix unintialized variable in psf_binheader_readf(), thanks @shao-hua-li
++
+ ### Security
+ 
+ * Heap buffer overflow in `wavlike_ima_decode_block`(), thanks @bobsayshilol,
+diff --git a/src/common.c b/src/common.c
+index f236ca63..c4ef4a66 100644
+--- a/src/common.c
++++ b/src/common.c
+@@ -974,7 +974,7 @@ int
+ psf_binheader_readf (SF_PRIVATE *psf, char const *format, ...)
+ {	va_list			argptr ;
+ 	sf_count_t		*countptr, countdata ;
+-	unsigned char	*ucptr, sixteen_bytes [16] ;
++	unsigned char	*ucptr, sixteen_bytes [16] = { 0 } ;
+ 	unsigned int 	*intptr, intdata ;
+ 	unsigned short	*shortptr ;
+ 	char			*charptr ;
+-- 
+2.43.2
+

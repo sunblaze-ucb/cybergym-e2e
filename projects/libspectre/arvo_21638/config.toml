@@ -1,0 +1,4 @@
+task_id = "arvo:21638"
+target_prog = "spectre_read_fuzzer"
+vul_commit = "af1cb4cb719dcb94314bbefc78b59ac426b8fed2"
+patch_commit = "465a5c66e5e1ea04a8f70105b1db4ef8051c0428"

@@ -1,0 +1,82 @@
+From ae503e9671b274802cb07dc032b5e5cea28773bd Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Sun, 19 Sep 2021 19:21:15 +0200
+Subject: [PATCH] Fix issue fits_in_pe macro when size is an expression such as
+ len + 1.
+
+---
+ libyara/include/yara/pe_utils.h | 17 +++--------------
+ 1 file changed, 3 insertions(+), 14 deletions(-)
+
+diff --git a/libyara/include/yara/pe_utils.h b/libyara/include/yara/pe_utils.h
+index a26de670..2e017a53 100644
+--- a/libyara/include/yara/pe_utils.h
++++ b/libyara/include/yara/pe_utils.h
+@@ -5,17 +5,14 @@
+ 
+ #define MAX_PE_SECTIONS 96
+ 
+-
+ #define IS_64BITS_PE(pe)                             \
+   (yr_le16toh(pe->header64->OptionalHeader.Magic) == \
+    IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+ 
+-
+ #define OptionalHeader(pe, field)                        \
+   (IS_64BITS_PE(pe) ? pe->header64->OptionalHeader.field \
+                     : pe->header->OptionalHeader.field)
+ 
+-
+ //
+ // Imports are stored in a linked list. Each node (IMPORTED_DLL) contains the
+ // name of the DLL and a pointer to another linked list of
+@@ -32,7 +29,6 @@ typedef struct _IMPORTED_DLL
+ 
+ } IMPORTED_DLL, *PIMPORTED_DLL;
+ 
+-
+ //
+ // This is used to track imported and exported functions. The "has_ordinal"
+ // field is only used in the case of imports as those are optional. Every export
+@@ -51,7 +47,6 @@ typedef struct _IMPORT_FUNCTION
+ 
+ } IMPORT_FUNCTION, *PIMPORT_FUNCTION;
+ 
+-
+ typedef struct _PE
+ {
+   const uint8_t* data;
+@@ -73,27 +68,21 @@ typedef struct _PE
+ 
+ } PE;
+ 
+-
+-#define fits_in_pe(pe, pointer, size)                                    \
+-  ((size_t) size <= pe->data_size && (uint8_t*) (pointer) >= pe->data && \
+-   (uint8_t*) (pointer) <= pe->data + pe->data_size - size)
++#define fits_in_pe(pe, pointer, size)                                     \
++  ((size_t)(size) <= pe->data_size && (uint8_t*) (pointer) >= pe->data && \
++   (uint8_t*) (pointer) <= pe->data + pe->data_size - (size))
+ 
+ #define struct_fits_in_pe(pe, pointer, struct_type) \
+   fits_in_pe(pe, pointer, sizeof(struct_type))
+ 
+-
+ PIMAGE_NT_HEADERS32 pe_get_header(const uint8_t* data, size_t data_size);
+ 
+-
+ PIMAGE_DATA_DIRECTORY pe_get_directory_entry(PE* pe, int entry);
+ 
+-
+ int64_t pe_rva_to_offset(PE* pe, uint64_t rva);
+ 
+-
+ char* ord_lookup(char* dll, uint16_t ord);
+ 
+-
+ #if HAVE_LIBCRYPTO
+ #include <openssl/asn1.h>
+ time_t ASN1_get_time_t(const ASN1_TIME* time);
+-- 
+2.43.2
+

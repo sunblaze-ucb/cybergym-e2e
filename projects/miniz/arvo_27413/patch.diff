@@ -1,0 +1,27 @@
+From 60bbf6c8082c01d8c0b5eae0d2314a1d9085347a Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Sat, 30 Jan 2021 16:57:35 -0800
+Subject: [PATCH] Fixed MSAN use-of-uninitialized in tinfl_decompress when
+ invalid dist is decoded. In this instance dist was 31 which s_dist_base
+ translates as 0. https://oss-fuzz.com/testcase-detail/4863557237473280
+
+---
+ miniz_tinfl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/miniz_tinfl.c b/miniz_tinfl.c
+index 749aab4..69c3f2d 100644
+--- a/miniz_tinfl.c
++++ b/miniz_tinfl.c
+@@ -498,7 +498,7 @@ tinfl_status tinfl_decompress(tinfl_decompressor *r, const mz_uint8 *pIn_buf_nex
+                 }
+ 
+                 dist_from_out_buf_start = pOut_buf_cur - pOut_buf_start;
+-                if ((dist > dist_from_out_buf_start || dist_from_out_buf_start == 0) && (decomp_flags & TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF))
++                if ((dist == 0 || dist > dist_from_out_buf_start || dist_from_out_buf_start == 0) && (decomp_flags & TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF))
+                 {
+                     TINFL_CR_RETURN_FOREVER(37, TINFL_STATUS_FAILED);
+                 }
+-- 
+2.43.2
+

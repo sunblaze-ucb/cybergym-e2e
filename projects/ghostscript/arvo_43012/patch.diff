@@ -1,0 +1,38 @@
+From 321a00bd85a497c0b2424b906eb9e9d309e31321 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 28 Dec 2021 19:58:27 +0000
+Subject: [PATCH] OSS-fuzz #43012 - validate transfer function before use.
+
+In gs_begin_transparency_mask() the code uses any supplied transfer
+function, and assumes it will be a 1-in, 1-out function, so it only
+supplied a single float (rather than an array) for the output value.
+
+But the code does not check the transfer function only has a single
+output before calling the function to sample it, which would lead to the
+evaluation code running off the end of the array.
+
+Since the transparency code doesn't validate the function, do so in
+the interpreter code. If the function isn't valid just ignore it.
+---
+ pdf/pdf_trans.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/pdf/pdf_trans.c b/pdf/pdf_trans.c
+index a13162ca3..ff300263c 100644
+--- a/pdf/pdf_trans.c
++++ b/pdf/pdf_trans.c
+@@ -174,6 +174,11 @@ static int pdfi_trans_set_mask(pdf_context *ctx, pdfi_int_gstate *igs, int color
+                 code = pdfi_build_function(ctx, &gsfunc, NULL, 1, TR, NULL);
+                 if (code < 0)
+                     goto exit;
++                if (gsfunc->params.m != 1 || gsfunc->params.n != 1) {
++                    pdfi_free_function(ctx, gsfunc);
++                    gsfunc = NULL;
++                    dmprintf(ctx->memory, "WARNING: Ignoring invalid TR (number of inpuits or outputs not 1) in SMask\n");
++                }
+             } else if (TR->type == PDF_NAME) {
+                 if (!pdfi_name_is((pdf_name *)TR, "Identity")) {
+                     dmprintf(ctx->memory, "WARNING: Unknown TR in SMask\n");
+-- 
+2.43.2
+

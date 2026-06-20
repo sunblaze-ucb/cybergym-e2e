@@ -1,0 +1,5 @@
+task_id = "arvo:60983"
+target_prog = "libraw_raf_fuzzer"
+vul_commit = "47d9dd8e288e4638d52bc17afad400378ef6f371"
+patch_commit = "17294b5fd82bff80463c21386d3847142a37549d"
+build_image = "n132/arvo:60983-fix"

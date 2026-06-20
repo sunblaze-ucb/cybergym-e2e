@@ -1,0 +1,5 @@
+task_id = "arvo:42560"
+target_prog = "gstoraster_fuzzer"
+vul_commit = "d4da82961c4e59a926fc041ae970ff39b12b6ec8"
+patch_commit = "4107288ebb23d418ff5c1a9d40c48a4f00950193"
+build_image = "n132/arvo:42560-fix"

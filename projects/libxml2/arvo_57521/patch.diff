@@ -1,0 +1,31 @@
+From 0e42adce77a9c115402d7f24d8d3b0130f841ed1 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Thu, 30 Mar 2023 13:53:24 +0200
+Subject: [PATCH] parser: Halt parser if switching encodings fails
+
+Avoids buffer overread in htmlParseHTMLAttribute.
+
+Found by OSS-Fuzz.
+---
+ parserInternals.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/parserInternals.c b/parserInternals.c
+index 8dc6005e..3a1cebb2 100644
+--- a/parserInternals.c
++++ b/parserInternals.c
+@@ -1234,9 +1234,11 @@ xmlSwitchInputEncoding(xmlParserCtxtPtr ctxt, xmlParserInputPtr input,
+         nbchars = xmlCharEncInput(in, 0);
+         xmlBufResetInput(in->buffer, input);
+         if (nbchars < 0) {
++            /* TODO: This could be an out of memory or an encoding error. */
+             xmlErrInternal(ctxt,
+                            "switching encoding: encoder error\n",
+                            NULL);
++            xmlHaltParser(ctxt);
+             return (-1);
+         }
+         consumed = use - xmlBufUse(in->raw);
+-- 
+2.25.1
+

@@ -1,0 +1,31 @@
+From e3f38372d0e16b33369e0b56e116fedaf055936a Mon Sep 17 00:00:00 2001
+From: Yash Patil <yash.patil@ittiam.com>
+Date: Fri, 1 Sep 2023 15:47:53 +0530
+Subject: [PATCH] Fix for use of uninitialized value in ixheaacd_cos_sin_mod
+
+These changes handle the Use-of-uninitialized-value
+runtime error reported because local buffer was not initialized
+in complex analysis QMF filter block leading to uninitialized access.
+
+Bug: ossFuzz:61691
+Test: poc in bug
+---
+ decoder/generic/ixheaacd_qmf_dec_generic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/decoder/generic/ixheaacd_qmf_dec_generic.c b/decoder/generic/ixheaacd_qmf_dec_generic.c
+index ff1e958..e3e8e4a 100644
+--- a/decoder/generic/ixheaacd_qmf_dec_generic.c
++++ b/decoder/generic/ixheaacd_qmf_dec_generic.c
+@@ -597,7 +597,7 @@ VOID ixheaacd_cplx_anal_qmffilt(const WORD16 *time_sample_buf,
+   WORD32 i, k;
+   WORD32 num_time_slots = qmf_bank->num_time_slots;
+ 
+-  WORD32 analysis_buffer[4 * NO_ANALYSIS_CHANNELS];
++  WORD32 analysis_buffer[4 * NO_ANALYSIS_CHANNELS] = { 0 };
+   WORD16 *filter_states = qmf_bank->core_samples_buffer;
+ 
+   WORD16 *fp1, *fp2, *tmp;
+-- 
+2.25.1
+

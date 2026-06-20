@@ -1,0 +1,107 @@
+From 4209a5125802e714a6342a74ff0835c5c4a2397d Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Wed, 14 Nov 2018 12:04:42 +0100
+Subject: [PATCH] strntol: fix out-of-bounds reads when parsing numbers with
+ leading sign
+
+When parsing a number, we accept a leading plus or minus sign to return
+a positive or negative number. When the parsed string has such a leading
+sign, we set up a flag indicating that the number is negative and
+advance the pointer to the next character in that string. This misses
+updating the number of bytes in the string, though, which is why the
+parser may later on do an out-of-bounds read.
+
+Fix the issue by correctly updating both the pointer and the number of
+remaining bytes. Furthermore, we need to check whether we actually have
+any bytes left after having advanced the pointer, as otherwise the
+auto-detection of the base may do an out-of-bonuds access. Add a test
+that detects the out-of-bound read.
+
+Note that this is not actually security critical. While there are a lot
+of places where the function is called, all of these places are guarded
+or irrelevant:
+
+- commit list: this operates on objects from the ODB, which are always
+  NUL terminated any may thus not trigger the off-by-one OOB read.
+
+- config: the configuration is NUL terminated.
+
+- curl stream: user input is being parsed that is always NUL terminated
+
+- index: the index is read via `git_futils_readbuffer`, which always NUL
+  terminates it.
+
+- loose objects: used to parse the length from the object's header. As
+  we check previously that the buffer contains a NUL byte, this is safe.
+
+- rebase: this parses numbers from the rebase instruction sheet. As the
+  rebase code uses `git_futils_readbuffer`, the buffer is always NUL
+  terminated.
+
+- revparse: this parses a user provided buffer that is NUL terminated.
+
+- signature: this parser the header information of objects. As objects
+  read from the ODB are always NUL terminated, this is a non-issue. The
+  constructor `git_signature_from_buffer` does not accept a length
+  parameter for the buffer, so the buffer needs to be NUL terminated, as
+  well.
+
+- smart transport: the buffer that is parsed is NUL terminated
+
+- tree cache: this parses the tree cache from the index extension. The
+  index itself is read via `git_futils_readbuffer`, which always NUL
+  terminates it.
+
+- winhttp transport: user input is being parsed that is always NUL
+  terminated
+---
+ src/util.c          | 10 ++++++++--
+ tests/core/strtol.c | 10 ++++++++++
+ 2 files changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/src/util.c b/src/util.c
+index 735f0b5..9952a60 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -92,9 +92,15 @@ int git__strntol64(int64_t *result, const char *nptr, size_t nptr_len, const cha
+ 	/*
+ 	 * Sign
+ 	 */
+-	if (*p == '-' || *p == '+')
+-		if (*p++ == '-')
++	if (*p == '-' || *p == '+') {
++		if (*p == '-')
+ 			neg = 1;
++		p++;
++		nptr_len--;
++	}
++
++	if (!nptr_len)
++		goto Return;
+ 
+ 	/*
+ 	 * Automatically detect the base if none was given to us.
+diff --git a/tests/core/strtol.c b/tests/core/strtol.c
+index 71af332..6f4e63a 100644
+--- a/tests/core/strtol.c
++++ b/tests/core/strtol.c
+@@ -108,6 +108,16 @@ void test_core_strtol__buffer_length_with_leading_ws_truncates(void)
+ 	cl_assert_equal_i(i64, 1);
+ }
+ 
++void test_core_strtol__buffer_length_with_leading_sign_truncates(void)
++{
++	int64_t i64;
++
++	cl_git_fail(git__strntol64(&i64, "-1", 1, NULL, 10));
++
++	cl_git_pass(git__strntol64(&i64, "-11", 2, NULL, 10));
++	cl_assert_equal_i(i64, -1);
++}
++
+ void test_core_strtol__error_message_cuts_off(void)
+ {
+ 	assert_l32_fails("2147483657foobar", 10);
+-- 
+2.7.4
+

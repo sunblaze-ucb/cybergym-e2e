@@ -1,0 +1,38 @@
+From 89a4d2b9fc802bf903f728d34f72c606b2d525e5 Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Tue, 5 Mar 2024 17:58:17 +0100
+Subject: [PATCH] Fix format ending up with wrong subformat (#676)
+
+It was possible the format was taken from foreign metadata and the
+subformat from command-line options.
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=63790
+---
+ src/flac/main.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/flac/main.c b/src/flac/main.c
+index d57ad9cc..46a2dcc7 100644
+--- a/src/flac/main.c
++++ b/src/flac/main.c
+@@ -2205,10 +2205,14 @@ int decode_file(const char *infilename)
+ 		output_format = FORMAT_WAVE;
+ 
+ 	/* Now do subformats */
+-	if(option_values.force_legacy_wave_format)
++	if(option_values.force_legacy_wave_format) {
++		output_format = FORMAT_WAVE;
+ 		output_subformat = SUBFORMAT_WAVE_PCM;
+-	else if(option_values.force_extensible_wave_format)
++	}
++	else if(option_values.force_extensible_wave_format) {
++		output_format = FORMAT_WAVE;
+ 		output_subformat = SUBFORMAT_WAVE_EXTENSIBLE;
++	}
+ 	else if(option_values.force_aiff_c_none_format) {
+ 		output_format = FORMAT_AIFF_C;
+ 		output_subformat = SUBFORMAT_AIFF_C_NONE;
+-- 
+2.25.1
+

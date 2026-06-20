@@ -1,0 +1,25 @@
+From 097681b4d458899dff945138ea39ae125df3e16a Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Tue, 3 Oct 2023 23:39:20 +0900
+Subject: [PATCH] mruby-pack: unpack "b/B" should limit result size
+
+---
+ mrbgems/mruby-pack/src/pack.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-pack/src/pack.c b/mrbgems/mruby-pack/src/pack.c
+index 26c2890b0..08db9091b 100644
+--- a/mrbgems/mruby-pack/src/pack.c
++++ b/mrbgems/mruby-pack/src/pack.c
+@@ -921,7 +921,7 @@ unpack_bstr(mrb_state *mrb, const void *src, int slen, mrb_value ary, int count,
+ 
+   const char *sptr0 = (const char*)src;
+   const char *sptr = sptr0;
+-  if (count == -1)
++  if (count == -1 || count > slen * 8)
+     count = slen * 8;
+ 
+   mrb_value dst = mrb_str_new(mrb, NULL, count);
+-- 
+2.25.1
+

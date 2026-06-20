@@ -1,0 +1,51 @@
+From 183b22ac320c5e59f1d14b0fda395cecad38b932 Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Sun, 7 May 2023 21:21:23 +0200
+Subject: [PATCH] When outputting partial frame, emulate verbatim frame
+
+After seeking, a partial frame is passed to the write callback.
+The FLAC__Frame passed there only has its blocksize and sample
+number changed to accomodate. This results in several 'rules'
+being violated. For example, the predictor order can be larger
+than the blocksize. This caused integer underflow in the analysis
+output of the flac command line program, causing heap overflow.
+Also, the output analysis data is junk, because the residual and
+rice parameters are not changed accordingly, as this would
+violate other things that are otherwise given, like the number
+of rice partitions being a power of 2.
+
+To remedy this, a FLAC__Frame is now output stating that all
+subframes are of the verbatim type, which has no restrictions
+like fixed and lpc subframes have.
+
+A better remedy will have to wait to the next API change, to
+introduce a few new subframe types for this case and the case
+of conveying an unreadable frame.
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=58481
+---
+ src/libFLAC/stream_decoder.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/libFLAC/stream_decoder.c b/src/libFLAC/stream_decoder.c
+index 104d0d5d..400aef14 100644
+--- a/src/libFLAC/stream_decoder.c
++++ b/src/libFLAC/stream_decoder.c
+@@ -3227,8 +3227,12 @@ FLAC__StreamDecoderWriteStatus write_audio_frame_to_client_(FLAC__StreamDecoder
+ 			if(delta > 0) {
+ 				uint32_t channel;
+ 				const FLAC__int32 *newbuffer[FLAC__MAX_CHANNELS];
+-				for(channel = 0; channel < frame->header.channels; channel++)
++				for(channel = 0; channel < frame->header.channels; channel++) {
+ 					newbuffer[channel] = buffer[channel] + delta;
++					decoder->private_->last_frame.subframes[channel].type = FLAC__SUBFRAME_TYPE_VERBATIM;
++					decoder->private_->last_frame.subframes[channel].data.verbatim.data_type = FLAC__VERBATIM_SUBFRAME_DATA_TYPE_INT32;
++					decoder->private_->last_frame.subframes[channel].data.verbatim.data.int32 = newbuffer[channel];
++				}
+ 				decoder->private_->last_frame.header.blocksize -= delta;
+ 				decoder->private_->last_frame.header.number.sample_number += (FLAC__uint64)delta;
+ 				/* write the relevant samples */
+-- 
+2.25.1
+

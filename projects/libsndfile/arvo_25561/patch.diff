@@ -1,0 +1,70 @@
+From b1d642078f1278f8a1be20ff1f9206415fd34100 Mon Sep 17 00:00:00 2001
+From: evpobr <evpobr@gmail.com>
+Date: Thu, 18 Mar 2021 10:28:48 +0500
+Subject: [PATCH] sndfile: Improve SF_INFO correctness check
+
+Limit maximum `samplerate` and `channels` values.
+
+Update API documentation to reflect changes.
+
+This should also fix some possible integer overflows as:
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=28441
+
+Credit to OSS-Fuzz.
+---
+ docs/api.md   | 5 +++++
+ src/common.h  | 2 ++
+ src/sndfile.c | 4 ++--
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/docs/api.md b/docs/api.md
+index f009b74d..ac21299d 100644
+--- a/docs/api.md
++++ b/docs/api.md
+@@ -97,6 +97,11 @@ calling **sf_open**(). The only exception to this is the case of RAW files where
+ the caller has to set the **samplerate**, **channels** and **format** fields to
+ valid values. All other fields of the structure are filled in by the library.
+ 
++**Note:** The libsndfile library will reject values ​​for **samplerate** field
++that are greater than `655350` and values ​​for field **channels** that are
++greater than `1024`. These values ​​represent the maximum theoretical limit and
++may be less for specific formats.
++
+ When opening a file for write, the caller must fill in structure members
+ **samplerate**, **channels**, and **format**.
+ 
+diff --git a/src/common.h b/src/common.h
+index 8be6f0eb..cb82579e 100644
+--- a/src/common.h
++++ b/src/common.h
+@@ -109,6 +109,8 @@
+ 
+ 
+ #define		SF_MAX_CHANNELS		1024
++/* Max FLAC sample rate : https://xiph.org/flac/format.html */
++#define		SF_MAX_SAMPLERATE	655350
+ 
+ 
+ /*
+diff --git a/src/sndfile.c b/src/sndfile.c
+index f2b49f63..71f060f1 100644
+--- a/src/sndfile.c
++++ b/src/sndfile.c
+@@ -2881,11 +2881,11 @@ retry:
+ 
+ static int
+ validate_sfinfo (SF_INFO *sfinfo)
+-{	if (sfinfo->samplerate < 1)
++{	if ((sfinfo->samplerate < 1) || (sfinfo->samplerate > SF_MAX_SAMPLERATE))
+ 		return 0 ;
+ 	if (sfinfo->frames < 0)
+ 		return 0 ;
+-	if (sfinfo->channels < 1)
++	if ((sfinfo->channels < 1) || (sfinfo->channels > SF_MAX_CHANNELS))
+ 		return 0 ;
+ 	if ((SF_CONTAINER (sfinfo->format)) == 0)
+ 		return 0 ;
+-- 
+2.43.2
+

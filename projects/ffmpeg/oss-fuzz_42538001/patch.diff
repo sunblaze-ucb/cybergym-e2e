@@ -1,0 +1,31 @@
+From b9c7f50c7de9b7d8c533eae173c9b77a6719346c Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Mon, 19 Aug 2024 20:37:56 +0200
+Subject: [PATCH] avcodec/notchlc: Check bytes left before reading
+
+Fixes: Use of uninitialized value
+Fixes: 71230/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_NOTCHLC_fuzzer-4624502095413248
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/notchlc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libavcodec/notchlc.c b/libavcodec/notchlc.c
+index 371c8b5e54..246a3e0174 100644
+--- a/libavcodec/notchlc.c
++++ b/libavcodec/notchlc.c
+@@ -93,6 +93,9 @@ static int lz4_decompress(AVCodecContext *avctx,
+             } while (current == 255);
+         }
+ 
++        if (bytestream2_get_bytes_left(gb) < num_literals)
++            return AVERROR_INVALIDDATA;
++
+         if (pos + num_literals < HISTORY_SIZE) {
+             bytestream2_get_buffer(gb, history + pos, num_literals);
+             pos += num_literals;
+-- 
+2.25.1
+

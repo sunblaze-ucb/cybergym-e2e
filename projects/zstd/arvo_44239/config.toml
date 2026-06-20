@@ -1,0 +1,5 @@
+task_id = "arvo:44239"
+target_prog = "sequence_compression_api"
+vul_commit = "26c36fafb97e5eb45d73bc7489f2efb144b801a8"
+patch_commit = "cad9f8d5f9c451b1cc8ce00a16c125e3d2ffc418"
+build_image = "n132/arvo:44239-fix"

@@ -1,0 +1,7 @@
+name = "json-c"
+language = "c"
+homepage = "https://json-c.github.io/json-c/"
+main_repo = "https://github.com/json-c/json-c.git"
+repo_to_patch = "json-c"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["tests/", "fuzz/"]

@@ -1,0 +1,145 @@
+From f3151b6582a38fb1a377eb6070b8cecedb2ea711 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Sun, 17 Jul 2022 16:19:28 -0600
+Subject: [PATCH] [ArrayOf family] Use memory barrier before accessing array
+
+Without it, the compiler was reordering and batching the read
+of array length and array[0] if the 0'th member was accessed
+constantly and function was inlined.  This felt safe to the
+compiler because HB_VAR_ARRAY is 1, but could be unsafe actually.
+The memory barrier disallows that.
+
+This was found by afl/honggfuzz address sanitizers.
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=49187
+---
+ src/hb-open-type.hh        | 14 ++++++++++++++
+ src/hb-ot-layout-common.hh |  2 +-
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/src/hb-open-type.hh b/src/hb-open-type.hh
+index 8e57a683e..8da6b8c13 100644
+--- a/src/hb-open-type.hh
++++ b/src/hb-open-type.hh
+@@ -459,6 +459,7 @@ struct UnsizedArrayOf
+     unsigned int i = (unsigned int) i_;
+     const Type *p = &arrayZ[i];
+     if (unlikely (p < arrayZ)) return Null (Type); /* Overflowed. */
++    _hb_memory_r_barrier ();
+     return *p;
+   }
+   Type& operator [] (int i_)
+@@ -466,6 +467,7 @@ struct UnsizedArrayOf
+     unsigned int i = (unsigned int) i_;
+     Type *p = &arrayZ[i];
+     if (unlikely (p < arrayZ)) return Crap (Type); /* Overflowed. */
++    _hb_memory_r_barrier ();
+     return *p;
+   }
+ 
+@@ -559,6 +561,7 @@ struct UnsizedListOfOffset16To : UnsizedArray16OfOffsetTo<Type, OffsetType, has_
+     unsigned int i = (unsigned int) i_;
+     const OffsetTo<Type, OffsetType, has_null> *p = &this->arrayZ[i];
+     if (unlikely (p < this->arrayZ)) return Null (Type); /* Overflowed. */
++    _hb_memory_r_barrier ();
+     return this+*p;
+   }
+   Type& operator [] (int i_)
+@@ -566,6 +569,7 @@ struct UnsizedListOfOffset16To : UnsizedArray16OfOffsetTo<Type, OffsetType, has_
+     unsigned int i = (unsigned int) i_;
+     const OffsetTo<Type, OffsetType, has_null> *p = &this->arrayZ[i];
+     if (unlikely (p < this->arrayZ)) return Crap (Type); /* Overflowed. */
++    _hb_memory_r_barrier ();
+     return this+*p;
+   }
+ 
+@@ -616,12 +620,14 @@ struct ArrayOf
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= len)) return Null (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i];
+   }
+   Type& operator [] (int i_)
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= len)) return Crap (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i];
+   }
+ 
+@@ -754,12 +760,14 @@ struct List16OfOffsetTo : ArrayOf<OffsetTo<Type, OffsetType>, HBUINT16>
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= this->len)) return Null (Type);
++    _hb_memory_r_barrier ();
+     return this+this->arrayZ[i];
+   }
+   const Type& operator [] (int i_)
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= this->len)) return Crap (Type);
++    _hb_memory_r_barrier ();
+     return this+this->arrayZ[i];
+   }
+ 
+@@ -797,12 +805,14 @@ struct HeadlessArrayOf
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= lenP1 || !i)) return Null (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i-1];
+   }
+   Type& operator [] (int i_)
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= lenP1 || !i)) return Crap (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i-1];
+   }
+   unsigned int get_size () const
+@@ -881,12 +891,14 @@ struct ArrayOfM1
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i > lenM1)) return Null (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i];
+   }
+   Type& operator [] (int i_)
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i > lenM1)) return Crap (Type);
++    _hb_memory_r_barrier ();
+     return arrayZ[i];
+   }
+   unsigned int get_size () const
+@@ -1066,12 +1078,14 @@ struct VarSizedBinSearchArrayOf
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= get_length ())) return Null (Type);
++    _hb_memory_r_barrier ();
+     return StructAtOffset<Type> (&bytesZ, i * header.unitSize);
+   }
+   Type& operator [] (int i_)
+   {
+     unsigned int i = (unsigned int) i_;
+     if (unlikely (i >= get_length ())) return Crap (Type);
++    _hb_memory_r_barrier ();
+     return StructAtOffset<Type> (&bytesZ, i * header.unitSize);
+   }
+   unsigned int get_length () const
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index a2d2d39b6..b9518bd03 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -1317,7 +1317,7 @@ struct Lookup
+     if (unlikely (!get_subtables<TSubTable> ().sanitize (c, this, get_type ())))
+       return_trace (false);
+ 
+-    if (unlikely (get_type () == TSubTable::Extension && subtables && !c->get_edit_count ()))
++    if (unlikely (get_type () == TSubTable::Extension && !c->get_edit_count ()))
+     {
+       /* The spec says all subtables of an Extension lookup should
+        * have the same type, which shall not be the Extension type
+-- 
+2.43.2
+

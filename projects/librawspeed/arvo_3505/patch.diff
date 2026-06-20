@@ -1,0 +1,60 @@
+From d505b6d818773a70c26ba6d31e6ae88beb0ecb0c Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Thu, 28 Sep 2017 15:56:37 +0300
+Subject: [PATCH] AbstractLJpegDecompressor::parseSOF(): cpp should be <= row
+ length
+
+---
+ src/librawspeed/decompressors/AbstractLJpegDecompressor.cpp |  5 +++++
+ src/librawspeed/decompressors/LJpegDecompressor.cpp         | 12 +++++++-----
+ 2 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/src/librawspeed/decompressors/AbstractLJpegDecompressor.cpp b/src/librawspeed/decompressors/AbstractLJpegDecompressor.cpp
+index 81eaf14..feb1a2c 100644
+--- a/src/librawspeed/decompressors/AbstractLJpegDecompressor.cpp
++++ b/src/librawspeed/decompressors/AbstractLJpegDecompressor.cpp
+@@ -112,6 +112,11 @@ void AbstractLJpegDecompressor::parseSOF(ByteStream sofInput, SOFInfo* sof) {
+              sof->cps, mRaw->getCpp());
+   }
+ 
++  if (sof->cps > static_cast<uint32>(mRaw->dim.x)) {
++    ThrowRDE("Component count should be no greater than row length (%u vs %u).",
++             sof->cps, mRaw->dim.x);
++  }
++
+   if (sofInput.getRemainSize() != 3 * sof->cps)
+     ThrowRDE("Header size mismatch.");
+ 
+diff --git a/src/librawspeed/decompressors/LJpegDecompressor.cpp b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+index 46d71cd..9924890 100644
+--- a/src/librawspeed/decompressors/LJpegDecompressor.cpp
++++ b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+@@ -73,6 +73,13 @@ void LJpegDecompressor::decodeScan()
+ template <int N_COMP>
+ void LJpegDecompressor::decodeN()
+ {
++  assert(mRaw->getCpp() > 0);
++  assert(N_COMP > 0);
++  assert(N_COMP >= mRaw->getCpp());
++  assert((N_COMP / mRaw->getCpp()) > 0);
++
++  assert(mRaw->dim.x >= N_COMP);
++
+   auto ht = getHuffmanTables<N_COMP>();
+   auto pred = getInitialPredictors<N_COMP>();
+   auto predNext = pred.data();
+@@ -95,11 +102,6 @@ void LJpegDecompressor::decodeN()
+     // the predictor for the next line is the start of this line
+     predNext = dest;
+ 
+-    assert(mRaw->getCpp() > 0);
+-    assert(N_COMP > 0);
+-    assert(N_COMP >= mRaw->getCpp());
+-    assert((N_COMP / mRaw->getCpp()) > 0);
+-
+     unsigned width = min(frame.w,
+                          (mRaw->dim.x - offX) / (N_COMP / mRaw->getCpp()));
+ 
+-- 
+2.7.4
+

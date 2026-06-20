@@ -1,0 +1,5 @@
+task_id = "arvo:36955"
+target_prog = "sleuthkit_fls_fat_fuzzer"
+vul_commit = "2afcaa044d7f58c8409f3d7b15a150fc1bb3c9a6"
+patch_commit = "3bb323fbd6d56ec5d78e3c512bbb12c61e767530"
+build_image = "n132/arvo:36955-fix"

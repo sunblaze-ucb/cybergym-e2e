@@ -1,0 +1,31 @@
+From db7b4fc89fb18d5ff0a1426bd433c234555a3fff Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 9 Oct 2024 23:44:00 +0200
+Subject: [PATCH] avformat/mpegts: Initialize
+ predefined_SLConfigDescriptor_seen
+
+Fixes: use of uninitialized variable
+Fixes: 368729566/clusterfuzz-testcase-minimized-ffmpeg_dem_MPEGTS_fuzzer-6044501804646400
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/mpegts.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libavformat/mpegts.c b/libavformat/mpegts.c
+index 81481f6f76..78ab7f7efe 100644
+--- a/libavformat/mpegts.c
++++ b/libavformat/mpegts.c
+@@ -1672,6 +1672,8 @@ static int mp4_read_iods(AVFormatContext *s, const uint8_t *buf, unsigned size,
+     MP4DescrParseContext d;
+     int ret;
+ 
++    d.predefined_SLConfigDescriptor_seen = 0;
++
+     ret = init_MP4DescrParseContext(&d, s, buf, size, descr, max_descr_count);
+     if (ret < 0)
+         return ret;
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:40617"
+target_prog = "exif_loader_fuzzer"
+vul_commit = "54461dde98692a0741fbbe2e0c6c2533ae9594e1"
+patch_commit = "4bd5cd63390731a1473205f9346cd4fcc1b0f668"
+build_image = "n132/arvo:40617-fix"

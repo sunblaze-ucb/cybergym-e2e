@@ -1,0 +1,66 @@
+From fda03e297b1abe3ce8277794a7de8970601ed7c9 Mon Sep 17 00:00:00 2001
+From: Isaac Brodsky <isaac@isaacbrodsky.com>
+Date: Thu, 15 Jul 2021 10:01:58 -0700
+Subject: [PATCH] Fix potential segfault in kRing due to invalid digit (#498)
+
+---
+ CHANGELOG.md                     |  3 +++
+ src/apps/testapps/testGridDisk.c | 11 ++++++++++-
+ src/h3lib/lib/algos.c            |  5 ++++-
+ 3 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index d0223603..62679837 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -7,6 +7,9 @@ The public API of this library consists of the functions declared in file
+ 
+ ## [Unreleased]
+ 
++### Fixed
++- `gridDisk` of invalid indexes should not crash. (#498)
++
+ ### Added
+ - Vertex mode and associated functions:
+     - `cellToVertex(cell, vertexNum)`
+diff --git a/src/apps/testapps/testGridDisk.c b/src/apps/testapps/testGridDisk.c
+index 6832c1ff..d3679771 100644
+--- a/src/apps/testapps/testGridDisk.c
++++ b/src/apps/testapps/testGridDisk.c
+@@ -360,7 +360,16 @@ SUITE(gridDisk) {
+         int k = 1000;
+         int kSz = H3_EXPORT(maxGridDiskSize)(k);
+         H3Index *neighbors = calloc(kSz, sizeof(H3Index));
+-        H3_EXPORT(gridDisk)(0x7fffffffffffffff, 1000, neighbors);
++        H3_EXPORT(gridDisk)(0x7fffffffffffffff, k, neighbors);
++        // Assertion is should not crash - should return an error in the future
++        free(neighbors);
++    }
++
++    TEST(gridDiskInvalidDigit) {
++        int k = 2;
++        int kSz = H3_EXPORT(maxGridDiskSize)(k);
++        H3Index *neighbors = calloc(kSz, sizeof(H3Index));
++        H3_EXPORT(gridDisk)(0x4d4b00fe5c5c3030, k, neighbors);
+         // Assertion is should not crash - should return an error in the future
+         free(neighbors);
+     }
+diff --git a/src/h3lib/lib/algos.c b/src/h3lib/lib/algos.c
+index cf5f1d8e..0a6ecd4f 100644
+--- a/src/h3lib/lib/algos.c
++++ b/src/h3lib/lib/algos.c
+@@ -346,7 +346,10 @@ H3Index h3NeighborRotations(H3Index origin, Direction dir, int *rotations) {
+         } else {
+             Direction oldDigit = H3_GET_INDEX_DIGIT(out, r + 1);
+             Direction nextDir;
+-            if (isResolutionClassIII(r + 1)) {
++            if (oldDigit == INVALID_DIGIT) {
++                // Only possible on invalid input
++                return H3_NULL;
++            } else if (isResolutionClassIII(r + 1)) {
+                 H3_SET_INDEX_DIGIT(out, r + 1, NEW_DIGIT_II[oldDigit][dir]);
+                 nextDir = NEW_ADJUSTMENT_II[oldDigit][dir];
+             } else {
+-- 
+2.43.2
+

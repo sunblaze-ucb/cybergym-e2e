@@ -1,0 +1,5 @@
+task_id = "arvo:40540"
+target_prog = "hb-subset-fuzzer"
+vul_commit = "364b6b3989e9df6335711e282e3250534d88299a"
+patch_commit = "0a7563a53ffedd735cb41c03f697269ef48f0ec2"
+build_image = "n132/arvo:40540-fix"

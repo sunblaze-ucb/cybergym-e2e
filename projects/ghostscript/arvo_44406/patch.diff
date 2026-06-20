@@ -1,0 +1,27 @@
+From a07b2982ac60f0e563e6a282bf2f8fdc81ae3c1c Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Mon, 7 Feb 2022 12:55:17 +0000
+Subject: [PATCH] oss-fuzz 44406: Extra bounds check for eexec decoding
+
+Augment a previous buffer bounds check to check for a zero length buffer, as
+well as the existing negatively buffer size.
+---
+ pdf/pdf_fontps.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_fontps.c b/pdf/pdf_fontps.c
+index 02384ab24..7d90120c5 100644
+--- a/pdf/pdf_fontps.c
++++ b/pdf/pdf_fontps.c
+@@ -979,7 +979,7 @@ ps_font_eexec_func(gs_memory_t *mem, pdf_ps_ctx_t *s, byte *buf, byte *bufend)
+     stream *strm;
+     int c;
+ 
+-    if (bufend < buf) {
++    if (bufend <= buf) {
+         return_error(gs_error_invalidfont);
+     }
+ 
+-- 
+2.43.2
+

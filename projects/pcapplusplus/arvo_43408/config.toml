@@ -1,0 +1,5 @@
+task_id = "arvo:43408"
+target_prog = "FuzzTarget"
+vul_commit = "847ba68f02c2c5e7af43f39c1b5b81fa7e0c0374"
+patch_commit = "7839d0493830d19bd02f84590187553509b21ee8"
+build_image = "n132/arvo:43408-fix"

@@ -1,0 +1,35 @@
+From cbe8bbefea36e8980d5a65bc350b317bc0244bb9 Mon Sep 17 00:00:00 2001
+From: Veronika Hanulikova <xhanulik@fi.muni.cz>
+Date: Fri, 7 Oct 2022 13:13:02 +0200
+Subject: [PATCH] Set buffer pointer before parsing ASN1
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=49248
+---
+ src/libopensc/card-cardos.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-cardos.c b/src/libopensc/card-cardos.c
+index 51f4ed4c..0d8e2651 100644
+--- a/src/libopensc/card-cardos.c
++++ b/src/libopensc/card-cardos.c
+@@ -496,7 +496,7 @@ static int cardos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
+ {
+ 	sc_apdu_t apdu;
+ 	u8        rbuf[256], offset = 0;
+-	const u8  *p = rbuf, *q, *tag;
++	const u8  *p, *q, *tag;
+ 	int       r;
+ 	size_t    fids = 0, len;
+ 
+@@ -521,6 +521,7 @@ get_next_part:
+ 		sc_log(card->ctx,  "directory listing > 256 bytes, cutting");
+ 	}
+ 
++	p = rbuf;
+ 	len = apdu.resplen;
+ 	while (len != 0) {
+ 		size_t   tlen = 0, ilen = 0;
+-- 
+2.25.1
+

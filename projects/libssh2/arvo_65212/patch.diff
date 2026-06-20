@@ -1,0 +1,25 @@
+From f52ffc1ccdedcd5a885e85c2d0f0cb872b2b0a7f Mon Sep 17 00:00:00 2001
+From: Michael Buckley <michael@buckleyisms.com>
+Date: Mon, 8 Jan 2024 15:04:52 -0800
+Subject: [PATCH] Fix an out-of-bounds read in _libssh2_kex_agree_instr when
+ searching for a KEX not in the server list (#1302)
+
+---
+ src/kex.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/kex.c b/src/kex.c
+index a7b301e1..65973297 100644
+--- a/src/kex.c
++++ b/src/kex.c
+@@ -3349,6 +3349,7 @@ _libssh2_kex_agree_instr(unsigned char *haystack, size_t haystack_len,
+         left = end_haystack - s;
+         if((left >= 1) && (left <= haystack_len) && (left > needle_len)) {
+             s++;
++            left--;
+         }
+         else {
+             return NULL;
+-- 
+2.25.1
+

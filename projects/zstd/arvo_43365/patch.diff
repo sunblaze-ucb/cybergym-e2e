@@ -1,0 +1,49 @@
+From 4d8a2132d0e453232a46dd448e5137035ba25bee Mon Sep 17 00:00:00 2001
+From: Nick Terrell <terrelln@fb.com>
+Date: Thu, 6 Jan 2022 16:00:02 -0800
+Subject: [PATCH] [opt] Fix oss-fuzz bug in optimal parser
+
+oss-fuzz uncovered a scenario where we're evaluating the cost of litLength = 131072,
+which can't be represented in the zstd format, so we accessed 1 beyond LL_bits.
+
+Fix the issue by making it cost 1 bit more than litLength = 131071.
+
+There are still follow ups:
+1. This happened because literals_cost[0] = 0, so the optimal parser chose 36 literals
+   over a match. Should we bound literals_cost[literal] > 0, unless the block truly only
+   has one literal value?
+2. When no matches are found, the cost model isn't updated. In this case no matches were
+   found for an entire block. So the literals cost model wasn't updated at all. That made
+   the optimal parser think literals_cost[0] = 0, where it is actually quite high, since
+   the block was entirely random noise.
+
+Credit to OSS-Fuzz.
+---
+ lib/compress/zstd_opt.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/lib/compress/zstd_opt.c b/lib/compress/zstd_opt.c
+index 2fa10816..1b1ddad4 100644
+--- a/lib/compress/zstd_opt.c
++++ b/lib/compress/zstd_opt.c
+@@ -269,7 +269,16 @@ static U32 ZSTD_rawLiteralsCost(const BYTE* const literals, U32 const litLength,
+  * cost of literalLength symbol */
+ static U32 ZSTD_litLengthPrice(U32 const litLength, const optState_t* const optPtr, int optLevel)
+ {
+-    if (optPtr->priceType == zop_predef) return WEIGHT(litLength, optLevel);
++    assert(litLength <= ZSTD_BLOCKSIZE_MAX);
++    if (optPtr->priceType == zop_predef)
++        return WEIGHT(litLength, optLevel);
++    /* We can't compute the litLength price for sizes >= ZSTD_BLOCKSIZE_MAX
++     * because it isn't representable in the zstd format. So instead just
++     * call it 1 bit more than ZSTD_BLOCKSIZE_MAX - 1. In this case the block
++     * would be all literals.
++     */
++    if (litLength == ZSTD_BLOCKSIZE_MAX)
++        return BITCOST_MULTIPLIER + ZSTD_litLengthPrice(ZSTD_BLOCKSIZE_MAX - 1, optPtr, optLevel);
+ 
+     /* dynamic statistics */
+     {   U32 const llCode = ZSTD_LLcode(litLength);
+-- 
+2.43.2
+

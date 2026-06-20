@@ -1,0 +1,4 @@
+task_id = "arvo:30236"
+target_prog = "fuzz_sudoers"
+vul_commit = "d2901f4121e5490f9d1128458a8e229f4870b3cd"
+patch_commit = "bd4e8bc699ba1355c5579f345b4521017b8454f1"

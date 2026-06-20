@@ -1,0 +1,5 @@
+task_id = "arvo:33991"
+target_prog = "fuzz_format_sav"
+vul_commit = "38d4418e00e67e5a064e2f0995b500336e7c92de"
+patch_commit = "c7baae72b36acdc24f56ad48d3e859850fdbdc2b"
+build_image = "n132/arvo:33991-fix"

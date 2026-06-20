@@ -1,0 +1,4 @@
+task_id = "arvo:28216"
+target_prog = "HttpWithProxy"
+vul_commit = "dadfff98d9c50c4c98edc3cc50ab8afa08e7d47e"
+patch_commit = "e30217e787fbd52cc74f6c61b08c2425f56df48e"

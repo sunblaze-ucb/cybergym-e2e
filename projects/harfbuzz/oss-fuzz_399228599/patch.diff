@@ -1,0 +1,26 @@
+From 3c4cb472d1fa2a5bb7c155883bbcab1fdd552046 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Wed, 26 Feb 2025 10:48:36 -0700
+Subject: [PATCH] [VARC] Fix uninitialized value
+
+Fixes https://oss-fuzz.com/testcase-detail/6089638800588800
+---
+ src/OT/Var/VARC/VARC.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/OT/Var/VARC/VARC.cc b/src/OT/Var/VARC/VARC.cc
+index ae680f365..1099130a0 100644
+--- a/src/OT/Var/VARC/VARC.cc
++++ b/src/OT/Var/VARC/VARC.cc
+@@ -202,7 +202,7 @@ VarComponent::get_path_at (hb_font_t *font,
+     unsigned axisIndicesIndex;
+     READ_UINT32VAR (axisIndicesIndex);
+     axisIndices.extend ((&VARC+VARC.axisIndicesList)[axisIndicesIndex]);
+-    axisValues.resize (axisIndices.length, false);
++    axisValues.resize (axisIndices.length);
+     const HBUINT8 *p = (const HBUINT8 *) record;
+     TupleValues::decompile (p, axisValues, (const HBUINT8 *) end);
+     record = (const unsigned char *) p;
+-- 
+2.25.1
+

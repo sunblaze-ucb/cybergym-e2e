@@ -1,0 +1,4 @@
+task_id = "arvo:47986"
+target_prog = "libical_fuzzer"
+vul_commit = "a8ef3de84cc5740978a49dcf7b8eeb2cd5fc6cb8"
+patch_commit = "d86a86dbcddba0414f0dea13c3357f1c38826cb2"

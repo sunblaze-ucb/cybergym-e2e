@@ -1,0 +1,32 @@
+From 0bbd2b1ad0426aee86445cd7f0c86667624da7ca Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Sat, 20 May 2023 21:00:25 +0930
+Subject: [PATCH] Re: Bug 23686, two segment faults in nm
+
+The fix for pr23686 had a hole in the reloc address sanity check,
+the calculation could overflow.  Note that stabsize is known to be a
+non-zero multiple of 12 so stabsize - 4 can't underflow.
+
+	PR 23686
+	* syms.c (_bfd_stab_section_find_nearest_line): Correct
+	r->address sanity check.
+---
+ bfd/syms.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bfd/syms.c b/bfd/syms.c
+index 6979096fbc6..d756995d767 100644
+--- a/bfd/syms.c
++++ b/bfd/syms.c
+@@ -1106,7 +1106,7 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
+ 		  || r->howto->pc_relative
+ 		  || r->howto->bitpos != 0
+ 		  || r->howto->dst_mask != 0xffffffff
+-		  || octets + 4 > stabsize)
++		  || octets > stabsize - 4)
+ 		{
+ 		  _bfd_error_handler
+ 		    (_("unsupported .stab relocation"));
+-- 
+2.25.1
+

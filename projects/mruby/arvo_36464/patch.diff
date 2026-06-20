@@ -1,0 +1,37 @@
+From 9c43276eb51d81ed6f62ec1810c944580caebc40 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 23 Jul 2021 11:20:18 +0900
+Subject: [PATCH] codegen.c: fixed a bug in `OP_LOADI32` peephole optimization.
+
+---
+ mrbgems/mruby-compiler/core/codegen.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-compiler/core/codegen.c b/mrbgems/mruby-compiler/core/codegen.c
+index 4aac984a3..c0d39dcb7 100644
+--- a/mrbgems/mruby-compiler/core/codegen.c
++++ b/mrbgems/mruby-compiler/core/codegen.c
+@@ -488,11 +488,19 @@ gen_move(codegen_scope *s, uint16_t dst, uint16_t src, int nopeep)
+       s->pc = s->lastpc;
+       genop_2(s, data.insn, dst, data.b);
+       break;
+-    case OP_GETUPVAR: case OP_LOADI32:
++    case OP_GETUPVAR:
+       if (nopeep || data.a != src || data.a < s->nlocals) goto normal;
+       s->pc = s->lastpc;
+       genop_3(s, data.insn, dst, data.b, data.c);
+       break;
++    case OP_LOADI32:
++      if (nopeep || data.a != src || data.a < s->nlocals) goto normal;
++      else {
++        uint32_t i = (uint32_t)data.b<<16|data.c;
++        s->pc = s->lastpc;
++        genop_2SS(s, data.insn, dst, i);
++      }
++      break;
+     default:
+       goto normal;
+     }
+-- 
+2.43.2
+

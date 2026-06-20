@@ -1,0 +1,5 @@
+task_id = "arvo:59072"
+target_prog = "php-fuzz-execute"
+vul_commit = "5c741644d177d521e35168c63891cb43e018f65b"
+patch_commit = "7790ee8736a316f037c18c436d7d2d7a1118abaf"
+build_image = "n132/arvo:59072-fix"

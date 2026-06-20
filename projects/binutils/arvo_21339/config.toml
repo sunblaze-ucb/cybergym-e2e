@@ -1,0 +1,4 @@
+task_id = "arvo:21339"
+target_prog = "fuzz_bfd"
+vul_commit = "4c4addbe57711f1cdbb72305b8cbd03a68ae2e34"
+patch_commit = "ff7685105468702de87b75599b1ea88cc309541c"

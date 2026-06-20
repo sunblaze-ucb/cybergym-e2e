@@ -1,0 +1,7 @@
+name = "exiv2"
+language = "c++"
+homepage = "https://www.exiv2.org"
+main_repo = "https://github.com/Exiv2/exiv2"
+repo_to_patch = "exiv2"
+build_image = "n132/arvo:45993-fix"
+immutable_files = ['tests', 'unitTests']

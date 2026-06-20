@@ -1,0 +1,5 @@
+task_id = "arvo:51356"
+target_prog = "fuzzerVertexes"
+vul_commit = "93308d2d1ab08fc275bbaa946693f868c07ee4f2"
+patch_commit = "fdc32aec1ff50e79d04ccffbfefa5f82acd72afe"
+build_image = "n132/arvo:51356-fix"

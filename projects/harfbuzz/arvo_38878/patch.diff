@@ -1,0 +1,167 @@
+From 74f96d9d4b359fc138d21709c975a09ba933fb3d Mon Sep 17 00:00:00 2001
+From: Garret Rieger <grieger@google.com>
+Date: Fri, 17 Sep 2021 13:46:07 -0700
+Subject: [PATCH] [repacker] fix heap use after free in repacker.
+
+Don't store a reference to the link in overflow records as the link object may be freed if the sorted graph vector is resized.
+---
+ src/hb-repacker.hh                              |  12 ++++++------
+ ...-minimized-hb-subset-fuzzer-5127321313476608 | Bin 0 -> 60417 bytes
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5127321313476608
+
+diff --git a/src/hb-repacker.hh b/src/hb-repacker.hh
+index b02128b5c..237033864 100644
+--- a/src/hb-repacker.hh
++++ b/src/hb-repacker.hh
+@@ -91,7 +91,7 @@ struct graph_t
+   struct overflow_record_t
+   {
+     unsigned parent;
+-    const hb_serialize_context_t::object_t::link_t* link;
++    unsigned child;
+   };
+ 
+   struct clone_buffer_t
+@@ -414,7 +414,7 @@ struct graph_t
+ 
+         overflow_record_t r;
+         r.parent = parent_idx;
+-        r.link = &link;
++        r.child = link.objidx;
+         overflows->push (r);
+       }
+     }
+@@ -430,10 +430,10 @@ struct graph_t
+     update_incoming_edge_count ();
+     for (const auto& o : overflows)
+     {
+-      const auto& child = vertices_[o.link->objidx];
++      const auto& child = vertices_[o.child];
+       DEBUG_MSG (SUBSET_REPACK, nullptr, "  overflow from %d => %d (%d incoming , %d outgoing)",
+                  o.parent,
+-                 o.link->objidx,
++                 o.child,
+                  child.incoming_edges,
+                  child.obj.links.length);
+     }
+@@ -708,12 +708,12 @@ hb_resolve_overflows (const hb_vector_t<hb_serialize_context_t::object_t *>& pac
+     for (int i = overflows.length - 1; i >= 0; i--)
+     {
+       const graph_t::overflow_record_t& r = overflows[i];
+-      const auto& child = sorted_graph.vertices_[r.link->objidx];
++      const auto& child = sorted_graph.vertices_[r.child];
+       if (child.is_shared ())
+       {
+         // The child object is shared, we may be able to eliminate the overflow
+         // by duplicating it.
+-        sorted_graph.duplicate (r.parent, r.link->objidx);
++        sorted_graph.duplicate (r.parent, r.child);
+         resolution_attempted = true;
+ 
+         // Stop processing overflows for this round so that object order can be
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5127321313476608 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5127321313476608
+new file mode 100644
+index 0000000000000000000000000000000000000000..476e251eb9db16fe555bd26605c1e60fcb99c847
+GIT binary patch
+literal 60417
+zcmeHQ3vg7|dH&DUm9(rDBV-{Pft3X$EWmo~YNbU~*b)e^8?}-VkboPZ)oPK{uB1g;
+zVZpf3dP3sRI5lw^*UTgtCb1j0sZ)>JPDrP*aca`mNz+X1I<!fQ+m69BZtWO@1Q^|Z
+z|GE2=1j0yKJvjf)eVq4yzH`pq`}n_eND$F26rvPr-cq}%o)!oVKJQ@5-qKLtc+!35
+zJ|ck#)U>5>`-bI<$QpK2{i`L;oj*PFGsAe-Fo<?|J3YIXkcVml^fJ;nw|RO4l#U;1
+z`Im@nZT|gxzPECB#*iUO5uV%b^R#N2YcC+Yj%aDc1$fwwr8UA$Z$C--{hh)7^ylam
+zIxn6fvXH;i*V-{3DM>p_l$F-$=?~BbeHYxv;A!vjbo#W@8PHEV33pXbcW;nLCo)!L
+z_ZPLdbi+k9Y{J!YK%i10l!85>MtO7>3BM=Ug<_BZNemexyxz_L{300XP)$dOovLU#
+zt%NH#E=-qU2nU7$WK1Ae6Qv;uXDNYXWF?SA`-+G%2@Qd4P`qC7SBL{=L@GR79Wz^o
+z2B+sKTZUTK?E7M>&yyJHArWnerlzJa$h`rN*VnPPuRG}L=@<*^Yqxt;U2b<9CAsa;
+zSh97{ic{Tw+>3zcm;+&R+(3u|GOGQcB6k&y+j-2aqP~UEq4vi}5DE`9jHGY_qSr1#
+ze?piI-Pe{eH_qQXXBg)`;DIu?>NTU<XhtbBqZ+z&YDQ6Lyh=Vh)iQaP2mWt_@PCz(
+zQ3zztSs7K;8}^v95UGky0|J8+l*w25?Br*8y*b97#lp9sj-69`3p#oKE4ZADd&}3H
+zMhCUyc>I}Bx4U>wjo0UfuZt?7LSXhG;9f{s?)yWx&OXhR#tH$2fI{G-AaK1mVzV#a
+zM?vA*ac5uMmBup{feAj|4NiW|X43OrnR>pP^0(R3@qEW`Sv9(so~EDh7uR*02_FI>
+z{H?JNKY<TOUxCX)UkVXF>zCWfvctQZU(BXq8z#$6{=OvON+V=3Dm{l-@Z-E9=K+6T
+zFXzuGcF}=)WWZlN4TCd9ti|D%ztUgr6aq;>0N=lrC<GJ&3V~UTz{<(czIrk;QF%-d
+zfws!F3FdG^$$LBcyZx=b!To;U4W(C!CXRqIe3&?fDu-kufakZIWR|DOQV1vn6aoqX
+zg@8gpAuuii)#JvvR)kCDyYfuRA_v$;0q{V25&xmU$ya{#<R!znmlNY1;sLxHZ})YH
+z9-<CU8&$*C(Vims^)@62^didF%)AQUH0-JT-u+{A`ZD6JUPpA_md0;?ztlT?(io!E
+zSr+-$9Nx4F8^37}i<X5G@N*(wIHpFz_{jc)$diweIP6cY2`=e1VwV`<x6IIpCx0xE
+z@*bP8$0QaGKV6n7^-1vO=v)t$*em`>6x06%Kr+*tZZ0M<hV<9S9zNoL_yTMomPpjd
+zF;ZSc+lc>%^UU~ik0zrNVfifS|9mjw;N#2jjuGd3Q%}4V=e3E?zZK_k;>1g)tF5oY
+z@Aq{^gTl2p8B`;cmMl1~6d8@rT{6fx1(qD)JB;jK*n=M@_k&bF$S0Dvg#=9ck(3`=
+z0^j$I0Rth=QnNqU!+j52ApXjdlFhs_e^1LWcUO2UfWP<?>^2a2@M%Xh6G(Ik3_ATP
+z47!5R47whukjS9>_%r;uD9WH?RmK*mz%q7V%=ao3JTvi#y%6H64<**UPubU5&o&m%
+zvlhQ{d0xJC@Do=mA6{iW_|%=&=lg%@wp-tBbXfo3YqD?bO|^wcRBzn8+5Y=I@4tSr
+z(&2QwD_ySg^2##D=RnDuXSWkI5P>9!c8GmWE~<1nDxIZkOG_OtXNB8Uv9_|(S?+XJ
+ztSxtzyUNO9AC9>>ShN-9(I&}_X1&+MsvkWQAEp{cYUIjddOyZVyS-)xyw@^4F^4)+
+z2;5u<)Nk8XkALbeTqEV!{kuDAeg*_y!yx@n9?P_l2dw^k@XM)h*t+H7X^bP%gK*oK
+zbA0j}13@~Il8vGHe0}35*OvV0hFV-lcQK0cE<h{6wKnCK$j{#jPVp`IeViBBQU~)E
+zJTas#94uH!87WJvm(h=#L7dHM6hC>F9vGl^K2<F_#Pe~<Ao?-3v@XvBm%yvFAitx~
+zX<eZEi;o+hBPY(QppHH6@}hy~D=gc)I)c95131rIKD2;&wL=Bkv4WJL+x4L*&QYlC
+zXo40(=;_v?Ti0YRMrlf>6#>2hNWH&!8xD7t60M;-q&jzDk2@|7CBkd?hI`iEBfH5~
+zt(v`R_LAsr>FBQ#@`k1=;hv8pOi(^GPWteF4><QIpS9e0B`!t34USiFO9Bo##}HIP
+z^oWdL)(EG#tr<y)C(6LhHGY2+rNn1ODDl-YHEs!TcVp7g`4&gs9N`8xT#{=rtc@9Y
+z^ghH)-;v;@Vo-s45Aa*N%_LSH(PwVkXEedBiDBb{VGPJ>YJ9Iv^m^929JGk&c6(;^
+zLZV{!t=-J&j4QIz*fBaIr2w};*p{>EZ(ss}*PGtuq`LO^KfvJwY^UVbL^888hS=9c
+z8SpYiDpMoSJo-{7q%+(90W(P4#z$~kw8MXila*fTjDl^(P<w^I976z?OeNzX;2ST(
+zRD}Eby?#&UROGDkR0t>prVs)D6y~k6RtU^!1oCIJc1pR4BES=$&2~9=^x^N$_Bts2
+z6#@zYg}|gBFgz)_s7w?B3IT<{^&nt=gSeiU$&9linT4sc6aoqXg+L+#a)$PVX`_=n
+zXCJf~cV52<$5GQp^LO+q#(Byo+JKcp{6vbg=Uh!2J$~0?+lNf-U}v(izHTec!#pD-
+z(B!2{H#XGNy+O72z+DJ~RDm@oHpBi4<|LvTsdCuft2S8I2lpr8&Z}=MaW*V}EEjHG
+z@SvHkJbcSse+@UU@euUx3&MU()WTMz4sM+-W?}V$TSSeGx-3|8;*Ce=-+e#aU&WTi
+zYffapUvL@ctq3n`Z}-^*J>`Kp$8&J!x5GYc&@jGb7?;;TE1RFZ9?BB1RMuD@n=}ME
+zs%N99H{q6RPGl7qzF=HpGaz9JV9g2R+q^178f?hOj%^t>wjE|fP)`~*G{d-}r^5;N
+z!_x0}VZl=TD`~I-Uk(9UQrIX5mS)lq{>4^Wil3<6T(=GQ0b$tk<lntWngHqheO-sy
+z23^#NJqXwmKAxw=bdU>6okw;~0TEP9XN)WVW(*FzP7QlDwNi-ImLCzvjpI}-enEeR
+ztl4TW1WTK+)!yb!NcS2{esZ@*<iA3H9zLZmHf_!i>y7r7!u7Rdb6|t^&LidqRdntX
+zm}<scBEjh#r5r*{+0?LyT1P7<>_30#k%fE8uHbTL=gcJ-Xn2wx0mpoF1NgsIhvU_h
+zV<QF__tDbz*H*89jjhP(Jc2g**MI4d<-x=3dIbC55LeX{?k=nku=~d0C+^(6pz1t*
+z%nbhbQ_sIdKpw~M8*dp;Yi}9D=Oc@Y@B%D-T^*&HHde@WC&<^|=J1fXqP1z;>KnE!
+zXrTL%@fli=yt9qpxdSl5Ej5!RV=OKHHA>EtrjhK0ehy({_N|FhkLHz<=skw(JKQUu
+z{NW1}o>qu)VA0Vl$Lnloezm&#Q49d?Y*CS&?Koo@?QCpDRTGUsG`c+xAT->b-7P+Q
+zV`uMvdvDNpUzfMLC(zyF3Hn;?h3&y$U|mVcgAYDf>}f@`VsCe6$*Q~T4|W9G|JL|9
+z8|{JRL93BhW?@;>4W}Cju?+E*gF%%dU|Tk1p31$Jl8rHkam5k-BQ@o}N1~btU%hl1
+z8DZb=m=phhGcnRQt~CcuZMcu3&}$4J^vpO_nT9Y~YmX%NCbC&g{2bSg>Qo`15Kssx
+z1QY@aftiAUGJT#YEiqv|<TJNnfX1R^E+Y_{%av1gQwS&ol86AmLQ<j-PzcNp1j2WD
+z@oz|HhvG_0g@8g}auApc^pnX!Lgk_mPzWdl6aqH`0=3(U%Zq>8xvki-uFUDKaMYER
+zxt%+TA1K{XT(+@0u)k-!@64f7h2AxG=c^;7)|}re2pcFmm~s0bT4=ry12h0}4GjDd
+z4ylkuAM852;tt$hf11*Ybv<9txpjq(kk4|Eur0^!x5Y3@BVri4_=fy!c6N3awrqB+
+z;2qCdl*1?LM*U{!n5vG`i-4L=m+@EA=|-o-#fh3uS52p@rqi9?>#{0cA)pXY2q**;
+z0tx|zfI>hapb(g31R`sGO#6x-Og0P8ZH}qX7x}HFpv%42MC(Y%)eR14%pTRYYiou;
+zPMc3>jSnTAk@3*p`8pp=j@aZ;Zp)^Sa$7zY<refi&}(&&OF_Bq_C_eTpD>J}ILfW8
+zY21!cWAuR9ia6NxH{lmy=Duhy$}}c3m(wONbHmJ95;1OV<V|z}-O<j)M%c9(#%bdr
+z<izaSh>RpWCN?CsIM%vcScj(k(4j-0XXb5XX^afX%-gGzTiNoAxtq+iW&P{4tCL%q
+zbvrh3uoxkdlzX*clbFi|XthjTw(=5LwCE_aoU!r|0xSUEMnmF*2ttS#W>IRlN!2*&
+z2<Gehv6!zbD9n7l3bi(pEwY;+wblV@?eTY5FF8f_c+}c36`I+pf~mEfFf6hM$cBh9
+zj$^dYU87l@NSBZ8IHyNwxs1UM$Z@%k+Z{3cHTy)!%XVf~#}l~`CRx@RGg9ePgvgAR
+ziIPM)U?S<YXSlDSl-7<2Q#)N!ppkDP6<VansL)@=ryiCR0^6HzG>?1q|7-E|+(jLE
+zesrc_SA^`&b^18k!=iKNL{ORdh4C~MYXm;^6>Ukh=W!?tlb^9lgp^ndjc%Z=8=`(7
+z?nW5#t{WYflCjU@07zW=heEmd1?#{=Bz{~*@Ra(gokBn%pb)qj5#XB|B?<wBfI>ha
+zpb$tJ0=}e`6jxAJUuTQ2C(c8iDg=^(0G3IYl9a;cVj=#ySSeK}g~0V7!0#}XC<JCQ
+z0&0n-ncO-`H-&&gKp~(IPzWdl<|qPk7VSA&H&rc#z$`*wWsYI7Si<~lNzc~Rr`GFj
+zzZ^&x?;yj*)}t^SJ4d0mqkZJZI!ir2q7BsNa$Rq36N;x6cS`O$1Zb@BSGt*CoNs=l
+zb(YxR?G_5b?y`AHHN8X&*tE@HbH;48&OGTpb06yy5+wV|@<nVWj6|WsRR3y;V`tI6
+zBHEjIFIEZJA?;C@NDDgdl+8!J{@BG{B3SWh`ImIEVcDEL-&?uc$TI{R7Up8voX54y
+z3u_Txhs9Fd7vNz#me$DjY;QkF`Td=r?oWS?UZL{>HiH)OcluU$%;&7N!?4;+lgs98
+z(6KIwb_|}<I9EHJ0sXR0!d=yaWpkumtFbD(zo@;X8!k3@lzW)c2@x_)BCV7Mb6?^2
+zNQ=N~j)2J`xFW*q?F`7}IsPZa81ecSI#rRidL@+1rJZc(Js7&2E5r0~xS;oOhPb#W
+z3ZSdg4-nT*rEv9_=B!q#(k(0Rg_hC0j2DfaIv2wDBB8L-7o<(Lg>tKp(w*@A3pM~m
+zrWTIER)ALINsk}})WDXx@Ho#oj5xc<4p6FTG%8;{{OA|35RpM~sH9V_r!~{(ZodHS
+z!i|w;YdqHOp*=e`Vs#{1;@M5~-ItMhbDJlS{+npCVxc1`wJCW<fdh>_GN<*34yD4q
+zz()RltcJwRdR|bZSz`@sjc?%p_4EfQu7SDr`Ysy=8!2OT92S%wZap;c<B<kV`Px?>
+zf6N$!5wUEx-hjvJOKi6Ij;<H@J)QZbWfg17U2b=|+g-Y@ASZ7{Yq#I;>1n8G?eO(%
+zZ`^Wm(YD?z%P#z8a6nkjt*~CMAO7{_2J|)UB*hkYf`-?-xRVK6vi1TneFeSBLSG6I
+zhC7wp$+E+XMzz2S*FwW&*~vXqz?DWA`Qe3mbaeAV{J6VuJWKRES(;B{Ib9vj@(mSO
+zJqZVQu&2Y**4kydYUN>Lsd;elp~4|u6%OfgJIbVIMUDEhH;pYgBa04SF=wQ1N-2ea
+zLO>yq3<Q4oPesWn=B6v7`KGI}s_>K|kXOJD24RVwL_8*N#B=PmBtSkqaHOK_Tkzzk
+z#r;TQj_K#IDrq^kYvrNBBm(0goh+2_w&JHRyol29tXU`d!m?yu8(1yZ8l{SkI8n>B
+z(norwiR;Cb#K%j@_$B3&HD**f$wOe&pIh8TDtTH=dP)4=HYO?Z9W&f`KRWsH896(|
+zMDo@1QvOk2Hjx}uT7`f@Kp`;g2)N>8+Lf7Y3dCXON`mfc;&KLAO<X?B6PNQh)_}jS
+zm%qF6m)Ko&pkDTV{@l$UYw>uqIDDU~J-ajZ5;Ys+<!&A`91+5&V+iLphPSJRx~L5=
+fTzoW0^>XE6Hg_;h8f5wLJ2q0d81E5(o<jc*<dsFs
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.2
+

@@ -1,0 +1,4 @@
+task_id = "arvo:18482"
+target_prog = "fuzz_pkcs15_decode"
+vul_commit = "19f4c7e428cece9e4b6d5bf8948a09aa8a09ca42"
+patch_commit = "6ce6152284c47ba9b1d4fe8ff9d2e6a3f5ee02c7"

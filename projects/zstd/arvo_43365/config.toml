@@ -1,0 +1,5 @@
+task_id = "arvo:43365"
+target_prog = "simple_compress"
+vul_commit = "844c53ed75e199b969633dacb4ef455dedf6eaef"
+patch_commit = "0677b26b6d15f35f027eaabf11cfaa0af541f8c8"
+build_image = "n132/arvo:43365-fix"

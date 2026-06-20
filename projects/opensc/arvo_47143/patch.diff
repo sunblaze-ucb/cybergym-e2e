@@ -1,0 +1,29 @@
+From 3d261b9a7f4b056b5b342c8b6ca1a5b1d91ee01e Mon Sep 17 00:00:00 2001
+From: Veronika Hanulikova <vhanulik@redhat.com>
+Date: Fri, 13 May 2022 11:03:40 +0200
+Subject: [PATCH] pkcs15-tool: Free PIN only if allocated
+
+Thanks oss-fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=47143
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=47155
+---
+ src/tools/pkcs15-tool.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/tools/pkcs15-tool.c b/src/tools/pkcs15-tool.c
+index 56494e5d..fff93ab7 100644
+--- a/src/tools/pkcs15-tool.c
++++ b/src/tools/pkcs15-tool.c
+@@ -1834,7 +1834,8 @@ static int change_pin(void)
+ 
+ 	if (pincode && strlen((char *) pincode) == 0) {
+ 		fprintf(stderr, "No PIN code supplied.\n");
+-		free(pincode);
++		if (opt_pin == NULL)
++			free(pincode);
+ 		return 2;
+ 	}
+ 
+-- 
+2.43.2
+

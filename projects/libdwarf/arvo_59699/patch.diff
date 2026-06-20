@@ -1,0 +1,52 @@
+From c5b909630bb566cdbf68fae4091f049f3b22ff11 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Sat, 10 Jun 2023 12:19:18 -0700
+Subject: [PATCH] Added a comment where we call _dwarf_read_cie_fde_prefix() 
+ modified:   src/lib/libdwarf/dwarf_frame.c
+
+DW202306-008 ossfuzz id: 59699
+Check a byte pointer before we dereference it
+in _dwarf_read_cie_fde_prefix().
+	modified:   src/lib/libdwarf/dwarf_frame2.c
+---
+ src/lib/libdwarf/dwarf_frame.c  | 4 +++-
+ src/lib/libdwarf/dwarf_frame2.c | 8 ++++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/libdwarf/dwarf_frame.c b/src/lib/libdwarf/dwarf_frame.c
+index 63c260b5..57689acd 100644
+--- a/src/lib/libdwarf/dwarf_frame.c
++++ b/src/lib/libdwarf/dwarf_frame.c
+@@ -2145,7 +2145,9 @@ dwarf_get_fde_for_die(Dwarf_Debug dbg,
+ 
+     /*  This is the only situation this is set. */
+     new_fde->fd_fde_owns_cie = TRUE;
+-    /* now read the cie corresponding to the fde */
++    /*  Now read the cie corresponding to the fde,
++        _dwarf_read_cie_fde_prefix checks 
++        cie_ptr for being within the section. */
+     cie_ptr = new_fde->fd_section_ptr + cie_id;
+     res = _dwarf_read_cie_fde_prefix(dbg, cie_ptr,
+         dbg->de_debug_frame.dss_data,
+diff --git a/src/lib/libdwarf/dwarf_frame2.c b/src/lib/libdwarf/dwarf_frame2.c
+index db412312..b44e984c 100644
+--- a/src/lib/libdwarf/dwarf_frame2.c
++++ b/src/lib/libdwarf/dwarf_frame2.c
+@@ -1294,6 +1294,14 @@ _dwarf_read_cie_fde_prefix(Dwarf_Debug dbg,
+     Dwarf_Unsigned cie_id = 0;
+     Dwarf_Small *section_end = section_ptr_in + section_length_in;
+ 
++    if (frame_ptr_in < section_ptr_in ||
++        frame_ptr_in >= section_end) {
++        _dwarf_error_string(dbg,error,DW_DLE_DEBUG_FRAME_LENGTH_BAD,
++            "DW_DLE_DEBUG_FRAME_LENGTH_BAD: "
++            "The frame point given _dwarf_read_cie_fde_prefix() "
++            "is invalid"); 
++        return DW_DLV_ERROR;
++    }
+     if (section_end < (frame_ptr +4)) {
+         dwarfstring m;
+         Dwarf_Unsigned u =
+-- 
+2.25.1
+

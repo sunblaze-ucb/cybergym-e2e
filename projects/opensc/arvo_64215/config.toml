@@ -1,0 +1,5 @@
+task_id = "arvo:64215"
+target_prog = "fuzz_pkcs15init"
+vul_commit = "4013a807492568bf9907cfb3df41f130ac83c7b9"
+patch_commit = "609164045facaeae193feb48d9c2fc5cc4321e8a"
+build_image = "n132/arvo:64215-fix"

@@ -1,0 +1,5 @@
+task_id = "arvo:57209"
+target_prog = "arrow-ipc-file-fuzz"
+vul_commit = "0ead719bdcc90bdeee4d225f7bb9dab1c458eccf"
+patch_commit = "02bc24cd531ae7597dc5c93c85293870c57d8b73"
+build_image = "n132/arvo:57209-fix"

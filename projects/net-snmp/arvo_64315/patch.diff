@@ -1,0 +1,30 @@
+From 3bd6f29d9ecc28d17dca371606992a9a87fa7f13 Mon Sep 17 00:00:00 2001
+From: Bart Van Assche <bvanassche@acm.org>
+Date: Sun, 19 Nov 2023 15:54:17 -0800
+Subject: [PATCH] libsnmp: Make read_config() reject file names that are too
+ long
+
+Fixes: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64315
+---
+ snmplib/read_config.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/snmplib/read_config.c b/snmplib/read_config.c
+index 422878a019..803454cefb 100644
+--- a/snmplib/read_config.c
++++ b/snmplib/read_config.c
+@@ -939,6 +939,11 @@ read_config(const char *filename,
+ 		            netsnmp_config_error("Blank line following %s token.", token);
+                         continue;
+                     }
++                    if (strlen(cptr) + 1 >= SNMP_MAXPATH) {
++                        netsnmp_config_error("File name '%s' is too long",
++                                             cptr);
++                        continue;
++                    }
+                     if ( cptr[0] == '/' ) {
+                         strlcpy(fname, cptr, SNMP_MAXPATH);
+                     } else {
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:47500"
+target_prog = "opj_decompress_fuzzer_J2K"
+vul_commit = "52927287402a9f7353de8854c88f931051211e2f"
+patch_commit = "0535bfc3b7d5cd6fc73a7d4a6749a338fc5d7703"

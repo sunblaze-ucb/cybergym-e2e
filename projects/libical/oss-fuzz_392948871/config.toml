@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:392948871"
+target_prog = "libical_extended_fuzzer"
+vul_commit = "defeb79d0afe4c68f0c9193123bc9be35bcb50bd"
+patch_commit = "7ffc340a1fa789eaed82fce740e97888b9afbae1"
+build_image = "cybergym/e2e:libical"

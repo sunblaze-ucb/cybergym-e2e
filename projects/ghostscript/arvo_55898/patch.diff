@@ -1,0 +1,42 @@
+From 372b7efe8d597b56fb96bf6137af42a48e644fb4 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 14 Feb 2023 11:12:17 +0000
+Subject: [PATCH] Ghostscript - clean up exec stack on error sampling functions
+
+OSS-fuzz #55898
+
+When sampling a PostScript function, if the supplied function consumes
+more operands from the operand stack than were present, then we throw
+an error, attempt to unwind the stack and exit.
+
+However, we weren't cleaning up the execution stack. This could
+eventually lead to us trying to execute the completion routine stored
+there, which would fail badly.
+
+This commit just tidies up the execution stack, removing the objects we
+no longer need when returning an error.
+---
+ psi/zfsample.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/psi/zfsample.c b/psi/zfsample.c
+index 791f24b4b..6bbadfd75 100644
+--- a/psi/zfsample.c
++++ b/psi/zfsample.c
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2001-2022 Artifex Software, Inc.
++/* Copyright (C) 2001-2023 Artifex Software, Inc.
+    All Rights Reserved.
+ 
+    This software is provided AS-IS with no warranty, either express or
+@@ -504,6 +504,7 @@ sampled_data_continue(i_ctx_t *i_ctx_p)
+              * hope.
+              */
+             push(-stack_depth_adjust);
++            esp -= estack_storage;
+             return_error(gs_error_undefinedresult);
+         }
+     }
+-- 
+2.25.1
+

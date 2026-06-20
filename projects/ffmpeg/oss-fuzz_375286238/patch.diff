@@ -1,0 +1,31 @@
+From ef71552cf970876085d99834abdb8e429aea9730 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sat, 30 Nov 2024 01:48:22 +0100
+Subject: [PATCH] avcodec/huffyuvdec: Initialize whole output for
+ decode_gray_bitstream()
+
+Fixes: use of uninitialized memory
+Fixes: 375286238/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_HYMT_fuzzer-6352546854141952
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/huffyuvdec.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libavcodec/huffyuvdec.c b/libavcodec/huffyuvdec.c
+index a8ccb724f5..c98904d497 100644
+--- a/libavcodec/huffyuvdec.c
++++ b/libavcodec/huffyuvdec.c
+@@ -783,6 +783,8 @@ static void decode_gray_bitstream(HYuvDecContext *s, int count)
+         for (i = 0; i < count && BITS_LEFT(re, &s->gb) > 0; i++) {
+             READ_2PIX(s->temp[0][2 * i], s->temp[0][2 * i + 1], 0);
+         }
++        for (; i < count; i++)
++            s->temp[0][2 * i] = s->temp[0][2 * i + 1] = 0;
+     } else {
+         for (i = 0; i < count; i++) {
+             READ_2PIX(s->temp[0][2 * i], s->temp[0][2 * i + 1], 0);
+-- 
+2.25.1
+

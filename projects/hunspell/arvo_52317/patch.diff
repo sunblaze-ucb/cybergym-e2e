@@ -1,0 +1,30 @@
+From 827991fd6b4f768ec76e7fb79845e76dc878dc6d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Caol=C3=A1n=20McNamara?= <caolanm@redhat.com>
+Date: Tue, 11 Oct 2022 19:54:21 +0100
+Subject: [PATCH] ofz#52317 keep within string
+
+it might be we wanted st here not word
+---
+ src/hunspell/affixmgr.cxx | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/hunspell/affixmgr.cxx b/src/hunspell/affixmgr.cxx
+index 87cd9b5..e6576d6 100644
+--- a/src/hunspell/affixmgr.cxx
++++ b/src/hunspell/affixmgr.cxx
+@@ -2031,8 +2031,10 @@ struct hentry* AffixMgr::compound_check(const std::string& word,
+             // than 1, the prefix+word counts as two words.
+ 
+             if (langnum == LANG_hu) {
+-              // calculate syllable number of the word
+-              numsyllable += get_syllable(word.substr(i));
++              if (i < word.size()) {
++                // calculate syllable number of the word
++                numsyllable += get_syllable(word.substr(i));
++              }
+ 
+               // - affix syllable num.
+               // XXX only second suffix (inflections, not derivations)
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:27269"
+target_prog = "p2p"
+vul_commit = "25df656a8a5c95bd3989d1dba6ce96dc699747d8"
+patch_commit = "947272febe24a8f0ea828b5b2f35f13c3821901e"

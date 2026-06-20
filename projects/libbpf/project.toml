@@ -1,0 +1,7 @@
+name = "libbpf"
+language = "c"
+homepage = "https://github.com/libbpf/libbpf"
+main_repo = "https://github.com/libbpf/libbpf"
+repo_to_patch = "libbpf"
+build_image = "n132/arvo:40317-fix"
+immutable_files = []

@@ -1,0 +1,54 @@
+From bfd2f4300fb348a0fb8265a17546a0eb8bdec719 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sun, 9 May 2021 18:56:57 +0200
+Subject: [PATCH] Fix null deref in legacy SAX1 parser
+
+Always call nameNsPush instead of namePush. The latter is unused now
+and should probably be removed from the public API. I can't see how
+it could be used reasonably from client code and the unprefixed name
+has always polluted the global namespace.
+
+Fixes a null pointer dereference introduced with de5b624f when parsing
+in SAX1 mode.
+
+Found by OSS-Fuzz.
+---
+ parser.c | 15 ++-------------
+ 1 file changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/parser.c b/parser.c
+index 9bda9458..f5e5e169 100644
+--- a/parser.c
++++ b/parser.c
+@@ -10025,12 +10025,7 @@ xmlParseElementStart(xmlParserCtxtPtr ctxt) {
+ 	spacePop(ctxt);
+         return(-1);
+     }
+-    if (ctxt->sax2)
+-        nameNsPush(ctxt, name, prefix, URI, line, ctxt->nsNr - nsNr);
+-#ifdef LIBXML_SAX1_ENABLED
+-    else
+-        namePush(ctxt, name);
+-#endif /* LIBXML_SAX1_ENABLED */
++    nameNsPush(ctxt, name, prefix, URI, line, ctxt->nsNr - nsNr);
+     ret = ctxt->node;
+ 
+ #ifdef LIBXML_VALID_ENABLED
+@@ -11496,13 +11491,7 @@ xmlParseTryOrFinish(xmlParserCtxtPtr ctxt, int terminate) {
+ 		    nodePop(ctxt);
+ 		    spacePop(ctxt);
+ 		}
+-		if (ctxt->sax2)
+-		    nameNsPush(ctxt, name, prefix, URI, line,
+-                               ctxt->nsNr - nsNr);
+-#ifdef LIBXML_SAX1_ENABLED
+-		else
+-		    namePush(ctxt, name);
+-#endif /* LIBXML_SAX1_ENABLED */
++                nameNsPush(ctxt, name, prefix, URI, line, ctxt->nsNr - nsNr);
+ 
+ 		ctxt->instate = XML_PARSER_CONTENT;
+                 ctxt->progressive = 1;
+-- 
+2.43.2
+

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+export FUZZING_ENGINE=libfuzzer
+export SANITIZER=address
+export ARCHITECTURE=x86_64
+export FUZZING_LANGUAGE=c
+
+POC_PATH="${1:-$SRC/poc.bin}"
+/out/config_read_fuzzer "$POC_PATH"

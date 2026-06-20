@@ -1,0 +1,60 @@
+From c0e40da2ab6f072ceaff780308756b1e9e1fb6a2 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Sat, 27 Jan 2024 14:16:53 -0800
+Subject: [PATCH] more checking of Mach_header when unpacking for MachOS
+
+https://github.com/upx/upx/issues/783
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=65532
+	modified:   p_mach.cpp
+---
+ src/p_mach.cpp | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/src/p_mach.cpp b/src/p_mach.cpp
+index c6fc1779..34fbb43b 100644
+--- a/src/p_mach.cpp
++++ b/src/p_mach.cpp
+@@ -1468,6 +1468,8 @@ umin(unsigned a, unsigned b)
+     return (a <= b) ? a : b;
+ }
+ 
++#define MAX_N_CMDS 256
++
+ template <class T>
+ void PackMachBase<T>::unpack(OutputFile *fo)
+ {
+@@ -1529,7 +1531,7 @@ void PackMachBase<T>::unpack(OutputFile *fo)
+     ||  mhdri.filetype   != mhdr->filetype)
+         throwCantUnpack("file header corrupted");
+     unsigned const ncmds = mhdr->ncmds;
+-    if (!ncmds || 256 < ncmds) { // arbitrary limit
++    if (!ncmds || MAX_N_CMDS < ncmds) { // arbitrary limit
+         char msg[40]; snprintf(msg, sizeof(msg),
+             "bad Mach_header.ncmds = %d", ncmds);
+         throwCantUnpack(msg);
+@@ -1643,6 +1645,11 @@ tribool PackMachBase<T>::canUnpack()
+ 
+     unsigned const ncmds = mhdri.ncmds;
+     int headway = (int)mhdri.sizeofcmds;
++    if (!ncmds || MAX_N_CMDS < ncmds || file_size < headway) {
++        char msg[80]; snprintf(msg, sizeof(msg),
++            "bad Mach_header ncmds=%d  sizeofcmds=0x%x", ncmds, headway);
++        throwCantUnpack(msg);
++    }
+     // old style:   LC_SEGMENT + LC_UNIXTHREAD  [smaller, varies by $ARCH]
+     // new style: 3*LC_SEGMENT + LC_MAIN        [larger]
+     if ((2 == ncmds
+@@ -1954,8 +1961,8 @@ tribool PackMachBase<T>::canPack()
+     my_cpusubtype = mhdri.cpusubtype;
+ 
+     unsigned const ncmds = mhdri.ncmds;
+-    if (!ncmds || 256 < ncmds) { // arbitrary, but guard against garbage
+-        throwCantPack("256 < Mach_header.ncmds");
++    if (!ncmds || MAX_N_CMDS < ncmds) { // arbitrary, but guard against garbage
++        throwCantPack("%d < Mach_header.ncmds", MAX_N_CMDS);
+     }
+     unsigned const sz_mhcmds = (unsigned)mhdri.sizeofcmds;
+     unsigned headway = umin(sz_mhcmds, file_size - sizeof(mhdri));
+-- 
+2.25.1
+

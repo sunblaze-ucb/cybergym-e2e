@@ -1,0 +1,76 @@
+From bdec162d921d69f63b992a74b32542b973a6c117 Mon Sep 17 00:00:00 2001
+From: Werner Lemberg <wl@gnu.org>
+Date: Sun, 1 Jan 2017 20:51:55 +0100
+Subject: [PATCH] [cff] Handle multiple `blend' operators in a row correctly.
+
+Reported as
+
+  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=368
+
+* src/cff/cffload.c (cff_blend_doBlend): Adjust `parser->stack'
+pointers into `subFont->blend_stack' after reallocation.
+---
+ ChangeLog         | 11 +++++++++++
+ src/cff/cffload.c | 20 ++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
+
+diff --git a/ChangeLog b/ChangeLog
+index 4f366049b..e0ac5560c 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,14 @@
++2017-01-01  Werner Lemberg  <wl@gnu.org>
++
++	[cff] Handle multiple `blend' operators in a row correctly.
++
++	Reported as
++
++	  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=368
++
++	* src/cff/cffload.c (cff_blend_doBlend): Adjust `parser->stack'
++	pointers into `subFont->blend_stack' after reallocation.
++
+ 2017-01-01  Werner Lemberg  <wl@gnu.org>
+ 
+ 	[sfnt] Return correct number of named instances for TTCs.
+diff --git a/src/cff/cffload.c b/src/cff/cffload.c
+index c1e6b14db..c0b88e74c 100644
+--- a/src/cff/cffload.c
++++ b/src/cff/cffload.c
+@@ -1307,6 +1307,10 @@
+     size = 5 * numBlends;           /* add 5 bytes per entry    */
+     if ( subFont->blend_used + size > subFont->blend_alloc )
+     {
++      FT_Byte*  blend_stack_old = subFont->blend_stack;
++      FT_Byte*  blend_top_old   = subFont->blend_top;
++
++
+       /* increase or allocate `blend_stack' and reset `blend_top'; */
+       /* prepare to append `numBlends' values to the buffer        */
+       if ( FT_REALLOC( subFont->blend_stack,
+@@ -1316,6 +1320,22 @@
+ 
+       subFont->blend_top    = subFont->blend_stack + subFont->blend_used;
+       subFont->blend_alloc += size;
++
++      /* iterate over the parser stack and adjust pointers */
++      /* if the reallocated buffer has a different address */
++      if ( blend_stack_old                         &&
++           subFont->blend_stack != blend_stack_old )
++      {
++        FT_PtrDist  offset = subFont->blend_stack - blend_stack_old;
++        FT_Byte**   p;
++
++
++        for ( p = parser->stack; p < parser->top; p++ )
++        {
++          if ( *p >= blend_stack_old && *p < blend_top_old )
++            *p += offset;
++        }
++      }
+     }
+     subFont->blend_used += size;
+ 
+-- 
+2.25.1
+

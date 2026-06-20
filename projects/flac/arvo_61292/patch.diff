@@ -1,0 +1,35 @@
+From 37ca81137af2273686fc6d7d87827bdabd6bf234 Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Wed, 6 Mar 2024 16:56:09 +0100
+Subject: [PATCH] Refind import cuesheet op after appending seekpoints (#677)
+
+This fixes a heap-use-after-free. The free was part of a realloc,
+and the cuesheet op handle was still pointing to the old
+allocation
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=61292
+---
+ src/metaflac/options.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/metaflac/options.c b/src/metaflac/options.c
+index 1b4b6f62..a78f7c57 100644
+--- a/src/metaflac/options.c
++++ b/src/metaflac/options.c
+@@ -251,8 +251,11 @@ FLAC__bool parse_options(int argc, char *argv[], CommandLineOptions *options)
+ 		Operation *op = find_shorthand_operation(options, OP__IMPORT_CUESHEET_FROM);
+ 		if(0 != op) {
+ 			Operation *op2 = find_shorthand_operation(options, OP__ADD_SEEKPOINT);
+-			if(0 == op2)
++			if(0 == op2) {
+ 				op2 = append_shorthand_operation(options, OP__ADD_SEEKPOINT);
++				/* Need to re-find op, because the appending might have caused realloc */
++				op = find_shorthand_operation(options, OP__IMPORT_CUESHEET_FROM);
++			}
+ 			op->argument.import_cuesheet_from.add_seekpoint_link = &(op2->argument.add_seekpoint);
+ 		}
+ 	}
+-- 
+2.25.1
+

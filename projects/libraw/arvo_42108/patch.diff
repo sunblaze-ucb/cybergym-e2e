@@ -1,0 +1,32 @@
+From 20d0f3fd2f690d7d97068c412f5d97cf494aa74d Mon Sep 17 00:00:00 2001
+From: sashashura <93376818+sashashura@users.noreply.github.com>
+Date: Tue, 12 Jul 2022 16:14:06 +0100
+Subject: [PATCH] Fixes stack buffer overflow in LibRaw::parseCR3
+
+The off by one happens in `AtomNameStack[(nesting + 1) * 4] = '\0';` when the `nesting` is `31` and it writes to `AtomNameStack[128]` meanwhile the buffer size is 128.
+Since there is already
+```cpp
+  if (nesting > 31)
+    return -14; // too deep nesting
+```
+few lines above, the patch increases the buffer size to 129. Another way to fix it is to decrease the max nesting to 30.
+---
+ src/metadata/identify.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/metadata/identify.cpp b/src/metadata/identify.cpp
+index 5352b691..73d3724f 100644
+--- a/src/metadata/identify.cpp
++++ b/src/metadata/identify.cpp
+@@ -708,7 +708,7 @@ void LibRaw::identify()
+     short nesting = -1;
+     short nTrack = -1;
+     short TrackType;
+-    char AtomNameStack[128];
++    char AtomNameStack[129];
+     strcpy(make, "Canon");
+ 
+     szAtomList = ifp->size();
+-- 
+2.43.2
+

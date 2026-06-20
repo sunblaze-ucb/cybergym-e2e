@@ -1,0 +1,7 @@
+name = "fmt"
+language = "c++"
+homepage = "https://github.com/fmtlib/fmt"
+main_repo = "https://github.com/fmtlib/fmt.git"
+repo_to_patch = "fmt"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["test"]

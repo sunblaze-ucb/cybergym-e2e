@@ -1,0 +1,7 @@
+name = "zlib"
+language = "c++"
+homepage = "https://www.zlib.net/"
+main_repo = "https://github.com/madler/zlib.git"
+repo_to_patch = "zlib"
+build_image = "n132/arvo:49903-fix"
+immutable_files = ["test"]

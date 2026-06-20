@@ -1,0 +1,24 @@
+From 30e2a5fef9dd9f1414a486dc0690973041662049 Mon Sep 17 00:00:00 2001
+From: Mikhail Khachayants <mkhachaiants@gmail.com>
+Date: Tue, 24 Dec 2024 23:35:13 +0200
+Subject: [PATCH] WT-13355: Fix fuzz-eval target: add missing return statement
+
+---
+ fuzz/fuzz-eval.C | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fuzz/fuzz-eval.C b/fuzz/fuzz-eval.C
+index 8da282d2..aa927afa 100644
+--- a/fuzz/fuzz-eval.C
++++ b/fuzz/fuzz-eval.C
+@@ -24,6 +24,7 @@ namespace {
+     } catch (Wt::WInvalidFormatException& ife) {
+     } catch (Wt::WInvalidOperationException& ioe) {
+     }
++    return 0;
+   }
+ }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,38 @@
+From 714ef06bede27cd12bf3c7d3278fa6327d7a81eb Mon Sep 17 00:00:00 2001
+From: Ken Sharp <Ken.Sharp@artifex.com>
+Date: Wed, 26 Feb 2025 17:22:23 +0000
+Subject: [PATCH] PDF interpreter - fix buffer overrun in CFF font XUID
+ scanning
+
+OSS-fuzz issues 399174690, 399173691, 399183998, 399390078, 399388654,
+399390672 at the time of writing this message
+
+The loop writing xvalues could overrun the buffer; when i is 0 and n
+is 8 we write to xvalues[8], but valid values are 0-7.
+
+Just correct the indices.
+
+This may not fix all the reported issues but they all look the same to
+me, and it certainly addresses many of them.
+---
+ pdf/pdf_font1C.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index bad72c086..b874dac74 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -925,8 +925,8 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+                         uid_set_invalid(&ptpriv->UID);
+                     }
+                     else {
+-                        for (i = 0; i < n; i++) {
+-                            xvalues[n - i] = args[i].ival;
++                        for (i = 1; i <= n; i++) {
++                            xvalues[n - i] = args[i - 1].ival;
+                         }
+                         if (uid_is_XUID(&ptpriv->UID))
+                             uid_free(&ptpriv->UID, font->pfont->memory, "pdfi_read_cff_dict");
+-- 
+2.25.1
+

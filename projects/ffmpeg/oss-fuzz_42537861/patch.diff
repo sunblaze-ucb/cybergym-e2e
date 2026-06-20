@@ -1,0 +1,38 @@
+From b9b4c9ebf07748993ad91ba9b9b9f06914d67865 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Fri, 16 Aug 2024 17:30:45 +0200
+Subject: [PATCH] avcodec/get_buffer: Use av_buffer_mallocz() for audio same as
+ its done for video
+
+Fixes: Use of uninintialized value
+Fixes: 70993/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_AAC_LATM_fuzzer-6378949754552320
+Fixes: 71104/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_AAC_FIXED_fuzzer-5001538727116800
+
+For the AAC/USAC/SBR code which reads uninitialized memory, it would be good, if it did not
+a fix for that is welcome!
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/get_buffer.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/libavcodec/get_buffer.c b/libavcodec/get_buffer.c
+index 12aa543f67..b391adf24f 100644
+--- a/libavcodec/get_buffer.c
++++ b/libavcodec/get_buffer.c
+@@ -142,7 +142,10 @@ static int update_frame_pool(AVCodecContext *avctx, AVFrame *frame)
+         if (ret < 0)
+             goto fail;
+ 
+-        pool->pools[0] = av_buffer_pool_init(pool->linesize[0], NULL);
++        pool->pools[0] = av_buffer_pool_init(pool->linesize[0],
++                                             CONFIG_MEMORY_POISONING ?
++                                                NULL :
++                                                av_buffer_allocz);
+         if (!pool->pools[0]) {
+             ret = AVERROR(ENOMEM);
+             goto fail;
+-- 
+2.25.1
+

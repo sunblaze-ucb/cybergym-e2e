@@ -1,0 +1,7 @@
+name = "util-linux"
+language = "c"
+homepage = "https://github.com/util-linux/util-linux"
+main_repo = "https://github.com/util-linux/util-linux"
+repo_to_patch = "util-linux"
+build_image = "n132/arvo:53149-fix"
+immutable_files = ["tests"]

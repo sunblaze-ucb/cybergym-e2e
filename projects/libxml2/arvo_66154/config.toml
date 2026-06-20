@@ -1,0 +1,4 @@
+task_id = "arvo:66154"
+target_prog = "valid"
+vul_commit = "2807df9a4aa14da5aef6d6ab7b43110d7c113820"
+patch_commit = "ddda373eb529035db3b6b54433523853368ef05d"

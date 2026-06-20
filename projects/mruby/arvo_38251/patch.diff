@@ -1,0 +1,34 @@
+From 3693187beb50e1e4594275238657754890a1ba67 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 9 Sep 2021 21:59:07 +0900
+Subject: [PATCH] vm.c: `ci->acc` (`int16_t`) may overflow.
+
+---
+ src/vm.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/vm.c b/src/vm.c
+index 8a6293e62..1cc3a8df7 100644
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -2252,14 +2252,14 @@ RETRY_TRY_BLOCK:
+           mrb->jmp = prev_jmp;
+           return v;
+         }
+-        pc = ci[0].pc;
++        pc = ci->pc;
+         DEBUG(fprintf(stderr, "from :%s\n", mrb_sym_name(mrb, ci->mid)));
+-        proc = mrb->c->ci->proc;
++        proc = ci->proc;
+         irep = proc->body.irep;
+         pool = irep->pool;
+         syms = irep->syms;
+ 
+-        regs[acc] = v;
++        ci[1].stack[0] = v;
+         mrb_gc_arena_restore(mrb, ai);
+       }
+       JUMP;
+-- 
+2.43.2
+

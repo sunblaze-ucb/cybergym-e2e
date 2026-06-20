@@ -1,0 +1,60 @@
+From 38bcb3ba7b3424abd772c72f8bdf445d75285e88 Mon Sep 17 00:00:00 2001
+From: James Almer <jamrial@gmail.com>
+Date: Thu, 29 Aug 2024 21:39:02 -0300
+Subject: [PATCH] avformat/iamf_parse: fix parsing AAC DecoderConfigDescriptor
+
+Use ff_mp4_read_descr() to read both the tags and the vlc value
+that comes after it, which was not being taken into account.
+
+Ref: https://github.com/AOMediaCodec/libiamf/issues/119
+
+Signed-off-by: James Almer <jamrial@gmail.com>
+---
+ libavformat/iamf_parse.c | 17 +++++++----------
+ 1 file changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/libavformat/iamf_parse.c b/libavformat/iamf_parse.c
+index 080c1a457a..0dd0649de6 100644
+--- a/libavformat/iamf_parse.c
++++ b/libavformat/iamf_parse.c
+@@ -67,7 +67,7 @@ static int aac_decoder_config(IAMFCodecConfig *codec_config,
+     if (codec_config->audio_roll_distance >= 0)
+         return AVERROR_INVALIDDATA;
+ 
+-    tag = avio_r8(pb);
++    ff_mp4_read_descr(logctx, pb, &tag);
+     if (tag != MP4DecConfigDescrTag)
+         return AVERROR_INVALIDDATA;
+ 
+@@ -87,12 +87,9 @@ static int aac_decoder_config(IAMFCodecConfig *codec_config,
+     if (codec_id && codec_id != codec_config->codec_id)
+         return AVERROR_INVALIDDATA;
+ 
+-    tag = avio_r8(pb);
+-    if (tag != MP4DecSpecificDescrTag)
+-        return AVERROR_INVALIDDATA;
+-
+-    left = len - avio_tell(pb);
+-    if (left <= 0)
++    left = ff_mp4_read_descr(logctx, pb, &tag);
++    if (tag != MP4DecSpecificDescrTag ||
++        !left || left > (len - avio_tell(pb)))
+         return AVERROR_INVALIDDATA;
+ 
+     // We pad extradata here because avpriv_mpeg4audio_get_config2() needs it.
+@@ -100,9 +97,9 @@ static int aac_decoder_config(IAMFCodecConfig *codec_config,
+     if (!codec_config->extradata)
+         return AVERROR(ENOMEM);
+ 
+-    codec_config->extradata_size = avio_read(pb, codec_config->extradata, left);
+-    if (codec_config->extradata_size < left)
+-        return AVERROR_INVALIDDATA;
++    codec_config->extradata_size = ffio_read_size(pb, codec_config->extradata, left);
++    if (ret < 0)
++        return ret;
+     memset(codec_config->extradata + codec_config->extradata_size, 0,
+            AV_INPUT_BUFFER_PADDING_SIZE);
+ 
+-- 
+2.25.1
+

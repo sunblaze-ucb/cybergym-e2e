@@ -1,0 +1,5 @@
+task_id = "arvo:55443"
+target_prog = "gs_device_faxg3_fuzzer"
+vul_commit = "936d966618c81fa125604fe76932f1d4f33df8e3"
+patch_commit = "e8da62c6ab890c6a27762f9285441afc6920e558"
+build_image = "n132/arvo:55443-fix"

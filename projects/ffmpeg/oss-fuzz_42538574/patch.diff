@@ -1,0 +1,32 @@
+From 4fc43e45f9e7ee50d8d244bcdea15b37b5614b9b Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Mon, 23 Sep 2024 21:21:40 +0200
+Subject: [PATCH] avcodec/hevc/hevcdec: initialize qp_y_tab
+
+This does not replicate on my setup, thus this is a blind fix based on ossfuzz trace
+
+Fixes: use of uninitialized value
+Fixes: 71747/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_HEVC_fuzzer-5427736120721408
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/hevc/hevcdec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/hevc/hevcdec.c b/libavcodec/hevc/hevcdec.c
+index fe8897fb6e..be35a9de82 100644
+--- a/libavcodec/hevc/hevcdec.c
++++ b/libavcodec/hevc/hevcdec.c
+@@ -129,7 +129,7 @@ static int pic_arrays_init(HEVCLayerContext *l, const HEVCSPS *sps)
+     l->filter_slice_edges = av_mallocz(ctb_count);
+     l->tab_slice_address  = av_malloc_array(pic_size_in_ctb,
+                                       sizeof(*l->tab_slice_address));
+-    l->qp_y_tab           = av_malloc_array(pic_size_in_ctb,
++    l->qp_y_tab           = av_calloc(pic_size_in_ctb,
+                                       sizeof(*l->qp_y_tab));
+     if (!l->qp_y_tab || !l->filter_slice_edges || !l->tab_slice_address)
+         goto fail;
+-- 
+2.25.1
+

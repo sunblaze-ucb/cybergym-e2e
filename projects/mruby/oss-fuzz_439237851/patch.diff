@@ -1,0 +1,74 @@
+From 49bc07d9a1f463682413f82fe107d838fb257539 Mon Sep 17 00:00:00 2001
+From: Meder Kydyraliev <1212257+meder@users.noreply.github.com>
+Date: Thu, 23 Oct 2025 16:23:52 +1100
+Subject: [PATCH 1/2] Address stack-use-after-return in the mruby bigint
+ implementation.
+
+The fix is to modify `bint_set` to ensure that the data stored in the persistent `RBigint` object is allocated on the heap if it's not embedded. We check if the source `mpz_t` uses memory from the stack pool using `is_pool_memory`. If it does, we must perform a deep copy (`mpz_set`) to allocate new heap memory and copy the data, instead of moving the pointer (`mpz_move`). If the source is already on the heap, we retain the efficient `mpz_move`.
+
+
+OSS-Fuzz testcase: https://oss-fuzz.com/testcase-detail/5279371075321856
+---
+ mrbgems/mruby-bigint/core/bigint.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/mrbgems/mruby-bigint/core/bigint.c b/mrbgems/mruby-bigint/core/bigint.c
+index cac4a266b..508475fd9 100644
+--- a/mrbgems/mruby-bigint/core/bigint.c
++++ b/mrbgems/mruby-bigint/core/bigint.c
+@@ -2767,8 +2767,17 @@ bint_set(mpz_ctx_t *ctx, struct RBigint *b, mpz_t *x)
+   }
+   else {
+     RBIGINT_SET_HEAP(b);
+-    mpz_move(ctx, &b->as.heap, x);
+-  }
++#if MRB_BIGINT_POOL_SIZE > 0
++    if (MPZ_HAS_POOL(ctx) && is_pool_memory(x, MPZ_POOL(ctx))) {
++      /* mpz_move() cannot be used because x is in the pool. */
++      mpz_set(ctx, &b->as.heap, x);
++      mpz_clear(ctx, x);
++    }
++    else
++#endif
++    {
++      mpz_move(ctx, &b->as.heap, x);
++    }
+ }
+ 
+ static struct RBigint*
+-- 
+2.25.1
+
+
+From efd13872e4932bcac58e20dd558cc39355f61c37 Mon Sep 17 00:00:00 2001
+From: Meder Kydyraliev <1212257+meder@users.noreply.github.com>
+Date: Thu, 23 Oct 2025 21:17:36 +1100
+Subject: [PATCH 2/2] Fix superfulous curly brackets
+
+---
+ mrbgems/mruby-bigint/core/bigint.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/mrbgems/mruby-bigint/core/bigint.c b/mrbgems/mruby-bigint/core/bigint.c
+index 508475fd9..fc43499a2 100644
+--- a/mrbgems/mruby-bigint/core/bigint.c
++++ b/mrbgems/mruby-bigint/core/bigint.c
+@@ -2773,11 +2773,13 @@ bint_set(mpz_ctx_t *ctx, struct RBigint *b, mpz_t *x)
+       mpz_set(ctx, &b->as.heap, x);
+       mpz_clear(ctx, x);
+     }
+-    else
++    else {
+ #endif
+-    {
+       mpz_move(ctx, &b->as.heap, x);
+     }
++#if MRB_BIGINT_POOL_SIZE > 0
++  }
++#endif
+ }
+ 
+ static struct RBigint*
+-- 
+2.25.1
+

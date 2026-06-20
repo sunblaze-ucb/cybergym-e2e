@@ -1,0 +1,7 @@
+name = "wt"
+language = "c++"
+homepage = "https://www.webtoolkit.eu/wt"
+main_repo = "https://github.com/emweb/wt"
+repo_to_patch = "wt"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["test", "fuzz"]

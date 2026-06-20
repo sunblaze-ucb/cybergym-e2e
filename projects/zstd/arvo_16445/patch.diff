@@ -1,0 +1,25 @@
+From a42bbb4e058063be8b61b3e00306eb6fb886a836 Mon Sep 17 00:00:00 2001
+From: "W. Felix Handte" <w@felixhandte.com>
+Date: Thu, 15 Aug 2019 14:24:45 -0400
+Subject: [PATCH] Fix Buffer Overflow in Legacy (v0.3) Raw Literals
+ Decompression
+
+---
+ lib/legacy/zstd_v03.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/lib/legacy/zstd_v03.c b/lib/legacy/zstd_v03.c
+index 7a0e7c9..dbc83f1 100644
+--- a/lib/legacy/zstd_v03.c
++++ b/lib/legacy/zstd_v03.c
+@@ -2530,6 +2530,7 @@ static size_t ZSTD_decodeLiteralsBlock(void* ctx,
+             const size_t litSize = (MEM_readLE32(istart) & 0xFFFFFF) >> 2;   /* no buffer issue : srcSize >= MIN_CBLOCK_SIZE */
+             if (litSize > srcSize-11)   /* risk of reading too far with wildcopy */
+             {
++                if (litSize > BLOCKSIZE) return ERROR(corruption_detected);
+                 if (litSize > srcSize-3) return ERROR(corruption_detected);
+                 memcpy(dctx->litBuffer, istart, litSize);
+                 dctx->litPtr = dctx->litBuffer;
+-- 
+2.7.4
+

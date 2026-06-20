@@ -1,0 +1,36 @@
+From ddedf6d455e33d6a0b3bc40581700f3d252029d7 Mon Sep 17 00:00:00 2001
+From: David Benjamin <davidben@google.com>
+Date: Fri, 10 Aug 2018 08:42:41 -0500
+Subject: [PATCH] Fix SSL_CTX_set1_sigalgs_list fuzzer.
+
+SSL_CTX_set1_sigalgs_list wants a NUL-terminated string, so we need to use
+GetString to give it one.
+
+Bug: oss-fuzz:9808
+Change-Id: Id7f676aa514c36de9dea900763db3cbbf5c79a4c
+Reviewed-on: https://boringssl-review.googlesource.com/30804
+Reviewed-by: Adam Langley <agl@google.com>
+---
+ fuzz/ssl_ctx_api.cc | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fuzz/ssl_ctx_api.cc b/fuzz/ssl_ctx_api.cc
+index c050770..4b47734 100644
+--- a/fuzz/ssl_ctx_api.cc
++++ b/fuzz/ssl_ctx_api.cc
+@@ -479,7 +479,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+         SSL_CTX_set1_sigalgs(ctx, (const int *)CBS_data(cbs), CBS_len(cbs) / 2);
+       },
+       [](SSL_CTX *ctx, CBS *cbs) {
+-        SSL_CTX_set1_sigalgs_list(ctx, (const char *) CBS_data(cbs));
++        std::string sigalgs;
++        if (!GetString(&sigalgs, cbs)) {
++          return;
++        }
++        SSL_CTX_set1_sigalgs_list(ctx, sigalgs.c_str());
+       },
+   };
+ 
+-- 
+2.7.4
+

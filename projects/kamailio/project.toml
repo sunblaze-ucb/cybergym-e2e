@@ -1,0 +1,7 @@
+name = "kamailio"
+language = "c"
+homepage = "www.kamailio.org"
+main_repo = "https://github.com/kamailio/kamailio"
+repo_to_patch = "kamailio"
+build_image = "n132/arvo:38050-fix"
+immutable_files = ["test", "misc/fuzz"]

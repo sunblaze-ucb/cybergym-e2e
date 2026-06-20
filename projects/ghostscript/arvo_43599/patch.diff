@@ -1,0 +1,69 @@
+From 3536cb075b8d7a3cd2bbe62e8ef879f56be60700 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Mon, 17 Jan 2022 16:24:14 +0000
+Subject: [PATCH] oss-fuzz 43599: validate file offsets in a CFF dictionary
+
+The code was checking for values too large, but wasn't checking for negative
+offset values.
+---
+ pdf/pdf_font1C.c | 23 +++++++++++++++++++++--
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index 8d6a04f46..e2d750b5c 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -839,22 +839,37 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+             if (b0 == 14) {     /* XUID */
+             }
+ 
++            /* some CFF file offsets */
+             if (b0 == 15) {
++                if (args[0].ival < 0) {
++                    code = gs_note_error(gs_error_invalidfont);
++                    break;
++                }
+                 offsets->charset_off = args[0].ival;
+             }
+ 
+             if (b0 == 16) {
++                if (args[0].ival < 0) {
++                    code = gs_note_error(gs_error_invalidfont);
++                    break;
++                }
+                 offsets->encoding_off = args[0].ival;
+             }
+ 
+-            /* some CFF file offsets */
+-
+             if (b0 == 17) {
++                if (args[0].ival < 0) {
++                    code = gs_note_error(gs_error_invalidfont);
++                    break;
++                }
+                 font->charstrings = font->cffdata + args[0].ival;
+             }
+ 
+             if (b0 == 18) {
+                 offsets->private_size = args[0].ival;
++                if (args[1].ival < 0) {
++                    code = gs_note_error(gs_error_invalidfont);
++                    break;
++                }
+                 offsets->private_off = args[1].ival;
+                 /* Catch a broken font with a self referencing Private dict */
+                 if (topdict == true)
+@@ -867,6 +882,10 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+             }
+ 
+             if (b0 == 19) {
++                if (args[0].ival < 0) {
++                    code = gs_note_error(gs_error_invalidfont);
++                    break;
++                }
+                 font->subrs = font->cffdata + offset + args[0].ival;
+             }
+ 
+-- 
+2.43.2
+

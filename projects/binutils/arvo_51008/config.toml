@@ -1,0 +1,5 @@
+task_id = "arvo:51008"
+target_prog = "fuzz_strings"
+vul_commit = "f15ba945a49b75c23f8133f3be170a681bb050de"
+patch_commit = "3cb5e955a372f0303992340a164a21ca5cf6d006"
+build_image = "n132/arvo:51008-fix"

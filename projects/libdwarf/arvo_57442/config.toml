@@ -1,0 +1,4 @@
+task_id = "arvo:57442"
+target_prog = "fuzz_rng"
+vul_commit = "2b19bc239f3cedd1b2461e4265d90633277ce704"
+patch_commit = "271b9b8367a8151fcd98723d73382ec56f05c810"

@@ -1,0 +1,5 @@
+task_id = "arvo:24465"
+target_prog = "assimp_fuzzer"
+vul_commit = "6a3ac623b960905b3450b78e7614453dae0540ed"
+patch_commit = "1909b3e8d27deed5acc93e7f9a0bf48b397e1788"
+build_image = "n132/arvo:24465-fix"

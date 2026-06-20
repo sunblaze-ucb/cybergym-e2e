@@ -1,0 +1,5 @@
+task_id = "arvo:50847"
+target_prog = "gs_device_ps2write_fuzzer"
+vul_commit = "00897ae3a48a4f36b84fe61a1e3aa6252bf418e5"
+patch_commit = "361febcf961baa853f34909cd3925ffa7f90e7ea"
+build_image = "n132/arvo:50847-fix"

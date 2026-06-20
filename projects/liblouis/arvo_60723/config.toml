@@ -1,0 +1,5 @@
+task_id = "arvo:60723"
+target_prog = "fuzz_translate_generic"
+vul_commit = "2e9409c1b4f32e2c752bf22686c8e752ffd868e2"
+patch_commit = "878ef436e6cf401e5134899d70d5a8c0815cd549"
+build_image = "n132/arvo:60723-fix"

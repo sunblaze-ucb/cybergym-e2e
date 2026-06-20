@@ -1,0 +1,65 @@
+From 359c74415c2b78bf2b2be3bd3e013d78f298350d Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 3 Nov 2021 14:50:18 +1030
+Subject: [PATCH] asan: assert (addr_ranges) <= (start)
+
+That assert would be more obvious if it were reported as
+"addr_ranges <= end_ranges".  Fix that by using the obvious variable
+in the final loop.  Stop the assertion by using a signed comparison:
+It's possible for the rounding up of the arange pointer to exceed the
+end of the block when the block size is fuzzed.
+
+	* dwarf.c (display_debug_aranges): Use "end_ranges" in loop
+	displaying ranges rather that "start".  Simplify rounding up
+	to 2*address_size boundary.  Use signed comparison in loop.
+---
+ binutils/dwarf.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/binutils/dwarf.c b/binutils/dwarf.c
+index d42dc64b397..a118c5b794e 100644
+--- a/binutils/dwarf.c
++++ b/binutils/dwarf.c
+@@ -7192,7 +7192,6 @@ display_debug_aranges (struct dwarf_section *section,
+       dwarf_vma address;
+       unsigned long sec_off;
+       unsigned char address_size;
+-      int excess;
+       unsigned int offset_size;
+       unsigned char *end_ranges;
+ 
+@@ -7277,22 +7276,22 @@ display_debug_aranges (struct dwarf_section *section,
+       addr_ranges = hdrptr;
+ 
+       /* Must pad to an alignment boundary that is twice the address size.  */
+-      excess = (hdrptr - start) % (2 * address_size);
+-      if (excess)
+-	addr_ranges += (2 * address_size) - excess;
++      addr_ranges += (2 * address_size - 1
++		      - (hdrptr - start - 1) % (2 * address_size));
+ 
+-      start = end_ranges;
+-
+-      while (2u * address_size <= (size_t) (start - addr_ranges))
++      while (2 * address_size <= end_ranges - addr_ranges)
+ 	{
+-	  SAFE_BYTE_GET_AND_INC (address, addr_ranges, address_size, start);
+-	  SAFE_BYTE_GET_AND_INC (length, addr_ranges, address_size, start);
+-
++	  SAFE_BYTE_GET_AND_INC (address, addr_ranges, address_size,
++				 end_ranges);
++	  SAFE_BYTE_GET_AND_INC (length, addr_ranges, address_size,
++				 end_ranges);
+ 	  printf ("    ");
+ 	  print_dwarf_vma (address, address_size);
+ 	  print_dwarf_vma (length, address_size);
+ 	  putchar ('\n');
+ 	}
++
++      start = end_ranges;
+     }
+ 
+   printf ("\n");
+-- 
+2.43.2
+

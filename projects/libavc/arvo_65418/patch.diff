@@ -1,0 +1,54 @@
+From a20a5df162992908b166644f4d5b7dad96b4cdfd Mon Sep 17 00:00:00 2001
+From: Ashwin Natesan <ashwin.natesan@ittiam.com>
+Date: Tue, 16 Jan 2024 13:04:58 +0530
+Subject: [PATCH] mvcdec: Heap overflow in 'ih264d_parse_fgc'
+
+Although the fag end of both the NALU and the bitstream buffer
+ is being parsed, not all FGC SEI symbols would have been
+decoded semantically. This commit detects and returns an error
+in this situation.
+
+Bug = ossfuzz:65418
+Test: mvc_dec_fuzzer
+---
+ decoder/ih264d_sei.c    | 8 ++++++++
+ decoder/mvc/imvcd_api.c | 4 +++-
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/decoder/ih264d_sei.c b/decoder/ih264d_sei.c
+index 079f036..e7d436c 100644
+--- a/decoder/ih264d_sei.c
++++ b/decoder/ih264d_sei.c
+@@ -853,6 +853,14 @@ WORD32 ih264d_parse_fgc(dec_bit_stream_t *ps_bitstrm, dec_struct_t *ps_dec,
+ 
+                 for(i = 0; i <= ps_sei->s_sei_fgc_params.au1_num_intensity_intervals_minus1[c]; i++)
+                 {
++                    /* Although the fag end of both the NALU and the bitstream buffer */
++                    /* is being parsed, not all FGC SEI symbols would have been */
++                    /* decoded semantically. The code below detects this condition */
++                    if((ps_bitstrm->u4_ofst + 8 + 8) >= ps_bitstrm->u4_max_ofst)
++                    {
++                        return ERROR_INV_SEI_FGC_PARAMS;
++                    }
++
+                     ps_sei->s_sei_fgc_params.au1_intensity_interval_lower_bound[c][i] =
+                         (UWORD8) ih264d_get_bits_h264(ps_bitstrm, 8);
+ 
+diff --git a/decoder/mvc/imvcd_api.c b/decoder/mvc/imvcd_api.c
+index 3e95a80..1026fc8 100644
+--- a/decoder/mvc/imvcd_api.c
++++ b/decoder/mvc/imvcd_api.c
+@@ -737,7 +737,9 @@ static IV_API_CALL_STATUS_T imvcd_view_decode(iv_obj_t *ps_dec_hdl, imvcd_video_
+ 
+             if(u4_nalu_buf_size > u4_bitstream_buf_size)
+             {
+-                if(IV_SUCCESS != imvcd_bitstream_buf_realloc(ps_view_ctxt, u4_nalu_buf_size))
++                /* 64 extra bytes to account for OOB accesses during SEI parsing in */
++                /* some fuzzer bitstreams */
++                if(IV_SUCCESS != imvcd_bitstream_buf_realloc(ps_view_ctxt, u4_nalu_buf_size + 64))
+                 {
+                     return IV_FAIL;
+                 }
+-- 
+2.25.1
+

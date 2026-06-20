@@ -1,0 +1,5 @@
+task_id = "arvo:55964"
+target_prog = "svc_dec_fuzzer"
+vul_commit = "8b8c7e390d00e5f6e8b354051680e5acd6c9a912"
+patch_commit = "764ab7b702142762bfa9c4e93427c6e494ff7940"
+build_image = "n132/arvo:55964-fix"

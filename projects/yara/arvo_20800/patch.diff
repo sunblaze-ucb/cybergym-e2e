@@ -1,0 +1,43 @@
+From 871b921f79facab9f99bf0855f7b99027671b719 Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Sat, 22 Feb 2020 12:16:43 +0100
+Subject: [PATCH] Fix buffer overrun in pe_parse_debug_directory.
+
+---
+ libyara/modules/pe/pe.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/libyara/modules/pe/pe.c b/libyara/modules/pe/pe.c
+index 45f7ddd..3a92073 100644
+--- a/libyara/modules/pe/pe.c
++++ b/libyara/modules/pe/pe.c
+@@ -280,6 +280,7 @@ static void pe_parse_rich_signature(
+   return;
+ }
+ 
++
+ static void pe_parse_debug_directory(
+     PE* pe)
+ {
+@@ -336,6 +337,9 @@ static void pe_parse_debug_directory(
+ 
+     PCV_HEADER cv_hdr = (PCV_HEADER) (pe->data + pcv_hdr_offset);
+ 
++    if (!struct_fits_in_pe(pe, cv_hdr, CV_HEADER))
++      continue;
++
+     if (yr_le32toh(cv_hdr->dwSignature) == CVINFO_PDB20_CVSIGNATURE)
+     {
+       PCV_INFO_PDB20 pdb20 = (PCV_INFO_PDB20) cv_hdr;
+@@ -354,7 +358,7 @@ static void pe_parse_debug_directory(
+     if (pdb_path != NULL)
+     {
+       pdb_path_len = strnlen(
+-        pdb_path, yr_min(available_space(pe, pdb_path), MAX_PATH));
++          pdb_path, yr_min(available_space(pe, pdb_path), MAX_PATH));
+ 
+       if (pdb_path_len > 0 && pdb_path_len < MAX_PATH)
+       {
+-- 
+2.7.4
+

@@ -1,0 +1,5 @@
+task_id = "arvo:61737"
+target_prog = "fuzz_dissect_packet"
+vul_commit = "66f720787a771d7d32ea451e2bb3aaca4c029742"
+patch_commit = "d31de871d3bc8e9a24bace37cf9b480867705ab3"
+build_image = "n132/arvo:61737-fix"

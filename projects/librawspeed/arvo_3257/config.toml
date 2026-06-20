@@ -1,0 +1,4 @@
+task_id = "arvo:3257"
+target_prog = "TiffDecoderFuzzer-SrwDecoder"
+vul_commit = "84a13edad484015fe153120fc65f276f98288e65"
+patch_commit = "7d47c5de57aa4abdc6e7426756601a0a55efc7df"

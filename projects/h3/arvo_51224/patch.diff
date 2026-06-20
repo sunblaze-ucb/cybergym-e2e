@@ -1,0 +1,47 @@
+From 446ecee4560c5bce84a78475893d95a1049aef53 Mon Sep 17 00:00:00 2001
+From: Isaac Brodsky <isaac@isaacbrodsky.com>
+Date: Mon, 12 Sep 2022 16:55:43 -0700
+Subject: [PATCH] fix potential use of an uninitialized value in cellToVertex
+ (#683)
+
+---
+ src/apps/testapps/testVertex.c | 7 +++++++
+ src/h3lib/lib/vertex.c         | 4 +++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/apps/testapps/testVertex.c b/src/apps/testapps/testVertex.c
+index 4f4b502e..1c22a3b5 100644
+--- a/src/apps/testapps/testVertex.c
++++ b/src/apps/testapps/testVertex.c
+@@ -107,6 +107,13 @@ SUITE(Vertex) {
+                  "Invalid cell returns error");
+     }
+ 
++    TEST(cellToVertex_invalid2) {
++        H3Index index = 0x685b2396e900fff9;
++        H3Index vert;
++        t_assert(H3_EXPORT(cellToVertex)(index, 2, &vert) == E_CELL_INVALID,
++                 "Invalid cell returns error");
++    }
++
+     TEST(isValidVertex_hex) {
+         H3Index origin = 0x823d6ffffffffff;
+         H3Index vert = 0x2222597fffffffff;
+diff --git a/src/h3lib/lib/vertex.c b/src/h3lib/lib/vertex.c
+index b197d0cc..c067be24 100644
+--- a/src/h3lib/lib/vertex.c
++++ b/src/h3lib/lib/vertex.c
+@@ -224,7 +224,9 @@ H3Error H3_EXPORT(cellToVertex)(H3Index cell, int vertexNum, H3Index *out) {
+         if (left == INVALID_DIGIT) return E_FAILED;
+         int lRotations = 0;
+         H3Index leftNeighbor;
+-        h3NeighborRotations(cell, left, &lRotations, &leftNeighbor);
++        H3Error leftNeighborError =
++            h3NeighborRotations(cell, left, &lRotations, &leftNeighbor);
++        if (leftNeighborError) return leftNeighborError;
+         // Set to owner if lowest index
+         if (leftNeighbor < owner) owner = leftNeighbor;
+ 
+-- 
+2.43.2
+

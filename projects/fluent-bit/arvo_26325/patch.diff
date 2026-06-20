@@ -1,0 +1,35 @@
+From 7f0c3bb1bd8645ca556125b5afae8db77f973085 Mon Sep 17 00:00:00 2001
+From: davkor <david@adalogics.com>
+Date: Sat, 31 Oct 2020 16:48:00 +0000
+Subject: [PATCH] parser: fix insecure string pass (oss-fuzz 26325)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_parser.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/flb_parser.c b/src/flb_parser.c
+index d85cbcf5f..0a756f27c 100644
+--- a/src/flb_parser.c
++++ b/src/flb_parser.c
+@@ -871,7 +871,16 @@ int flb_parser_typecast(const char *key, int key_len,
+                 error = FLB_TRUE;
+             }
+             if (error == FLB_TRUE) {
+-                flb_warn("[PARSER] key=%s cast error. save as string.", key);
++                /* We need to null-terminate key for flb_warn, as it expects
++                 * a null-terminated string, which key is not guaranteed
++                 * to be */
++                char *nt_key = flb_malloc(key_len + 1);
++                if (nt_key != NULL) {
++                    memcpy(nt_key, key, key_len);
++                    nt_key[key_len] = '\0';
++                    flb_warn("[PARSER] key=%s cast error. save as string.", nt_key);
++                    flb_free(nt_key);
++                }
+                 msgpack_pack_str(pck, val_len);
+                 msgpack_pack_str_body(pck, val, val_len);
+             }
+-- 
+2.43.2
+

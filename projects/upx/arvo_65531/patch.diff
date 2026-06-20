@@ -1,0 +1,29 @@
+From d549c2b5c9a2880ba03b6522e055bbe673fa7753 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Wed, 10 Jan 2024 13:38:18 -0800
+Subject: [PATCH] More care when recovering from slid b_info
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=65531
+https://github.com/upx/upx/issues/762
+	modified:   p_lx_elf.cpp
+---
+ src/p_lx_elf.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/p_lx_elf.cpp b/src/p_lx_elf.cpp
+index f0a7bf72..08b16e5a 100644
+--- a/src/p_lx_elf.cpp
++++ b/src/p_lx_elf.cpp
+@@ -7405,7 +7405,8 @@ void PackLinuxElf64::unpack(OutputFile *fo)
+                         }
+                     }
+                     int boff = find_le32(peek_arr, sizeof(peek_arr), size);
+-                    if (boff < 0) {
++                    if (boff < 0
++                    || sizeof(peek_arr) < (boff + sizeof(b_info))) {
+                         throwCantUnpack("b_info corrupted");
+                     }
+                     bp = (b_info *)(void *)&peek_arr[boff];
+-- 
+2.25.1
+

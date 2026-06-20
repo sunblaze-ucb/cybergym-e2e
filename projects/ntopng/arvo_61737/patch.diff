@@ -1,0 +1,30 @@
+From d31de871d3bc8e9a24bace37cf9b480867705ab3 Mon Sep 17 00:00:00 2001
+From: Luca Deri <deri@ntop.org>
+Date: Fri, 25 Aug 2023 12:46:46 +0200
+Subject: [PATCH] Fies crash while dissecting malformed BitTorrent packets
+
+---
+ src/Flow.cpp | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/Flow.cpp b/src/Flow.cpp
+index 968a1452c..6bce395e9 100644
+--- a/src/Flow.cpp
++++ b/src/Flow.cpp
+@@ -5644,7 +5644,12 @@ void Flow::dissectBittorrent(char *payload, u_int16_t payload_len) {
+     char *bt_proto = ndpi_strnstr((const char *)&payload[20],
+                                   "BitTorrent protocol", payload_len - 20);
+ 
+-    if (bt_proto) setBittorrentHash(&bt_proto[27]);
++    if(bt_proto) {
++      u_int l = strlen(bt_proto);
++
++      if(l >= 27)
++	setBittorrentHash(&bt_proto[27]);
++    }
+   }
+ }
+ 
+-- 
+2.25.1
+

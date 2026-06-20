@@ -1,0 +1,89 @@
+From 989e05e68f3006d7c4356b0050f0faf64445f4bf Mon Sep 17 00:00:00 2001
+From: Dan Bloomberg <dan.bloomberg@gmail.com>
+Date: Sat, 21 Nov 2020 17:50:11 -0800
+Subject: [PATCH] Fix oss-fuzz issue 27691: dewarp_fuzzer: uninit value in
+ genPathname * do proper arg checking in getFilenamesInDirectory() * don't ask
+ for debug output with fuzzer
+
+---
+ prog/fuzzing/dewarp_fuzzer.cc |  3 ++-
+ src/sarray1.c                 | 28 +++++++++++++++++++++-------
+ version-notes.html            |  2 ++
+ 3 files changed, 25 insertions(+), 8 deletions(-)
+
+diff --git a/prog/fuzzing/dewarp_fuzzer.cc b/prog/fuzzing/dewarp_fuzzer.cc
+index 9ea815a..37098a9 100644
+--- a/prog/fuzzing/dewarp_fuzzer.cc
++++ b/prog/fuzzing/dewarp_fuzzer.cc
+@@ -15,7 +15,8 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+     pixs = pixReadMemSpix(data, size);
+     if(pixs==NULL) return 0;
+     
+-    dewarpSinglePage(pixs, 0, 1, 1, 0, &pixd, NULL, 1);
++    // Don't use debug, because it requires writing to /tmp
++    dewarpSinglePage(pixs, 0, 1, 1, 0, &pixd, NULL, 0);
+ 	
+     pixac = pixacompReadMem(data, size);
+     dewa1 = dewarpaCreateFromPixacomp(pixac, 1, 0, 10, -1);
+diff --git a/src/sarray1.c b/src/sarray1.c
+index f67c14c..76f6690 100644
+--- a/src/sarray1.c
++++ b/src/sarray1.c
+@@ -1884,7 +1884,7 @@ SARRAY *
+ getFilenamesInDirectory(const char  *dirname)
+ {
+ char            dir[PATH_MAX + 1];
+-char           *realdir, *stat_path, *ignore;
++char           *realdir, *stat_path;
+ size_t          size;
+ SARRAY         *safiles;
+ DIR            *pdir;
+@@ -1896,12 +1896,26 @@ struct stat     st;
+ 
+     if (!dirname)
+         return (SARRAY *)ERROR_PTR("dirname not defined", procName, NULL);
+-
+-        /* It's nice to ignore directories.  fstatat() works with relative
+-           directory paths, but stat() requires using the absolute path.
+-           Also, do not pass NULL as the second parameter to realpath();
+-           use a buffer of sufficient size. */
+-    ignore = realpath(dirname, dir);  /* see note above */
++    if (dirname[0] == '\0')
++        return (SARRAY *)ERROR_PTR("dirname is empty", procName, NULL);
++
++        /* Who would have thought it was this fiddly to open a directory
++           and get the files inside?  fstatat() works with relative
++           directory paths, and stat() requires using the absolute path.
++           realpath works as follows for files and directories:
++            * If the file or directory exists, realpath returns its path;
++              else it returns NULL.
++            * If the second arg to realpath is passed in, the canonical path
++              is returned there.  Use a buffer of sufficient size.  If the
++              second arg is NULL, the path is malloc'd and returned if the
++              file or directory exists.
++           We pass in a buffer for the second arg, and check that the canonical
++           directory path was made.  The existence of the directory is checked
++           later, after its actual path is returned by genPathname().  */
++    dir[0] = '\0';  /* init empty in case realpath() fails to write it */
++    realpath(dirname, dir);
++    if (dir[0] == '\0')
++        return (SARRAY *)ERROR_PTR("dir not made", procName, NULL);
+     realdir = genPathname(dir, NULL);
+     if ((pdir = opendir(realdir)) == NULL) {
+         LEPT_FREE(realdir);
+diff --git a/version-notes.html b/version-notes.html
+index 983d814..057b9d7 100644
+--- a/version-notes.html
++++ b/version-notes.html
+@@ -102,6 +102,8 @@ They are <i>not</i> a complete listing of the modifications.
+         * Simplified fpixCopy() and dpixCopy(), and functions that use them.
+         * Check input for bilateral transforms.
+         * Add function for splitting a file evenly by lines. 
++        * Check input for getFilenamesInDirectory()
++        * Many new fuzzers.
+ 
+ 1.80.0  28 July 2020
+         * Improve bmp handling of 1 bpp images and sanity checking of params.
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "arvo:49903"
+target_prog = "example_dict_fuzzer"
+vul_commit = "1411ccafc0f50997b56135c3ee542fdfe9d7f34c"
+patch_commit = "981ee7570ad98a3cf1ae74d737e2ee619ed79171"
+build_image = "n132/arvo:49903-fix"

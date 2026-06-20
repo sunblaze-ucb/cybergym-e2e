@@ -1,0 +1,77 @@
+From 465a5c66e5e1ea04a8f70105b1db4ef8051c0428 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Fri, 10 Apr 2020 19:26:21 +0200
+Subject: [PATCH] Initialize varibles if reading fails
+
+This way we don't do uninitizlied memory uses later on
+
+oss-fuzz/21638
+---
+ libspectre/ps.c | 44 ++++++++++++++++++++++++++++++--------------
+ 1 file changed, 30 insertions(+), 14 deletions(-)
+
+diff --git a/libspectre/ps.c b/libspectre/ps.c
+index 0883670..bb45c9a 100644
+--- a/libspectre/ps.c
++++ b/libspectre/ps.c
+@@ -2209,6 +2209,28 @@ reorder_word(PS_WORD val)
+ 	return (PS_WORD) ((PS_WORD)(val&0xff) << 8) | (PS_WORD)((val&0xff00) >> 8);
+ }
+ 
++static void
++ps_read_doseps_dword(FileData fd, PS_DWORD *dword)
++{
++    const size_t read = fread(dword, 4, 1, FD_FILE);
++    if (read == 4) {
++        *dword = (unsigned long)reorder_dword(*dword);
++    } else {
++        *dword = 0;
++    }
++}
++
++static void
++ps_read_doseps_word(FileData fd, PS_WORD *word)
++{
++    const size_t read = fread(word, 2, 1, FD_FILE);
++    if (read == 2) {
++        *word = (unsigned short)reorder_word(*word);
++    } else {
++        *word = 0;
++    }
++}
++
+ /* DOS EPS header reading */
+ static unsigned long
+ ps_read_doseps(fd,doseps)
+@@ -2222,20 +2244,14 @@ ps_read_doseps(fd,doseps)
+         ps_io_rewind(fd);
+ 	return 0; 	/* OK */
+     }
+-    fread(&doseps->ps_begin,    4, 1, FD_FILE);	/* PS offset */
+-    doseps->ps_begin = (unsigned long)reorder_dword(doseps->ps_begin);
+-    fread(&doseps->ps_length,   4, 1, FD_FILE);	/* PS length */
+-    doseps->ps_length = (unsigned long)reorder_dword(doseps->ps_length);
+-    fread(&doseps->mf_begin,    4, 1, FD_FILE);	/* Metafile offset */
+-    doseps->mf_begin = (unsigned long)reorder_dword(doseps->mf_begin);
+-    fread(&doseps->mf_length,   4, 1, FD_FILE);	/* Metafile length */
+-    doseps->mf_length = (unsigned long)reorder_dword(doseps->mf_length);
+-    fread(&doseps->tiff_begin,  4, 1, FD_FILE);	/* TIFF offset */
+-    doseps->tiff_begin = (unsigned long)reorder_dword(doseps->tiff_begin);
+-    fread(&doseps->tiff_length, 4, 1, FD_FILE);	/* TIFF length */
+-    doseps->tiff_length = (unsigned long)reorder_dword(doseps->tiff_length);
+-    fread(&doseps->checksum,    2, 1, FD_FILE);
+-    doseps->checksum = (unsigned short)reorder_word(doseps->checksum);
++    ps_read_doseps_dword(fd, &doseps->ps_begin); /* PS offset */
++    ps_read_doseps_dword(fd, &doseps->ps_length); /* PS length */
++    ps_read_doseps_dword(fd, &doseps->mf_begin); /* Metafile offset */
++    ps_read_doseps_dword(fd, &doseps->mf_length); /* Metafile length */
++    ps_read_doseps_dword(fd, &doseps->tiff_begin); /* TIFF offset */
++    ps_read_doseps_dword(fd, &doseps->tiff_length); /* TIFF length */
++    ps_read_doseps_word(fd, &doseps->checksum);
++
+     ps_io_fseek(fd, doseps->ps_begin);	        /* seek to PS section */
+ 
+     return doseps->ps_begin + doseps->ps_length;
+-- 
+2.7.4
+

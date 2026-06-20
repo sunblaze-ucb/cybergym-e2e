@@ -1,0 +1,29 @@
+From e7cc5e1de83302579bc6aabcf132a9d269f7e5f8 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Sun, 8 Apr 2018 16:25:48 +0800
+Subject: [PATCH] Set pointers to NULL so they can be safely dropped.
+
+Previously these were not set to NULL, which caused
+spurious segmentation errors.
+---
+ source/pdf/pdf-stream.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/source/pdf/pdf-stream.c b/source/pdf/pdf-stream.c
+index bf828bd..e8ce2fa 100644
+--- a/source/pdf/pdf-stream.c
++++ b/source/pdf/pdf-stream.c
+@@ -362,8 +362,8 @@ pdf_open_inline_stream(fz_context *ctx, pdf_document *doc, pdf_obj *stmobj, int
+ void
+ pdf_load_compressed_inline_image(fz_context *ctx, pdf_document *doc, pdf_obj *dict, int length, fz_stream *file_stm, int indexed, fz_compressed_image *image)
+ {
+-	fz_stream *istm, *leech, *decomp;
+-	fz_pixmap *pixmap;
++	fz_stream *istm = NULL, *leech = NULL, *decomp = NULL;
++	fz_pixmap *pixmap = NULL;
+ 	fz_compressed_buffer *bc;
+ 	int dummy_l2factor = 0;
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,35 @@
+From 1667b31d0b178836b0bffa3d88d8d148e76d1cde Mon Sep 17 00:00:00 2001
+From: Martin Matuska <martin@matuska.de>
+Date: Wed, 14 May 2025 12:37:26 +0200
+Subject: [PATCH] 7z: fix out-of-bounds read in 7z self extracting archive
+ detection
+
+Fixes OSS-Fuzz issue 416832167
+---
+ libarchive/archive_read_support_format_7zip.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/libarchive/archive_read_support_format_7zip.c b/libarchive/archive_read_support_format_7zip.c
+index ca551784..c72322f5 100644
+--- a/libarchive/archive_read_support_format_7zip.c
++++ b/libarchive/archive_read_support_format_7zip.c
+@@ -778,11 +778,16 @@ find_elf_data_sec(struct archive_read *a)
+ 			e_shentsize = (*dec16)(h + 0x3A);
+ 			e_shnum = (*dec16)(h + 0x3C);
+ 			e_shstrndx = (*dec16)(h + 0x3E);
++			if (e_shnum < e_shstrndx || e_shentsize < 0x28)
++				break;
++
+ 		} else {
+ 			e_shoff = (*dec32)(h + 0x20);
+ 			e_shentsize = (*dec16)(h + 0x2E);
+ 			e_shnum = (*dec16)(h + 0x30);
+ 			e_shstrndx = (*dec16)(h + 0x32);
++			if (e_shnum < e_shstrndx || e_shentsize < 0x18)
++				break;
+ 		}
+ 
+ 		/*
+-- 
+2.25.1
+

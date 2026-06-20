@@ -1,0 +1,5 @@
+task_id = "arvo:36025"
+target_prog = "sleuthkit_fls_apfs_fuzzer"
+vul_commit = "4518aa4e2397957959c280e50010f843d6e6107e"
+patch_commit = "2afcaa044d7f58c8409f3d7b15a150fc1bb3c9a6"
+build_image = "n132/arvo:36025-fix"

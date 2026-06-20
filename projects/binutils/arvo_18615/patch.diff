@@ -1,0 +1,41 @@
+From efea62b44631289f995db16faf70979d6592580b Mon Sep 17 00:00:00 2001
+From: Nick Clifton <nickc@redhat.com>
+Date: Tue, 29 Oct 2019 15:35:30 +0000
+Subject: [PATCH] Fix array overrun when disassembling corrupt TIC30 binaries.
+
+	* tic30-dis.c (print_branch): Correct size of operand array.
+---
+ opcodes/ChangeLog   | 4 ++++
+ opcodes/tic30-dis.c | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/opcodes/ChangeLog b/opcodes/ChangeLog
+index ae2e00c..cadb065 100644
+--- a/opcodes/ChangeLog
++++ b/opcodes/ChangeLog
+@@ -1,5 +1,9 @@
+ 2019-10-29  Nick Clifton  <nickc@redhat.com>
+ 
++	* tic30-dis.c (print_branch): Correct size of operand array.
++
++2019-10-29  Nick Clifton  <nickc@redhat.com>
++
+ 	* d30v-dis.c (print_insn): Check that operand index is valid
+ 	before attempting to access the operands array.
+ 
+diff --git a/opcodes/tic30-dis.c b/opcodes/tic30-dis.c
+index a28be83..29948f4 100644
+--- a/opcodes/tic30-dis.c
++++ b/opcodes/tic30-dis.c
+@@ -607,7 +607,7 @@ print_branch (disassemble_info *info,
+ 	      unsigned long insn_word,
+ 	      struct instruction *insn)
+ {
+-  char operand[2][13] =
++  char operand[2][OPERAND_BUFFER_LEN] =
+   {
+     {0},
+     {0}
+-- 
+2.7.4
+

@@ -1,0 +1,7 @@
+name = "upx"
+language = "c++"
+homepage = "https://upx.github.io/"
+main_repo = "https://github.com/upx/upx.git"
+repo_to_patch = "upx"
+build_image = "n132/arvo:65510-fix"
+immutable_files = ["fuzzers"]

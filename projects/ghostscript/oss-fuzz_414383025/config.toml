@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:414383025"
+target_prog = "gs_device_psdcmyk_fuzzer"
+vul_commit = "b5b69dfb04bcec0707275dbbc5a317e77557a0c9"
+patch_commit = "52e638cef835f3bf0b7e23c09c708e24126911ba"
+build_image = "cybergym/e2e:ghostscript"

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:416832167"
+target_prog = "libarchive_fuzzer"
+vul_commit = "1b9c075735a60748bf15b61ec458413119dd7a22"
+patch_commit = "981fd9afed9b0ad81bf72a361dc1e66debacd017"
+build_image = "cybergym/e2e:libarchive"

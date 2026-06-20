@@ -1,0 +1,37 @@
+From 25aa0e2e46fb177a77cc584427ce39fdb77a4226 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Thu, 8 Feb 2024 19:32:03 -0800
+Subject: [PATCH] un_asl_dynsym() should skip when !dynstr
+
+https://github.com/upx/upx/issues/785
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=66302
+	modified:   p_lx_elf.cpp
+---
+ src/p_lx_elf.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/p_lx_elf.cpp b/src/p_lx_elf.cpp
+index a12757ab..e65ba036 100644
+--- a/src/p_lx_elf.cpp
++++ b/src/p_lx_elf.cpp
+@@ -6334,7 +6334,7 @@ PackLinuxElf64::un_asl_dynsym( // ibuf has the input
+     // un-Relocate dynsym (DT_SYMTAB) which is below xct_off
+     dynstr = (char const *)elf_find_dynamic(Elf64_Dyn::DT_STRTAB);
+     sec_dynsym = elf_find_section_type(Elf64_Shdr::SHT_DYNSYM);
+-    if (sec_dynsym) {
++    if (dynstr && sec_dynsym) {
+         upx_uint64_t const off_dynsym = get_te64(&sec_dynsym->sh_offset);
+         upx_uint64_t const sz_dynsym  = get_te64(&sec_dynsym->sh_size);
+         if (orig_file_size < sz_dynsym
+@@ -6375,7 +6375,7 @@ PackLinuxElf32::un_asl_dynsym( // ibuf has the input
+     // un-Relocate dynsym (DT_SYMTAB) which is below xct_off
+     dynstr = (char const *)elf_find_dynamic(Elf32_Dyn::DT_STRTAB);
+     sec_dynsym = elf_find_section_type(Elf32_Shdr::SHT_DYNSYM);
+-    if (sec_dynsym) {
++    if (dynstr && sec_dynsym) {
+         upx_uint32_t const off_dynsym = get_te32(&sec_dynsym->sh_offset);
+         upx_uint32_t const sz_dynsym  = get_te32(&sec_dynsym->sh_size);
+         if (orig_file_size < sz_dynsym
+-- 
+2.25.1
+

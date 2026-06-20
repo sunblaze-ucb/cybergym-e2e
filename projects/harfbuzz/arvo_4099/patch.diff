@@ -1,0 +1,26 @@
+From c4f4c0a2faab0635dd2ab3078243994ad3066287 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Wed, 8 Nov 2017 17:04:31 -0800
+Subject: [PATCH] Fix indexing in unsafe-to-break marking for 'stch' feature
+
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4099
+---
+ src/hb-ot-shape-complex-arabic.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hb-ot-shape-complex-arabic.cc b/src/hb-ot-shape-complex-arabic.cc
+index eda20ca..3ba2d06 100644
+--- a/src/hb-ot-shape-complex-arabic.cc
++++ b/src/hb-ot-shape-complex-arabic.cc
+@@ -560,7 +560,7 @@ apply_stch (const hb_ot_shape_plan_t *plan,
+       }
+       else
+       {
+-	buffer->unsafe_to_break (context, end + 1);
++	buffer->unsafe_to_break (context, end);
+ 	hb_position_t x_offset = 0;
+ 	for (unsigned int k = end; k > start; k--)
+ 	{
+-- 
+2.7.4
+

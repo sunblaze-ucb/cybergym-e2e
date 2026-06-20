@@ -1,0 +1,33 @@
+From 8d1192f8a28034b1931a41e8c55cd86715101d0c Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Mon, 13 Mar 2023 18:52:03 +0900
+Subject: [PATCH] gc.c (mrb_field_write_barrier): change the condition
+
+Minor GC may be suspended with the MRB_GC_STATE_SWEEP.
+---
+ src/gc.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/gc.c b/src/gc.c
+index e5488dfcc..823297612 100644
+--- a/src/gc.c
++++ b/src/gc.c
+@@ -1349,12 +1349,11 @@ mrb_field_write_barrier(mrb_state *mrb, struct RBasic *obj, struct RBasic *value
+   mrb_assert(gc->state == MRB_GC_STATE_MARK || (!is_dead(gc, value) && !is_dead(gc, obj)));
+   mrb_assert(is_generational(gc) || gc->state != MRB_GC_STATE_ROOT);
+ 
+-  if (is_generational(gc) || gc->state == MRB_GC_STATE_MARK) {
+-    add_gray_list(mrb, gc, value);
++  if (gc->state == MRB_GC_STATE_SWEEP) {
++    paint_partial_white(gc, obj); /* for never write barriers */
+   }
+   else {
+-    mrb_assert(gc->state == MRB_GC_STATE_SWEEP);
+-    paint_partial_white(gc, obj); /* for never write barriers */
++    add_gray_list(mrb, gc, value);
+   }
+ }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,35 @@
+From 4b85eb59c23bd87bf64ec0e84c93c2be5eda4898 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Wed, 10 Aug 2022 15:30:07 +0100
+Subject: [PATCH] Fixes Heap-buffer-overflow READ in
+ Assimp::ASE::Parser::ParseLV1SoftSkinBlock
+
+---
+ code/AssetLib/ASE/ASEParser.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/code/AssetLib/ASE/ASEParser.cpp b/code/AssetLib/ASE/ASEParser.cpp
+index 0d526147c..af90f9dd4 100644
+--- a/code/AssetLib/ASE/ASEParser.cpp
++++ b/code/AssetLib/ASE/ASEParser.cpp
+@@ -74,7 +74,7 @@ using namespace Assimp::ASE;
+             return;                                \
+         }                                          \
+     }                                              \
+-    else if ('\0' == *filePtr) {                   \
++    if ('\0' == *filePtr) {                        \
+         return;                                    \
+     }                                              \
+     if (IsLineEnd(*filePtr) && !bLastWasEndLine) { \
+@@ -420,6 +420,8 @@ void Parser::ParseLV1SoftSkinBlock() {
+                 }
+             }
+         }
++        if (*filePtr == '\0')
++            return;
+         ++filePtr;
+         SkipSpacesAndLineEnd(&filePtr);
+     }
+-- 
+2.43.2
+

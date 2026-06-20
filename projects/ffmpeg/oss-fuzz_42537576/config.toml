@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537576"
+target_prog = "ffmpeg_dem_MPEGPS_fuzzer"
+vul_commit = "8ca072a373f5e2b6689a8649c79a03d12db5eb0b"
+patch_commit = "66ee75d76ce56a3553a99d67e74b8a9970c18f5b"
+build_image = "cybergym/oss-fuzz:42537576-fix"

@@ -1,0 +1,32 @@
+From 74858daf6ed2a58c85653dfebe740a5622b08e4b Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Fri, 22 Jul 2022 09:37:11 +0100
+Subject: [PATCH] Fixes Heap-buffer-overflow READ in tsk_stack_pop
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=36955
+
+The `stack_seen` pointer gets corrupted because of `strncat(a_dinfo->dirs, "/", DIR_STRSZ-1);` in `tsk_fs_dir_walk_recursive`.
+When the `a_dinfo->dirs` buffer is full (4095 chars are filled with data and the last 4096's char (index 4095) is '\0')
+the `strncat(a_dinfo->dirs, "/", DIR_STRSZ-1);` copies '/' to the last char in the buffer and terminating '\0' out of the buffer bounds.
+`strncat` does not check for sufficient space in `a_dinfo->dirs`, the last parameter `DIR_STRSZ-1` tells the max characters to copy from the source.
+Since the buffer is a field in the `DENT_DINFO` structure, it overwrites a single byte in the next member - `stack_seen` pointer.
+---
+ tsk/fs/fs_dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tsk/fs/fs_dir.c b/tsk/fs/fs_dir.c
+index 173979242..d1c7806eb 100644
+--- a/tsk/fs/fs_dir.c
++++ b/tsk/fs/fs_dir.c
+@@ -829,7 +829,7 @@ tsk_fs_dir_walk_recursive(TSK_FS_INFO * a_fs, DENT_DINFO * a_dinfo,
+                 strncpy(a_dinfo->didx[a_dinfo->depth],
+                     fs_file->name->name,
+                     DIR_STRSZ - strlen(a_dinfo->dirs));
+-                strncat(a_dinfo->dirs, "/", DIR_STRSZ-1);
++                strncat(a_dinfo->dirs, "/", DIR_STRSZ - strlen(a_dinfo->dirs) - 1);
+                 depth_added = 1;
+                 a_dinfo->depth++;
+ 
+-- 
+2.43.2
+

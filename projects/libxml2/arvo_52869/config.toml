@@ -1,0 +1,5 @@
+task_id = "arvo:52869"
+target_prog = "xml"
+vul_commit = "b59ff58728d6c4380b4b23c4881058d3dce11775"
+patch_commit = "075cee9e9f1bedb6b2ca87e73a952fb2e92da3c1"
+build_image = "n132/arvo:52869-fix"

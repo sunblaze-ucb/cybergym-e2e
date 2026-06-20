@@ -1,0 +1,4 @@
+task_id = "arvo:51498"
+target_prog = "affdicfuzzer"
+vul_commit = "e7c38b0f85d65a6ad6af47753228f4b0df335c8e"
+patch_commit = "35c3cad4d70b222e7c1d73211a79a96ff7bf3651"

@@ -1,0 +1,51 @@
+From 4aed9db83c9fee5577f9a0e4067d2eb8ab39c551 Mon Sep 17 00:00:00 2001
+From: Andreas Rheinhardt <andreas.rheinhardt@outlook.com>
+Date: Tue, 16 Dec 2025 20:53:43 +0100
+Subject: [PATCH] avformat/flac_picture: Correct check
+
+Since af97c9865fe7a48b223e162eabce21cc180f305c,
+the return value of avio_read() has been compared against
+an uint32_t, so that the int is promoted to uint32_t for
+the comparison (on common systems with 32bit ints). The upshot was
+that errors returned from avio_read() were ignored, so that
+the buffer could be uninitialized on success.
+
+Fix this by using ffio_read_size() instead.
+
+Fixes: MemorySanitizer: use-of-uninitialized-value
+Fixes: 443923343/clusterfuzz-testcase-minimized-ffmpeg_dem_FLAC_fuzzer-5458132865449984
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Reviewed-by: James Almer <jamrial@gmail.com>
+Signed-off-by: Andreas Rheinhardt <andreas.rheinhardt@outlook.com>
+---
+ libavformat/flac_picture.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/libavformat/flac_picture.c b/libavformat/flac_picture.c
+index c9f3f11edd..46f0513214 100644
+--- a/libavformat/flac_picture.c
++++ b/libavformat/flac_picture.c
+@@ -23,6 +23,7 @@
+ #include "libavcodec/bytestream.h"
+ #include "libavcodec/png.h"
+ #include "avformat.h"
++#include "avio_internal.h"
+ #include "demux.h"
+ #include "flac_picture.h"
+ #include "id3v2.h"
+@@ -158,8 +159,9 @@ int ff_flac_parse_picture(AVFormatContext *s, uint8_t **bufp, int buf_size,
+             // If truncation was detected copy all data from block and
+             // read missing bytes not included in the block size.
+             bytestream2_get_bufferu(&g, data->data, left);
+-            if (avio_read(s->pb, data->data + len - trunclen, trunclen) < trunclen)
+-                RETURN_ERROR(AVERROR_INVALIDDATA);
++            ret = ffio_read_size(s->pb, data->data + len - trunclen, trunclen);
++            if (ret < 0)
++                goto fail;
+         }
+     }
+     memset(data->data + len, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+-- 
+2.25.1
+

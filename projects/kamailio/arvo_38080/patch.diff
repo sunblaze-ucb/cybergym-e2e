@@ -1,0 +1,43 @@
+From 17a2eec2a8e47939782c1352ddb0fa4d3e73f9d8 Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Thu, 9 Sep 2021 09:05:54 +0200
+Subject: [PATCH] core: parse_to_param() check for end of data on escape or
+ start of value
+
+---
+ src/core/parser/parse_addr_spec.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/core/parser/parse_addr_spec.c b/src/core/parser/parse_addr_spec.c
+index 0b8cddc8e2..99138dcaf4 100644
+--- a/src/core/parser/parse_addr_spec.c
++++ b/src/core/parser/parse_addr_spec.c
+@@ -225,6 +225,12 @@ static char *parse_to_param(char *const buffer, const char *const end,
+ 			case '\\':
+ 				switch(status) {
+ 					case PARA_VALUE_QUOTED:
++						if(tmp+1>=end) {
++							LM_ERR("unexpected end of data in status %d - start: %p"
++									" - end: %p - crt: %p\n",
++								status, buffer, end , tmp);
++							goto error;
++						}
+ 						switch(*(tmp + 1)) {
+ 							case '\r':
+ 							case '\n':
+@@ -241,6 +247,12 @@ static char *parse_to_param(char *const buffer, const char *const end,
+ 			case '"':
+ 				switch(status) {
+ 					case S_PARA_VALUE:
++						if(tmp+1>=end) {
++							LM_ERR("unexpected end of data in status %d - start: %p"
++									" - end: %p - crt: %p\n",
++								status, buffer, end , tmp);
++							goto error;
++						}
+ 						param->value.s = tmp + 1;
+ 						status = PARA_VALUE_QUOTED;
+ 						break;
+-- 
+2.43.2
+

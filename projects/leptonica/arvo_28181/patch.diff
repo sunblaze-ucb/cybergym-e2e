@@ -1,0 +1,60 @@
+From 86c6d11824cbb094b97cd5a60998168b68598b85 Mon Sep 17 00:00:00 2001
+From: Stefan Weil <sw@weilnetz.de>
+Date: Sun, 11 Apr 2021 08:40:11 +0200
+Subject: [PATCH] Fix OSS-Fuzz issue 28181 (Use-of-uninitialized-value)
+
+The written data was not terminated with '\0' if HAVE_FMEMOPEN was defined,
+so using strlen on it caused a buffer overrun.
+
+Signed-off-by: Stefan Weil <sw@weilnetz.de>
+---
+ src/boxbasic.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/boxbasic.c b/src/boxbasic.c
+index 83a5bc4..83a11bb 100644
+--- a/src/boxbasic.c
++++ b/src/boxbasic.c
+@@ -2094,6 +2094,9 @@ FILE    *fp;
+     if ((fp = open_memstream((char **)pdata, psize)) == NULL)
+         return ERROR_INT("stream not opened", procName, 1);
+     ret = boxaaWriteStream(fp, baa);
++    fputc('\0', fp);
++    fclose(fp);
++    *psize = *psize - 1;
+ #else
+     L_INFO("work-around: writing to a temp file\n", procName);
+   #ifdef _WIN32
+@@ -2106,8 +2109,8 @@ FILE    *fp;
+     ret = boxaaWriteStream(fp, baa);
+     rewind(fp);
+     *pdata = l_binaryReadStream(fp, psize);
+-#endif  /* HAVE_FMEMOPEN */
+     fclose(fp);
++#endif  /* HAVE_FMEMOPEN */
+     return ret;
+ }
+ 
+@@ -2386,6 +2389,9 @@ FILE    *fp;
+     if ((fp = open_memstream((char **)pdata, psize)) == NULL)
+         return ERROR_INT("stream not opened", procName, 1);
+     ret = boxaWriteStream(fp, boxa);
++    fputc('\0', fp);
++    fclose(fp);
++    *psize = *psize - 1;
+ #else
+     L_INFO("work-around: writing to a temp file\n", procName);
+   #ifdef _WIN32
+@@ -2398,8 +2404,8 @@ FILE    *fp;
+     ret = boxaWriteStream(fp, boxa);
+     rewind(fp);
+     *pdata = l_binaryReadStream(fp, psize);
+-#endif  /* HAVE_FMEMOPEN */
+     fclose(fp);
++#endif  /* HAVE_FMEMOPEN */
+     return ret;
+ }
+ 
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:447480433"
+target_prog = "parquet-arrow-fuzz"
+vul_commit = "353a0a228b94d634c309ebfd9581d08e8a5f08e4"
+patch_commit = "33d1f32136f950520dcca278b77acff430dc8dca"
+build_image = "cybergym/e2e:arrow"

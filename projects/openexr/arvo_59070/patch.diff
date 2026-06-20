@@ -1,0 +1,29 @@
+From 6f235a803c6370583891f008181f85a91eedb681 Mon Sep 17 00:00:00 2001
+From: Kimball Thurston <kdt3rd@gmail.com>
+Date: Wed, 24 May 2023 22:47:30 +1200
+Subject: [PATCH] fix out of bounds check with a full channel name vs. byte
+ count (#1429)
+
+Signed-off-by: Kimball Thurston <kdt3rd@gmail.com>
+---
+ src/lib/OpenEXRCore/internal_dwa_classifier.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/OpenEXRCore/internal_dwa_classifier.h b/src/lib/OpenEXRCore/internal_dwa_classifier.h
+index e1114baf..d34497e4 100644
+--- a/src/lib/OpenEXRCore/internal_dwa_classifier.h
++++ b/src/lib/OpenEXRCore/internal_dwa_classifier.h
+@@ -102,8 +102,9 @@ Classifier_read (
+             if (curin[len] == '\0') break;
+             suffix[len] = (char) curin[len];
+         }
+-        len += 1;
+         if (len == 128 + 1) return EXR_ERR_CORRUPT_CHUNK;
++        // account for extra byte for nil terminator
++        len += 1;
+ 
+         mem = alloc_fn (len);
+         if (!mem) return EXR_ERR_OUT_OF_MEMORY;
+-- 
+2.25.1
+

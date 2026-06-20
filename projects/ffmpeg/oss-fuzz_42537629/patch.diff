@@ -1,0 +1,32 @@
+From 9de721de709fa9cc06a3ce3f542a1e7d45b2b0bf Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 7 Aug 2024 22:55:03 +0200
+Subject: [PATCH] avcodec/cfhdenc: Clear dwt_tmp
+
+This occurs on a 32x32 input
+
+Fixes: use of uninitialized value
+Fixes: 70897/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_CFHD_fuzzer-5960860961406976
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/cfhdenc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/cfhdenc.c b/libavcodec/cfhdenc.c
+index 3be6798d8d..ceea15efc4 100644
+--- a/libavcodec/cfhdenc.c
++++ b/libavcodec/cfhdenc.c
+@@ -285,7 +285,7 @@ static av_cold int cfhd_encode_init(AVCodecContext *avctx)
+         s->plane[i].dwt_buf =
+             av_calloc(h8 * 8 * w8 * 8, sizeof(*s->plane[i].dwt_buf));
+         s->plane[i].dwt_tmp =
+-            av_malloc_array(h8 * 8 * w8 * 8, sizeof(*s->plane[i].dwt_tmp));
++            av_calloc(h8 * 8 * w8 * 8, sizeof(*s->plane[i].dwt_tmp));
+         if (!s->plane[i].dwt_buf || !s->plane[i].dwt_tmp)
+             return AVERROR(ENOMEM);
+ 
+-- 
+2.25.1
+

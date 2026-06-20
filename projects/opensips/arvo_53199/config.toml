@@ -1,0 +1,5 @@
+task_id = "arvo:53199"
+target_prog = "fuzz_msg_parser"
+vul_commit = "b672ec9cfd97843792eb1f333ae2c2198fa73082"
+patch_commit = "a008e7c2385bcd83de2f9ab155ed8a9452bf3c5c"
+build_image = "n132/arvo:53199-fix"

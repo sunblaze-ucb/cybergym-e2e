@@ -1,0 +1,7 @@
+name = "cyclonedds"
+language = "c"
+homepage = "https://projects.eclipse.org/projects/iot.cyclonedds"
+main_repo = "https://github.com/eclipse-cyclonedds/cyclonedds"
+repo_to_patch = "cyclonedds"
+build_image = "n132/arvo:51292-fix"
+immutable_files = []

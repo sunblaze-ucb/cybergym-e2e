@@ -1,0 +1,4 @@
+task_id = "arvo:4511"
+target_prog = "PanasonicDecompressorFuzzer"
+vul_commit = "40bf207f78cdee81de330511ea73d447226e82a6"
+patch_commit = "b08b150e21a096e49f56dc044537295991986fa4"

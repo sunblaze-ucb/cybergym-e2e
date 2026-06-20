@@ -1,0 +1,52 @@
+From 32011d23a879283d845993e9358f64a6e8aefa98 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 12 Apr 2023 09:30:26 +0930
+Subject: [PATCH] ubsan: dwarf2.c:2232:7: runtime error: index 16 out of bounds
+
+Except it isn't out of bounds because space for a larger array has
+been allocated.
+
+	* dwarf2.c (struct trie_leaf): Make ranges a C99 flexible array.
+	(alloc_trie_leaf, insert_arange_in_trie): Adjust sizing.
+---
+ bfd/dwarf2.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/bfd/dwarf2.c b/bfd/dwarf2.c
+index d99508a96c7..b135ef09120 100644
+--- a/bfd/dwarf2.c
++++ b/bfd/dwarf2.c
+@@ -137,7 +137,7 @@ struct trie_leaf
+   struct {
+     struct comp_unit *unit;
+     bfd_vma low_pc, high_pc;
+-  } ranges[TRIE_LEAF_SIZE];
++  } ranges[];
+ };
+ 
+ struct trie_interior
+@@ -148,7 +148,9 @@ struct trie_interior
+ 
+ static struct trie_node *alloc_trie_leaf (bfd *abfd)
+ {
+-  struct trie_leaf *leaf = bfd_zalloc (abfd, sizeof (struct trie_leaf));
++  struct trie_leaf *leaf;
++  size_t amt = sizeof (*leaf) + TRIE_LEAF_SIZE * sizeof (leaf->ranges[0]);
++  leaf = bfd_zalloc (abfd, amt);
+   if (leaf == NULL)
+     return NULL;
+   leaf->head.num_room_in_leaf = TRIE_LEAF_SIZE;
+@@ -2207,9 +2209,7 @@ insert_arange_in_trie (bfd *abfd,
+       const struct trie_leaf *leaf = (struct trie_leaf *) trie;
+       unsigned int new_room_in_leaf = trie->num_room_in_leaf * 2;
+       struct trie_leaf *new_leaf;
+-      size_t amt = (sizeof (struct trie_leaf)
+-		    + ((new_room_in_leaf - TRIE_LEAF_SIZE)
+-		       * sizeof (leaf->ranges[0])));
++      size_t amt = sizeof (*leaf) + new_room_in_leaf * sizeof (leaf->ranges[0]);
+       new_leaf = bfd_zalloc (abfd, amt);
+       new_leaf->head.num_room_in_leaf = new_room_in_leaf;
+       new_leaf->num_stored_in_leaf = leaf->num_stored_in_leaf;
+-- 
+2.25.1
+

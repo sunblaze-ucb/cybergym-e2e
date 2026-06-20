@@ -1,0 +1,4 @@
+task_id = "arvo:54811"
+target_prog = "typefind"
+vul_commit = "54ff9b2b5f2d72f5f6f98acd65d8ebf7375e73b9"
+patch_commit = "fa2b98f9579c5b9069753ae390a05d16fb5526f9"

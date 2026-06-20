@@ -1,0 +1,7 @@
+name = "p11-kit"
+language = "c"
+homepage = "https://p11-glue.github.io/p11-glue/p11-kit.html"
+main_repo = "https://github.com/p11-glue/p11-kit.git"
+repo_to_patch = "p11-kit"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ['test-argv', 'test-array', 'test-asn1', 'test-attrs', 'test-base64', 'test-buffer', 'test-builder', 'test-bundle', 'test-cer', 'test-compat', 'test-conf', 'test-constants', 'test-deprecated', 'test-dict', 'test-digest', 'test-edk2', 'test-enumerate', 'test-filter', 'test-hash', 'test-index', 'test-init', 'test-iter', 'test-jks', 'test-lexer', 'test-log', 'test-managed', 'test-message', 'test-module', 'test-modules', 'test-oid', 'test-openssl', 'test-parser', 'test-path', 'test-pem', 'test-persist', 'test-pin', 'test-progname', 'test-proxy', 'test-rpc', 'test-runtime', 'test-save', 'test-server', 'test-tests', 'test-token', 'test-transport', 'test-uri', 'test-url', 'test-utf8', 'test-util', 'test-virtual', 'test-x509']

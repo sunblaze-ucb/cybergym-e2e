@@ -1,0 +1,29 @@
+From fc009338911043dcf288c333082a005f6f916f2d Mon Sep 17 00:00:00 2001
+From: David Korczynski <david@adalogics.com>
+Date: Wed, 20 Oct 2021 11:44:46 +0100
+Subject: [PATCH] libnsmp: Fix off-by-one read
+
+Prevent that the code 'line[linelen - 1]' reads a negative index.
+This fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=36908
+
+Signed-off-by: David Korczynski <david@adalogics.com>
+---
+ snmplib/read_config.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/snmplib/read_config.c b/snmplib/read_config.c
+index 95aae30489..89987fd205 100644
+--- a/snmplib/read_config.c
++++ b/snmplib/read_config.c
+@@ -829,7 +829,7 @@ read_config(const char *filename,
+ 
+             linelen += strlen(line + linelen);
+ 
+-            if (line[linelen - 1] == '\n') {
++            if (linelen > 0 && line[linelen - 1] == '\n') {
+               line[linelen - 1] = '\0';
+               break;
+             }
+-- 
+2.43.2
+

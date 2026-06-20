@@ -1,0 +1,27 @@
+From 6dfa68ac7f3f55109e3cf6be78461a81333f445f Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sat, 22 Feb 2025 14:49:51 +0100
+Subject: [PATCH] SAX2: Fix ctxt->nodemem check
+
+In some error cases and maybe other situations, nodemem can have a
+value of -1.
+---
+ SAX2.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/SAX2.c b/SAX2.c
+index 1d6b3b52..e12b31fb 100644
+--- a/SAX2.c
++++ b/SAX2.c
+@@ -2485,7 +2485,7 @@ xmlSAX2Text(xmlParserCtxtPtr ctxt, const xmlChar *ch, int len,
+ 	    (lastChild->type == type) &&
+ 	    (((ctxt->html) && (type != XML_TEXT_NODE)) ||
+              (lastChild->name == xmlStringText));
+-	if ((coalesceText) && (ctxt->nodemem != 0)) {
++	if ((coalesceText) && (ctxt->nodemem > 0)) {
+             int maxLength = (ctxt->options & XML_PARSE_HUGE) ?
+                             XML_MAX_HUGE_LENGTH :
+                             XML_MAX_TEXT_LENGTH;
+-- 
+2.25.1
+

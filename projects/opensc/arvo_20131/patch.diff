@@ -1,0 +1,27 @@
+From 34dad7f543f006ad269ce1f935a9e8d3e3a83db7 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Mon, 3 Feb 2020 16:40:51 +0100
+Subject: [PATCH] idprime: Add missing terminator in ATR list
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=20510
+---
+ src/libopensc/card-idprime.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/libopensc/card-idprime.c b/src/libopensc/card-idprime.c
+index 744d518..9f5adde 100644
+--- a/src/libopensc/card-idprime.c
++++ b/src/libopensc/card-idprime.c
+@@ -52,6 +52,7 @@ static const struct sc_atr_table idprime_atrs[] = {
+ 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff",
+ 	  "Gemalto IDPrime MD 8840, 3840, 3810, 840 and 830 Cards",
+ 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
++	{ NULL, NULL, NULL, 0, 0, NULL }
+ };
+ 
+ static const sc_path_t idprime_path = {
+-- 
+2.7.4
+

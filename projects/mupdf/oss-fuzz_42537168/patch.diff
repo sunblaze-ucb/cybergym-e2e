@@ -1,0 +1,26 @@
+From 711e82dde434dfe8f36feca88c5c4b9d70ab87ce Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Wed, 17 Jul 2024 01:08:27 +0200
+Subject: [PATCH] Check nesting depth before pushing clip mark.
+
+Without this the nesting depth might step outside the layer/clip stack.
+---
+ source/pdf/pdf-op-run.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/source/pdf/pdf-op-run.c b/source/pdf/pdf-op-run.c
+index 44464f6e7..5369540ae 100644
+--- a/source/pdf/pdf-op-run.c
++++ b/source/pdf/pdf-op-run.c
+@@ -211,6 +211,8 @@ flush_begin_layer(fz_context *ctx, pdf_run_processor *proc)
+ 
+ static void nest_layer_clip(fz_context *ctx, pdf_run_processor *proc)
+ {
++	if (proc->nest_depth == nelem(proc->nest_mark))
++		fz_throw(ctx, FZ_ERROR_LIMIT, "layer/clip nesting too deep");
+ 	proc->nest_mark[proc->nest_depth++] = CLIP_MARK;
+ }
+ 
+-- 
+2.25.1
+

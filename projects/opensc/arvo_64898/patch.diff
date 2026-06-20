@@ -1,0 +1,28 @@
+From 5835f0d4f6c033bd58806d33fa546908d39825c9 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Mon, 18 Dec 2023 11:09:50 +0100
+Subject: [PATCH] authentic: Avoid use after free
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64898
+---
+ src/pkcs15init/pkcs15-authentic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/pkcs15init/pkcs15-authentic.c b/src/pkcs15init/pkcs15-authentic.c
+index a6d8b8ff..798bc441 100644
+--- a/src/pkcs15init/pkcs15-authentic.c
++++ b/src/pkcs15init/pkcs15-authentic.c
+@@ -868,7 +868,7 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
+ 	rv = sc_select_file(p15card->card, &path, &file);
+ 	if (!rv) {
+ 		rv = sc_get_challenge(p15card->card, buffer, sizeof(buffer));
+-		if (!rv) {
++		if (rv < 0) {
+ 			sc_file_free(file);
+ 			LOG_TEST_RET(ctx, rv, "Get challenge error");
+ 		}
+-- 
+2.25.1
+

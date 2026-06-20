@@ -1,0 +1,143 @@
+From 41afa89fc94a6b1cef0d0cb19263875ecf08adb6 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sun, 10 Apr 2022 14:09:29 +0200
+Subject: [PATCH] Fix short-lived regression in xmlStaticCopyNode
+
+Commit 7618a3b1 didn't account for coalesced text nodes.
+
+I think it would be better if xmlStaticCopyNode didn't try to coalesce
+text nodes at all. This code path can only be triggered if some other
+code doesn't coalesce text nodes properly. In this case, OSS-Fuzz found
+such behavior in xinclude.c.
+---
+ result/XInclude/coalesce.xml     | 10 ++++++++++
+ result/XInclude/coalesce.xml.rdr | 17 +++++++++++++++++
+ test/XInclude/docs/coalesce.xml  |  4 ++++
+ test/XInclude/ents/coalesce1.xml |  5 +++++
+ tree.c                           | 23 +++++++++++++++++------
+ xinclude.c                       |  3 +++
+ 6 files changed, 56 insertions(+), 6 deletions(-)
+ create mode 100644 result/XInclude/coalesce.xml
+ create mode 100644 result/XInclude/coalesce.xml.rdr
+ create mode 100644 test/XInclude/docs/coalesce.xml
+ create mode 100644 test/XInclude/ents/coalesce1.xml
+
+diff --git a/result/XInclude/coalesce.xml b/result/XInclude/coalesce.xml
+new file mode 100644
+index 00000000..192015a5
+--- /dev/null
++++ b/result/XInclude/coalesce.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<test xmlns:xi="http://www.w3.org/2001/XInclude">
++    <t1 xmlns:xi="http://www.w3.org/2001/XInclude" xml:base="../ents/coalesce1.xml">
++    start
++    
++    start
++    
++    end
++</t1>
++</test>
+diff --git a/result/XInclude/coalesce.xml.rdr b/result/XInclude/coalesce.xml.rdr
+new file mode 100644
+index 00000000..95a32aa1
+--- /dev/null
++++ b/result/XInclude/coalesce.xml.rdr
+@@ -0,0 +1,17 @@
++0 1 test 0 0
++1 14 #text 0 1 
++    
++1 1 t1 0 0
++2 3 #text 0 1 
++    start
++    
++2 3 #text 0 1 
++    start
++    
++2 3 #text 0 1 
++    end
++
++1 15 t1 0 0
++1 14 #text 0 1 
++
++0 15 test 0 0
+diff --git a/test/XInclude/docs/coalesce.xml b/test/XInclude/docs/coalesce.xml
+new file mode 100644
+index 00000000..33d5cb64
+--- /dev/null
++++ b/test/XInclude/docs/coalesce.xml
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<test xmlns:xi="http://www.w3.org/2001/XInclude">
++    <xi:include href="../ents/coalesce1.xml#xpointer(/t1))"/>
++</test>
+diff --git a/test/XInclude/ents/coalesce1.xml b/test/XInclude/ents/coalesce1.xml
+new file mode 100644
+index 00000000..bba7b696
+--- /dev/null
++++ b/test/XInclude/ents/coalesce1.xml
+@@ -0,0 +1,5 @@
++<t1 xmlns:xi="http://www.w3.org/2001/XInclude">
++    start
++    <xi:include href="#xpointer(/t1/text()[1])"/>
++    end
++</t1>
+diff --git a/tree.c b/tree.c
+index 8077348a..07499484 100644
+--- a/tree.c
++++ b/tree.c
+@@ -4287,6 +4287,14 @@ xmlStaticCopyNode(xmlNodePtr node, xmlDocPtr doc, xmlNodePtr parent,
+ 	if ((__xmlRegisterCallbacks) && (xmlRegisterNodeDefaultValue))
+ 	    xmlRegisterNodeDefaultValue((xmlNodePtr)ret);
+ 
++        /*
++         * Note that since ret->parent is already set, xmlAddChild will
++         * return early and not actually insert the node. It will only
++         * coalesce text nodes and unnecessarily call xmlSetTreeDoc.
++         * Assuming that the subtree to be copied always has its text
++         * nodes coalesced, the somewhat confusing call to xmlAddChild
++         * could be removed.
++         */
+         tmp = xmlAddChild(parent, ret);
+ 	/* node could have coalesced */
+ 	if (tmp != ret)
+@@ -4353,13 +4361,16 @@ xmlStaticCopyNode(xmlNodePtr node, xmlDocPtr doc, xmlNodePtr parent,
+                 return(NULL);
+             }
+ 
+-            if (insert->last == NULL) {
+-                insert->children = copy;
+-            } else {
+-                copy->prev = insert->last;
+-                insert->last->next = copy;
++            /* Check for coalesced text nodes */
++            if (insert->last != copy) {
++                if (insert->last == NULL) {
++                    insert->children = copy;
++                } else {
++                    copy->prev = insert->last;
++                    insert->last->next = copy;
++                }
++                insert->last = copy;
+             }
+-            insert->last = copy;
+ 
+             if (cur->children != NULL) {
+                 cur = cur->children;
+diff --git a/xinclude.c b/xinclude.c
+index 180e70b5..c700fb17 100644
+--- a/xinclude.c
++++ b/xinclude.c
+@@ -2232,6 +2232,9 @@ xmlXIncludeIncludeNode(xmlXIncludeCtxtPtr ctxt, int nr) {
+ 
+ 	    xmlAddPrevSibling(cur, end);
+ 	}
++        /*
++         * FIXME: xmlUnlinkNode doesn't coalesce text nodes.
++         */
+ 	xmlUnlinkNode(cur);
+ 	xmlFreeNode(cur);
+     } else {
+-- 
+2.43.2
+

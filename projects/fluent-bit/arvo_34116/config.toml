@@ -1,0 +1,4 @@
+task_id = "arvo:46082"
+target_prog = "flb-it-fuzz-parser_fuzzer_OSSFUZZ"
+vul_commit = "8a3d5029d3e5e9237d39bb17d7acd40c08067862"
+patch_commit = "0111149ce44b28cb6b5af710009bd3a2c14d8eb9"

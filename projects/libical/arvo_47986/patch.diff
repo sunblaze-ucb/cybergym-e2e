@@ -1,0 +1,101 @@
+From d86a86dbcddba0414f0dea13c3357f1c38826cb2 Mon Sep 17 00:00:00 2001
+From: Allen Winter <allen.winter@kdab.com>
+Date: Sun, 12 Jun 2022 15:17:08 -0400
+Subject: [PATCH] Fix Stack-buffer-overflow in simple_str_to_doublestr
+
+---
+ src/libical/icalvalue.c | 12 ++++++------
+ src/test/regression.c   | 12 ++++++++++++
+ 2 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/src/libical/icalvalue.c b/src/libical/icalvalue.c
+index c41a69a3..84be221d 100644
+--- a/src/libical/icalvalue.c
++++ b/src/libical/icalvalue.c
+@@ -362,7 +362,7 @@ static icalvalue *icalvalue_new_enum(icalvalue_kind kind, int x_type, const char
+  * The code is locale *independent* and does *not* change the locale.
+  * It should be thread safe.
+  */
+-static int simple_str_to_doublestr(const char *from, char *result, char **to)
++static int simple_str_to_doublestr(const char *from, char *result, int result_len, char **to)
+ {
+     char *start = NULL, *end = NULL, *cur = (char *)from;
+ 
+@@ -390,7 +390,7 @@ static int simple_str_to_doublestr(const char *from, char *result, char **to)
+         ++cur;
+     }
+     end = cur;
+-    if (end - start + 1 > 100) {
++    if (end - start + 1 > result_len) {
+         /*huh hoh, number is too big. getting out */
+         return 1;
+     }
+@@ -400,7 +400,7 @@ static int simple_str_to_doublestr(const char *from, char *result, char **to)
+      * of the current locale.
+      */
+ #if !defined(HAVE_GETNUMBERFORMAT)
+-    for (i = 0; i < end - from; ++i) {
++    for (i = 0; i < end - start; ++i) {
+         if (start[i] == '.' && loc_data && loc_data->decimal_point && loc_data->decimal_point[0]
+             && loc_data->decimal_point[0] != '.') {
+             /*replace '.' by the digit separator of the current locale */
+@@ -410,7 +410,7 @@ static int simple_str_to_doublestr(const char *from, char *result, char **to)
+         }
+     }
+ #else
+-    GetNumberFormat(LOCALE_SYSTEM_DEFAULT, 0, start, NULL, result, TMP_NUM_SIZE);
++    GetNumberFormat(LOCALE_SYSTEM_DEFAULT, 0, start, NULL, result, result_len);
+ #endif
+     if (to) {
+         *to = end;
+@@ -583,7 +583,7 @@ static icalvalue *icalvalue_new_from_string_with_error(icalvalue_kind kind,
+             memset(geo.lat, 0, ICAL_GEO_LEN);
+             memset(geo.lon, 0, ICAL_GEO_LEN);
+ 
+-            if (simple_str_to_doublestr(str, geo.lat, &cur)) {
++            if (simple_str_to_doublestr(str, geo.lat, ICAL_GEO_LEN, &cur)) {
+                 goto geo_parsing_error;
+             }
+             /* skip white spaces */
+@@ -603,7 +603,7 @@ static icalvalue *icalvalue_new_from_string_with_error(icalvalue_kind kind,
+                 ++cur;
+             }
+ 
+-            if (simple_str_to_doublestr(cur, geo.lon, &cur)) {
++            if (simple_str_to_doublestr(cur, geo.lon, ICAL_GEO_LEN, &cur)) {
+                 goto geo_parsing_error;
+             }
+             value = icalvalue_new_geo(geo);
+diff --git a/src/test/regression.c b/src/test/regression.c
+index da3ba9af..8f036110 100644
+--- a/src/test/regression.c
++++ b/src/test/regression.c
+@@ -4407,6 +4407,7 @@ void test_geo_props(void)
+            icalproperty_get_value_as_string(p), "-0;+0");
+     icalcomponent_free(c);
+ 
++    /* failure situations */
+     estate = icalerror_get_errors_are_fatal();
+     icalerror_set_errors_are_fatal(0);
+     c = icalparser_parse_string("BEGIN:VEVENT\n" "GEO:-0a;+0\n" "END:VEVENT\n");
+@@ -4418,6 +4419,17 @@ void test_geo_props(void)
+     p = icalcomponent_get_first_property(c, ICAL_GEO_PROPERTY);
+     ok("expected fail icalcomponent_get_first_property()", (p == NULL));
+     icalcomponent_free(c);
++
++    c = icalparser_parse_string("BEGIN:VEVENT\n" "GEO:16.815151515151515151;+0\n" "END:VEVENT\n");
++    if (!c) {
++        exit(EXIT_FAILURE);
++    }
++    if (VERBOSE)
++        printf("%s", icalcomponent_as_ical_string(c));
++    p = icalcomponent_get_first_property(c, ICAL_GEO_PROPERTY);
++    ok("expected fail icalcomponent_get_first_property()", (p == NULL));
++    icalcomponent_free(c);
++
+     icalerror_set_errors_are_fatal(estate);
+ }
+ 
+-- 
+2.43.2
+

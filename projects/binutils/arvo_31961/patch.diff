@@ -1,0 +1,40 @@
+From 78c84bf926fc263a588c96c7cd313fb9a9988b4b Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Fri, 12 Mar 2021 10:36:49 +1030
+Subject: [PATCH] Re: x86: correct decoding of nop/reserved space (0f18 ...
+ 0x1f)
+
+	* i386-dis.c (print_insn <PREFIX_IGNORED>): Correct typo.
+---
+ opcodes/ChangeLog  | 4 ++++
+ opcodes/i386-dis.c | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/opcodes/ChangeLog b/opcodes/ChangeLog
+index 60a9c687250..893a97548e5 100644
+--- a/opcodes/ChangeLog
++++ b/opcodes/ChangeLog
+@@ -1,3 +1,7 @@
++2021-03-12  Alan Modra  <amodra@gmail.com>
++
++	* i386-dis.c (print_insn <PREFIX_IGNORED>): Correct typo.
++
+ 2021-03-11  Jan Beulich  <jbeulich@suse.com>
+ 
+ 	* i386-dis.c (OP_XMM): Re-order checks.
+diff --git a/opcodes/i386-dis.c b/opcodes/i386-dis.c
+index 2985e8d4417..4e3304d4a4c 100644
+--- a/opcodes/i386-dis.c
++++ b/opcodes/i386-dis.c
+@@ -9783,7 +9783,7 @@ print_insn (bfd_vma pc, disassemble_info *info)
+ 	 origins in all_prefixes.  */
+       used_prefixes &= ~PREFIX_OPCODE;
+       if (last_data_prefix >= 0)
+-	all_prefixes[last_repz_prefix] = 0x66;
++	all_prefixes[last_data_prefix] = 0x66;
+       if (last_repz_prefix >= 0)
+ 	all_prefixes[last_repz_prefix] = 0xf3;
+       if (last_repnz_prefix >= 0)
+-- 
+2.43.2
+

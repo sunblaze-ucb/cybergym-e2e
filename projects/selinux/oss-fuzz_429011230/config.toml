@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:429011230"
+target_prog = "secilc-fuzzer"
+vul_commit = "4e5de5460d62a1e7a9f8994e3ef1ed81545056bb"
+patch_commit = "2f2742e98ca1a4ae6c242edfa1fa0d5d178121b8"
+build_image = "cybergym/e2e:selinux"

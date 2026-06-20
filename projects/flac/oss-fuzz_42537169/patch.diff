@@ -1,0 +1,29 @@
+From defad5b5442550a9bd678076fe7ad125edb9f087 Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Tue, 23 Jul 2024 08:24:20 +0200
+Subject: [PATCH] Turn replaygain application off when impossible
+
+Addition to commit 808efb3. That commit threw a warning, but did
+not actually turn off replaygain application.
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=70482
+---
+ src/flac/decode.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/flac/decode.c b/src/flac/decode.c
+index 6a89b144..099348b6 100644
+--- a/src/flac/decode.c
++++ b/src/flac/decode.c
+@@ -1590,6 +1590,7 @@ void metadata_callback(const FLAC__StreamDecoder *decoder, const FLAC__StreamMet
+ 					decoder_session->abort_flag = true;
+ 					return;
+ 				}
++				decoder_session->replaygain.apply = false;
+ 			}
+ 			else {
+ 				const char *ls[] = { "no", "peak", "hard" };
+-- 
+2.25.1
+

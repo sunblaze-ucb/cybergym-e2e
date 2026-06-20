@@ -1,0 +1,4 @@
+task_id = "arvo:34695"
+target_prog = "fribidi-fuzzer"
+vul_commit = "4d4e15fb6d1046327e371897fbe71171c87681dc"
+patch_commit = "441c173cbb3562f4b89745ac2bbaaa632b4fe9f5"

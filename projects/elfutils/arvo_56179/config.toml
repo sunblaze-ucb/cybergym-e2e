@@ -1,0 +1,5 @@
+task_id = "arvo:56179"
+target_prog = "fuzz-libdwfl"
+vul_commit = "1807e14802d00a9320cd7a079b6c70c9cb7afca7"
+patch_commit = "924bee3c416b50bfdfdb53a3058eac1d7d859ef0"
+build_image = "n132/arvo:56179-fix"

@@ -1,0 +1,25 @@
+From 63d1a3e864b88f0522f12e08a46abefd355394e4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Caol=C3=A1n=20McNamara?= <caolanm@redhat.com>
+Date: Tue, 2 May 2023 14:28:19 +0100
+Subject: [PATCH] ofz58553 validate flags more to avoid negative numbers
+
+---
+ src/hunspell/hashmgr.cxx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hunspell/hashmgr.cxx b/src/hunspell/hashmgr.cxx
+index 8333560..480f1eb 100644
+--- a/src/hunspell/hashmgr.cxx
++++ b/src/hunspell/hashmgr.cxx
+@@ -744,7 +744,7 @@ int HashMgr::decode_flags(unsigned short** result, const std::string& flags, Fil
+       for (size_t p = 0; p < flags.size(); ++p) {
+         if (flags[p] == ',') {
+           int i = atoi(src);
+-          if (i >= DEFAULTFLAGS && af != NULL) {
++          if ((i >= DEFAULTFLAGS || i < 0) && af != NULL) {
+             HUNSPELL_WARNING(
+                 stderr, "error: line %d: flag id %d is too large (max: %d)\n",
+                 af->getlinenum(), i, DEFAULTFLAGS - 1);
+-- 
+2.25.1
+

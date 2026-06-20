@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:410939009"
+target_prog = "fuzz_compile"
+vul_commit = "bb986e55ff563ea9791d1a98450c3ca57e88366c"
+patch_commit = "638ec8ca5e1d4aed002a9fb3ef3358e2a6bc42ab"
+build_image = "cybergym/e2e:quickjs"

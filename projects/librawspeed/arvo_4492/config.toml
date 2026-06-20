@@ -1,0 +1,4 @@
+task_id = "arvo:4492"
+target_prog = "TiffParserFuzzer-GetDecoder-Decode"
+vul_commit = "26ba04cb2b9dd09e4ecc7afba0919c1065c9340f"
+patch_commit = "b1f750c11bd75ac79fb5ca532aed468939f216f3"

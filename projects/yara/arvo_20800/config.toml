@@ -1,0 +1,4 @@
+task_id = "arvo:20800"
+target_prog = "pe_fuzzer"
+vul_commit = "9616f8708ff4583ba708159577d957cbad3bb5c2"
+patch_commit = "871b921f79facab9f99bf0855f7b99027671b719"

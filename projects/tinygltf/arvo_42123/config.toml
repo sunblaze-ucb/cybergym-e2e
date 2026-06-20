@@ -1,0 +1,5 @@
+task_id = "arvo:42123"
+target_prog = "fuzz_gltf"
+vul_commit = "4581d37bec66daeaccb869505c3e415c3179e9cd"
+patch_commit = "e4132167222efec26ba012e7481dd067a6e23cb0"
+build_image = "n132/arvo:42123-fix"

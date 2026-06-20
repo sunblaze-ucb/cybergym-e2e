@@ -1,0 +1,48 @@
+From 479649281467ca84a220873d51c7a461b5a78104 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 19 Apr 2022 10:32:43 +0100
+Subject: [PATCH] Bug 705221(redux): "Reverse" original fix
+
+Original fix was to make the chunk freeing code to identify single object
+chunks match the allocating code - i.e. both using the "padded" size.
+
+This appears to cause confusion with other areas in the code, leading to
+potential segfaults.
+
+This reverses that change, so both the allocating and freeing code use the
+unpadded size.
+
+This still solves the memory explosion bug, but doesn't cause the issues
+identified by oss-fuzz 46830 and 46734.
+
+Ultimately it may be preferable to revise the rest of the code to avoid the
+confusion, but this avoids a flood of issues from oss-fuzz.
+---
+ base/gsmchunk.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/base/gsmchunk.c b/base/gsmchunk.c
+index 28b1cc355..5d3dbebe1 100644
+--- a/base/gsmchunk.c
++++ b/base/gsmchunk.c
+@@ -803,7 +803,7 @@ chunk_obj_alloc(gs_memory_t *mem, size_t size, gs_memory_type_ptr_t type, client
+ #endif
+ 
+     /* Large blocks are allocated directly */
+-    if (SINGLE_OBJECT_CHUNK(newsize)) {
++    if (SINGLE_OBJECT_CHUNK(size)) {
+         obj = (chunk_obj_node_t *)gs_alloc_bytes_immovable(cmem->target, newsize, cname);
+         if (obj == NULL)
+             return NULL;
+@@ -1118,7 +1118,7 @@ chunk_free_object(gs_memory_t *mem, void *ptr, client_name_t cname)
+ 
+     cmem->used -= obj->size;
+ 
+-    if (SINGLE_OBJECT_CHUNK(obj->size)) {
++    if (SINGLE_OBJECT_CHUNK(obj->size - obj->padding)) {
+         gs_free_object(cmem->target, obj, "chunk_free_object(single object)");
+ #ifdef DEBUG_CHUNK
+         gs_memory_chunk_dump_memory(cmem);
+-- 
+2.43.2
+

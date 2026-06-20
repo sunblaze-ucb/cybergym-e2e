@@ -1,0 +1,121 @@
+From 37beb9729249a1cde472545e2a19d80660e40edc Mon Sep 17 00:00:00 2001
+From: Ashwin Natesan <ashwin.natesan@ittiam.com>
+Date: Tue, 21 Nov 2023 10:37:46 +0530
+Subject: [PATCH] mvcdec: Fixed heap overflow during SEI parsing
+
+There can be cases where there are multiple SEI payloads within a
+single SEI NAL. In the particulkar case where the payload comprises
+exclusiely of FGC data, the size of the NAL can exceed the size
+of the 'dynamic bitstream buffer' which is used to pass the NALU
+onto its appropriate parser.
+
+This commit adds 'imvcd_bitstream_buf_realloc' which re-allocates
+the 'dynamic bitstream buffer' such that any arbitrarily sized
+NALU can be stored without a heap overflow.
+
+Bug = ossfuzz:64286
+Test: svc_enc_fuzzer
+---
+ decoder/mvc/imvcd_api.c       | 20 ++++++++++++++------
+ decoder/mvc/imvcd_api_utils.c | 16 ++++++++++++++++
+ decoder/mvc/imvcd_api_utils.h |  3 +++
+ decoder/mvc/imvcd_defs.h      | 10 +---------
+ 4 files changed, 34 insertions(+), 15 deletions(-)
+
+diff --git a/decoder/mvc/imvcd_api.c b/decoder/mvc/imvcd_api.c
+index 45fffd1..3e95a80 100644
+--- a/decoder/mvc/imvcd_api.c
++++ b/decoder/mvc/imvcd_api.c
+@@ -731,17 +731,25 @@ static IV_API_CALL_STATUS_T imvcd_view_decode(iv_obj_t *ps_dec_hdl, imvcd_video_
+             return IV_FAIL;
+         }
+ 
+-        /* Ignore bytes beyond the allocated size of intermediate buffer */
+-        /* Since 8 bytes are read ahead, ensure 8 bytes are free at the
+-        end of the buffer, which will be memset to 0 after emulation prevention */
+-        i4_nalu_length = MIN((UWORD32) i4_nalu_length, u4_bitstream_buf_size - 8);
+-
+         if(i4_nalu_length)
+         {
++            UWORD32 u4_nalu_buf_size = ((UWORD32) i4_nalu_length) + 8;
++
++            if(u4_nalu_buf_size > u4_bitstream_buf_size)
++            {
++                if(IV_SUCCESS != imvcd_bitstream_buf_realloc(ps_view_ctxt, u4_nalu_buf_size))
++                {
++                    return IV_FAIL;
++                }
++
++                pu1_bitstream_buf = ps_view_ctxt->pu1_bits_buf_dynamic;
++                u4_bitstream_buf_size = ps_view_ctxt->u4_dynamic_bits_buf_size;
++            }
++
+             memcpy(pu1_bitstream_buf, pu1_input_buffer + u4_length_of_start_code, i4_nalu_length);
+ 
+             /* Decoder may read extra 8 bytes near end of the frame */
+-            if(((UWORD32) (i4_nalu_length + 8)) < u4_bitstream_buf_size)
++            if(u4_nalu_buf_size < u4_bitstream_buf_size)
+             {
+                 memset(pu1_bitstream_buf + i4_nalu_length, 0, 8 * sizeof(pu1_bitstream_buf[0]));
+             }
+diff --git a/decoder/mvc/imvcd_api_utils.c b/decoder/mvc/imvcd_api_utils.c
+index 7d1f309..3a40d3b 100644
+--- a/decoder/mvc/imvcd_api_utils.c
++++ b/decoder/mvc/imvcd_api_utils.c
+@@ -391,3 +391,19 @@ void imvcd_bitsteam_buf_free(dec_struct_t *ps_view_ctxt)
+ {
+     PS_DEC_ALIGNED_FREE(ps_view_ctxt, ps_view_ctxt->pu1_bits_buf_dynamic);
+ }
++
++IV_API_CALL_STATUS_T imvcd_bitstream_buf_realloc(dec_struct_t *ps_view_ctxt, UWORD32 u4_size)
++{
++    imvcd_bitsteam_buf_free(ps_view_ctxt);
++
++    u4_size = MAX(MIN_BITSTREAMS_BUF_SIZE, u4_size);
++
++    ps_view_ctxt->pu1_bits_buf_dynamic =
++        ps_view_ctxt->pf_aligned_alloc(ps_view_ctxt->pv_mem_ctxt, 128, u4_size);
++    RETURN_IF((NULL == ps_view_ctxt->pu1_bits_buf_dynamic), IV_FAIL);
++
++    memset(ps_view_ctxt->pu1_bits_buf_dynamic, 0, u4_size);
++    ps_view_ctxt->u4_dynamic_bits_buf_size = u4_size;
++
++    return IV_SUCCESS;
++}
+diff --git a/decoder/mvc/imvcd_api_utils.h b/decoder/mvc/imvcd_api_utils.h
+index 0707f45..8b025b2 100644
+--- a/decoder/mvc/imvcd_api_utils.h
++++ b/decoder/mvc/imvcd_api_utils.h
+@@ -53,6 +53,9 @@ extern IV_API_CALL_STATUS_T imvcd_bitstream_buf_alloc(dec_struct_t *ps_view_ctxt
+ 
+ extern void imvcd_bitsteam_buf_free(dec_struct_t *ps_view_ctxt);
+ 
++extern IV_API_CALL_STATUS_T imvcd_bitstream_buf_realloc(dec_struct_t *ps_view_ctxt,
++                                                        UWORD32 u4_size);
++
+ extern void imvcd_convert_to_app_disp_buf(mvc_dec_ctxt_t *ps_mvcd_ctxt,
+                                           iv_yuv_buf_t *ps_view_disp_bufs);
+ #endif
+diff --git a/decoder/mvc/imvcd_defs.h b/decoder/mvc/imvcd_defs.h
+index 0b8c976..2bf5e54 100644
+--- a/decoder/mvc/imvcd_defs.h
++++ b/decoder/mvc/imvcd_defs.h
+@@ -34,14 +34,6 @@
+    is still greater than any possible value of u1_pic_buf_id */
+ #define IVP_PIC_BUF_ID UINT8_MAX
+ 
+-/* In FGC SEI
+-   - Worst-case bits for all elements before 'num_intensity_intervals_minus1' = 47
+-   - Worst-case bits for all elements before 'film_grain_characteristics_repetition_period', not
+-     including elements from previous line = 3 * (8 + 3 + 256 * (8 + 8 + 8 * 16)) = 110625
+-   - Worst-case bits for 'film_grain_characteristics_repetition_period' = 30
+-   Total of (47 + 110625 + 30) = 110702 byte */
+-#define MAX_FGC_SEI_SIZE 110702
+-
+-#define MIN_BITSTREAMS_BUF_SIZE (MAX_FGC_SEI_SIZE + 256000)
++#define MIN_BITSTREAMS_BUF_SIZE 256000
+ 
+ #endif
+-- 
+2.25.1
+

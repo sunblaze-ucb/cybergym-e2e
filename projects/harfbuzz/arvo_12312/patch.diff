@@ -1,0 +1,40 @@
+From 7a6686a589ed6bf17a5af0b8012501e4d4ee2ded Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Mon, 14 Jan 2019 15:09:14 -0500
+Subject: [PATCH] [AAT] Fix mort ContextualSubtable offset access
+
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=12312
+---
+ src/hb-aat-layout-morx-table.hh                           |   3 ++-
+ ...zz-testcase-minimized-hb-shape-fuzzer-5631444412530688 | Bin 0 -> 336 bytes
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5631444412530688
+
+diff --git a/src/hb-aat-layout-morx-table.hh b/src/hb-aat-layout-morx-table.hh
+index fd955b5..15686b6 100644
+--- a/src/hb-aat-layout-morx-table.hh
++++ b/src/hb-aat-layout-morx-table.hh
+@@ -330,7 +330,8 @@ struct ContextualSubtable
+     unsigned int num_entries = 0;
+     if (unlikely (!machine.sanitize (c, &num_entries))) return_trace (false);
+ 
+-    if (!Types::extended) return_trace (true);
++    if (!Types::extended)
++      return_trace (substitutionTables.sanitize (c, this, 0));
+ 
+     unsigned int num_lookups = 0;
+ 
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5631444412530688 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5631444412530688
+new file mode 100644
+index 0000000000000000000000000000000000000000..25f7d697eb1a0dc8f2f985e4d927ae3cf648cdcb
+GIT binary patch
+literal 336
+zcmZQzWME+6Rv;PxRWtqvss_>^%*4o`0ObA$2~iAk^NUJAh5*ggq0BH;=lq8N%8bOJ
+Pn?XQ<5hMk4GZ+8>Mbt6G
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

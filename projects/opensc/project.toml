@@ -1,0 +1,7 @@
+name = "opensc"
+language = "c++"
+homepage = "https://github.com/OpenSC/OpenSC/"
+main_repo = "https://github.com/OpenSC/OpenSC"
+repo_to_patch = "opensc"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["tests"]

@@ -1,0 +1,27 @@
+From e3615c77c860a20d7537f3d126c0aaa399c52787 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Fri, 16 Sep 2022 14:00:35 +0100
+Subject: [PATCH] oss-fuzz 51418: Ins_PUSHB: bounds check byte code buffer
+
+before reading values from it.
+---
+ base/ttinterp.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/base/ttinterp.c b/base/ttinterp.c
+index 4429439bf..c5e0e32ce 100644
+--- a/base/ttinterp.c
++++ b/base/ttinterp.c
+@@ -2379,7 +2379,8 @@ static int nInstrCount=0;
+ 
+     L = ((Int)CUR.opcode - 0xB0 + 1);
+ 
+-    if ( BOUNDS( L, CUR.stackSize+1-CUR.top ) )
++    if ( BOUNDS( L, CUR.stackSize+1-CUR.top )
++      || BOUNDS( CUR.IP + L, CUR.codeSize ))
+     {
+       CUR.error = TT_Err_Stack_Overflow;
+       return;
+-- 
+2.25.1
+

@@ -1,0 +1,43 @@
+From 94c6198a1bb93fa6cd209085b817c1e64272abb4 Mon Sep 17 00:00:00 2001
+From: Randy <randy408@protonmail.com>
+Date: Mon, 10 Jun 2019 20:38:56 +0200
+Subject: [PATCH] decode: check for zero-length eXIf
+
+---
+ spng.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/spng.c b/spng.c
+index a99154f..facfa0e 100644
+--- a/spng.c
++++ b/spng.c
+@@ -1040,6 +1040,8 @@ static int get_ancillary_data_first_idat(spng_ctx *ctx)
+ 
+             ctx->file_exif = 1;
+ 
++            if(!chunk.length) return SPNG_EEXIF;
++
+             struct spng_exif exif;
+ 
+             exif.data = spng__malloc(ctx, chunk.length);
+@@ -1086,6 +1088,8 @@ static int validate_past_idat(spng_ctx *ctx)
+             continue;
+         }
+ 
++        data = ctx->data;
++
+         ret = read_chunk_bytes(ctx, chunk.length);
+         if(ret) return ret;        
+ 
+@@ -1144,6 +1148,8 @@ static int validate_past_idat(spng_ctx *ctx)
+ 
+             ctx->file_exif = 1;
+ 
++            if(!chunk.length) return SPNG_EEXIF;
++
+             struct spng_exif exif;
+ 
+             exif.data = spng__malloc(ctx, chunk.length);
+-- 
+2.7.4
+

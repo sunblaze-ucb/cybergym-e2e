@@ -1,0 +1,40 @@
+From 3ce8214d8fc77be42eb6ad618c972113d4cb0d24 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Mon, 20 Dec 2021 10:58:22 +0000
+Subject: [PATCH] OSS-fuzz #42664 - Don't clear stack on failed array read
+
+If we got a ']' we would try to construct an array from objects on the
+stack. If there was no initial mark ('[') then that would fail, as it
+should, but we would clear the stack and attempt a recovery.
+
+This discarded objects expected by higher level code. So just return
+the error, don't try to be clever, and let the callers cope with it.
+
+May need to revisit this after more local file testing but the cluster
+is happy with it.
+---
+ pdf/pdf_int.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/pdf/pdf_int.c b/pdf/pdf_int.c
+index 0c67ed7f0..6575dd61a 100644
+--- a/pdf/pdf_int.c
++++ b/pdf/pdf_int.c
+@@ -1103,12 +1103,8 @@ int pdfi_read_token(pdf_context *ctx, pdf_c_stream *s, uint32_t indirect_num, ui
+             break;
+         case ']':
+             code = pdfi_array_from_stack(ctx, indirect_num, indirect_gen);
+-            if (code < 0) {
+-                if (code == gs_error_VMerror || code == gs_error_ioerror || ctx->args.pdfstoponerror)
+-                    return code;
+-                pdfi_clearstack(ctx);
+-                return pdfi_read_token(ctx, s, indirect_num, indirect_gen);
+-            }
++            if (code < 0)
++                return code;
+             break;
+         case '{':
+             if (ctx->args.pdfdebug)
+-- 
+2.43.2
+

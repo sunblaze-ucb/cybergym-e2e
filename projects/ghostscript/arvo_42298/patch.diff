@@ -1,0 +1,45 @@
+From 0c4e9f7312637d512fec2b806570bfbea9da1aff Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 14 Dec 2021 09:21:59 +0000
+Subject: [PATCH] oss-fuzz 42298: Bounds check the CFF stack
+
+---
+ pdf/pdf_font1C.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index 9adca9c35..6e7614b11 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -786,6 +786,8 @@ pdfi_read_cff_integer(byte *p, byte *e, int b0, int *val)
+     return p;
+ }
+ 
++#define PDFI_CFF_STACK_SIZE 48
++
+ static int
+ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_offsets *offsets)
+ {
+@@ -794,7 +796,7 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+     {
+         int ival;
+         float fval;
+-    } args[48];
++    } args[PDFI_CFF_STACK_SIZE];
+     int offset;
+     int b0, n;
+     double f;
+@@ -1040,6 +1042,10 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+                 dmprintf1(ptpriv->memory, "CFF: corrupt dictionary operand (b0 = %d)", b0);
+             }
+         }
++        if (n >= PDFI_CFF_STACK_SIZE) {
++            code = gs_error_invalidfont;
++            break;
++        }
+     }
+ 
+     /* recurse for the private dictionary */
+-- 
+2.43.2
+

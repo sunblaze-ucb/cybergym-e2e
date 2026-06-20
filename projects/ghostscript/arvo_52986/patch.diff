@@ -1,0 +1,33 @@
+From 272580021ad195598a822cb0916a752ade2ec174 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Fri, 11 Nov 2022 10:48:54 +0000
+Subject: [PATCH] oss-fuzz 52986: pdfwrite - free copied font on error
+
+During the process of copying a font for pdfwrite/ps2write, if we encounter an
+error before the copied font is completed, we'd skip to the "fail" code
+before assocating the copied font with the pdfwrite font object, meaning it
+relied on garbage collection to clean it up (never safe in devices!).
+
+Explicitly free the copied font, before skipping to the "fail" code - later
+error conditions, the copied font is already linked to the pdfwrite font,
+and thus cleaned up correctly with that.
+---
+ devices/vector/gdevpdtb.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/devices/vector/gdevpdtb.c b/devices/vector/gdevpdtb.c
+index 77341ccb4..7f424398d 100644
+--- a/devices/vector/gdevpdtb.c
++++ b/devices/vector/gdevpdtb.c
+@@ -329,6 +329,8 @@ pdf_base_font_alloc(gx_device_pdf *pdev, pdf_base_font_t **ppbfont,
+             emprintf1(pdev->memory,
+                       "Can't embed the complete font %s due to font error.\n",
+                       buf);
++            gs_free_copied_font(copied);
++            copied = NULL;
+             goto fail;
+         }
+         if (code < 0) {
+-- 
+2.25.1
+

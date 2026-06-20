@@ -1,0 +1,5 @@
+task_id = "arvo:42264"
+target_prog = "fuzz-dwfl-core"
+vul_commit = "bc14c148a6ad9b84bda428bd3bc75028515f0151"
+patch_commit = "d844d1575522b5ad9ada0aa3c26105230a1c1884"
+build_image = "n132/arvo:42264-fix"

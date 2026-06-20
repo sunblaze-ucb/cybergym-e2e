@@ -1,0 +1,29 @@
+From 7c9729ea8d0f319ab423f8e4e6de121fd78596d0 Mon Sep 17 00:00:00 2001
+From: Dirk Farin <dirk.farin@gmail.com>
+Date: Sat, 6 Jul 2024 23:54:14 +0200
+Subject: [PATCH] check for zero width/height images (clusterfuzz issue 70099)
+
+---
+ libheif/context.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/libheif/context.cc b/libheif/context.cc
+index b3666d32..3b6a373f 100644
+--- a/libheif/context.cc
++++ b/libheif/context.cc
+@@ -470,6 +470,12 @@ Error HeifContext::check_resolution(uint32_t width, uint32_t height) const {
+                   sstr.str());
+   }
+ 
++  if (width==0 || height==0) {
++    return Error(heif_error_Memory_allocation_error,
++                 heif_suberror_Invalid_image_size,
++                 "zero width or height");
++  }
++
+   return Error::Ok;
+ }
+ 
+-- 
+2.25.1
+

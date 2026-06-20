@@ -1,0 +1,5 @@
+task_id = "arvo:61721"
+target_prog = "fuzz_sre_match"
+vul_commit = "513c89d0122ff6245cfefbb49ef32bde8a2336f5"
+patch_commit = "3107b453bcceb0e2d2590fef3612859f2f802d72"
+build_image = "n132/arvo:61721-fix"

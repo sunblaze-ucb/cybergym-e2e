@@ -1,0 +1,33 @@
+From 959064542d2ea82f97bb409dda4df471efc53feb Mon Sep 17 00:00:00 2001
+From: Marti Maria <marti.maria@littlecms.com>
+Date: Fri, 12 Aug 2022 13:26:11 +0200
+Subject: [PATCH] Fix error on writing profiles when tables have different node
+ count
+
+Each table may have a different node count number, although is is not very frequent
+---
+ src/cmstypes.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/cmstypes.c b/src/cmstypes.c
+index 47bc7a2..e056731 100644
+--- a/src/cmstypes.c
++++ b/src/cmstypes.c
+@@ -2071,11 +2071,11 @@ cmsBool Write16bitTables(cmsContext ContextID, cmsIOHANDLER* io, _cmsStageToneCu
+     cmsUInt32Number nEntries;
+ 
+     _cmsAssert(Tables != NULL);
+-
+-    nEntries = Tables->TheCurves[0]->nEntries;
+-
++   
+     for (i=0; i < Tables ->nCurves; i++) {
+ 
++        nEntries = Tables->TheCurves[i]->nEntries;
++
+         for (j=0; j < nEntries; j++) {
+ 
+             val = Tables->TheCurves[i]->Table16[j];        
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "arvo:45192"
+target_prog = "mruby_fuzzer"
+vul_commit = "31d4bbcfea0e216aa2e3b856c0e177802ad84a2d"
+patch_commit = "bc9476e7caa75e0a258682f4dc3247a00fed5581"
+build_image = "n132/arvo:45192-fix"

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:398060138"
+target_prog = "html"
+vul_commit = "73514f2d2ec2a5507cc28ee67b918153352f0486"
+patch_commit = "6dfa68ac7f3f55109e3cf6be78461a81333f445f"
+build_image = "cybergym/e2e:libxml2"

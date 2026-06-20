@@ -1,0 +1,38 @@
+From a383b3e200c72fd5fdc8b8539fb409942357fc5b Mon Sep 17 00:00:00 2001
+From: Andrii Nakryiko <andrii@kernel.org>
+Date: Wed, 3 Nov 2021 10:32:11 -0700
+Subject: [PATCH] libbpf: Validate that .BTF and .BTF.ext sections contain data
+
+.BTF and .BTF.ext ELF sections should have SHT_PROGBITS type and contain
+data. If they are not, ELF is invalid or corrupted, so bail out.
+Otherwise this can lead to data->d_buf being NULL and SIGSEGV later on.
+Reported by oss-fuzz project.
+
+Signed-off-by: Andrii Nakryiko <andrii@kernel.org>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: Yonghong Song <yhs@fb.com>
+Link: https://lore.kernel.org/bpf/20211103173213.1376990-4-andrii@kernel.org
+---
+ src/libbpf.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/libbpf.c b/src/libbpf.c
+index f836a19..0dc6465 100644
+--- a/src/libbpf.c
++++ b/src/libbpf.c
+@@ -3270,8 +3270,12 @@ static int bpf_object__elf_collect(struct bpf_object *obj)
+ 		} else if (strcmp(name, MAPS_ELF_SEC) == 0) {
+ 			obj->efile.btf_maps_shndx = idx;
+ 		} else if (strcmp(name, BTF_ELF_SEC) == 0) {
++			if (sh->sh_type != SHT_PROGBITS)
++				return -LIBBPF_ERRNO__FORMAT;
+ 			btf_data = data;
+ 		} else if (strcmp(name, BTF_EXT_ELF_SEC) == 0) {
++			if (sh->sh_type != SHT_PROGBITS)
++				return -LIBBPF_ERRNO__FORMAT;
+ 			btf_ext_data = data;
+ 		} else if (sh->sh_type == SHT_SYMTAB) {
+ 			/* already processed during the first pass above */
+-- 
+2.43.2
+

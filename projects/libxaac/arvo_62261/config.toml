@@ -1,0 +1,5 @@
+task_id = "arvo:62261"
+target_prog = "xaac_enc_fuzzer"
+vul_commit = "f48c9bea6406028f4599306e609f60bb8a022374"
+patch_commit = "56716426e2087e604ee6267129857b409e53ab09"
+build_image = "n132/arvo:62261-fix"

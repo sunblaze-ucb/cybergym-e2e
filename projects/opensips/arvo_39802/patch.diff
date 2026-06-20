@@ -1,0 +1,94 @@
+From 66898d8208d158d95a27f1a76078a29bd1e08d7e Mon Sep 17 00:00:00 2001
+From: Liviu Chircu <liviu@opensips.org>
+Date: Tue, 20 Sep 2022 17:21:40 +0300
+Subject: [PATCH] parse_msg(): Fix out-of-bounds read edge-case (OSS-Fuzz)
+
+Also add a unit test suite for parse_msg().
+
+Severity: low
+Fixes OSS-Fuzz#39802
+---
+ parser/parse_hname2.c     |  6 +++---
+ parser/test/test_parser.c | 32 +++++++++++++++++++++++++++++++-
+ 2 files changed, 34 insertions(+), 4 deletions(-)
+
+diff --git a/parser/parse_hname2.c b/parser/parse_hname2.c
+index 4f003b110..32c9fdad7 100644
+--- a/parser/parse_hname2.c
++++ b/parser/parse_hname2.c
+@@ -239,7 +239,7 @@ char* parse_hname2(char* begin, char* end, struct hdr_field* hdr)
+ 	if (p>=end)
+ 		goto error;
+ 	p = skip_ws(p, end);
+-	if (*p != ':')
++	if (p >= end || *p != ':')
+ 		goto error;
+ 	/* hdr type, name should be already set at this point */
+ 	return (p+1);
+@@ -259,7 +259,7 @@ char* parse_hname2(char* begin, char* end, struct hdr_field* hdr)
+ 		case '\t':
+ 			/* consume spaces to the end of name */
+ 			p = skip_ws( p+1, end);
+-			if (*p != ':')
++			if (p >= end || *p != ':')
+ 				goto error;
+ 			return (p+1);
+ 		/* default: it seems the hdr name continues, fall to "other" */
+@@ -280,7 +280,7 @@ char* parse_hname2(char* begin, char* end, struct hdr_field* hdr)
+ 			case '\t':
+ 				hdr->name.len = p - hdr->name.s;
+ 				p = skip_ws(p+1, end);
+-				if (*p != ':')
++				if (p >= end || *p != ':')
+ 					goto error;
+ 				return (p+1);
+ 		}
+diff --git a/parser/test/test_parser.c b/parser/test/test_parser.c
+index 49b310b6f..30105c4de 100644
+--- a/parser/test/test_parser.c
++++ b/parser/test/test_parser.c
+@@ -143,10 +143,40 @@ void test_parse_uri(void)
+ 	ok(str_match(&u.pn_purr_val, const_str("t")), "puri-43");
+ }
+ 
++static const struct tts {
++	const unsigned char tmsg[32];
++	int tres;
++} tset[] = {
++	{
++		/* test for read overflows on EoH parsing */
++		{'e', ' ', 255, 255, 255, 255, ' ', ' ', ' ', ' ', ' ', 255, '\n', 255, 255, ' ', ' '},
++		-1,
++	},
++
++	{{0}, 0},
++};
++
++void test_parse_msg(void)
++{
++	int i;
++
++	for (i = 0; tset[i].tmsg[0]; i++) {
++		struct sip_msg msg;
++
++		memset(&msg, 0, sizeof msg);
++		msg.buf = (char *)tset[i].tmsg;
++		msg.len = strlen(msg.buf);
++
++		ok(parse_msg(msg.buf, msg.len, &msg) == tset[i].tres, "parse-msg-0");
++	}
++}
++
++
+ void test_parser(void)
+ {
++	test_parse_uri();
++	test_parse_msg();
+ 	test_parse_qop_val();
+ 	test_parse_fcaps();
+-	test_parse_uri();
+ 	test_parse_authenticate_body();
+ }
+-- 
+2.25.1
+

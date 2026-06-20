@@ -1,0 +1,31 @@
+From 685b44ee816c6e508d282ae3766f2441b5ae9334 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 19 Apr 2023 21:53:18 +0930
+Subject: [PATCH] buffer overflow in print_symname
+
+	* ecoff.c (_bfd_ecoff_slurp_symbolic_info): Zero terminate
+	string sections.
+---
+ bfd/ecoff.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/bfd/ecoff.c b/bfd/ecoff.c
+index fb6fcade913..676b8d84017 100644
+--- a/bfd/ecoff.c
++++ b/bfd/ecoff.c
+@@ -599,6 +599,12 @@ _bfd_ecoff_slurp_symbolic_info (bfd *abfd,
+   FIX (cbExtOffset, iextMax, external_ext, void *);
+ #undef FIX
+ 
++  /* Ensure string sections are zero terminated.  */
++  if (debug->ss)
++    debug->ss[internal_symhdr->issMax - 1] = 0;
++  if (debug->ssext)
++    debug->ssext[internal_symhdr->issExtMax - 1] = 0;
++
+   /* I don't want to always swap all the data, because it will just
+      waste time and most programs will never look at it.  The only
+      time the linker needs most of the debugging information swapped
+-- 
+2.25.1
+

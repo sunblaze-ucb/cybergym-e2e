@@ -1,0 +1,34 @@
+From 900ade653f3c58a904b428317a3c632623b0120d Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Mon, 30 Oct 2017 09:49:47 +0100
+Subject: [PATCH] Fix read heap buffer overflow in PE module.
+
+Credit to OSS-Fuzz for finding this bug.
+---
+ libyara/modules/pe.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/libyara/modules/pe.c b/libyara/modules/pe.c
+index ed32586..15385cd 100644
+--- a/libyara/modules/pe.c
++++ b/libyara/modules/pe.c
+@@ -1011,10 +1011,15 @@ IMPORT_EXPORT_FUNCTION* pe_parse_exports(
+   for (i = 0; i < yr_le32toh(exports->NumberOfFunctions); i++)
+   {
+     IMPORT_EXPORT_FUNCTION* exported_func;
+-
+     uint16_t ordinal = 0;
+     char* name;
+ 
++    if (available_space(pe, names + i) < sizeof(DWORD) ||
++        available_space(pe, ordinals + i) < sizeof(WORD))
++    {
++      break;
++    }
++
+     offset = pe_rva_to_offset(pe, names[i]);
+ 
+     if (offset < 0)
+-- 
+2.7.4
+

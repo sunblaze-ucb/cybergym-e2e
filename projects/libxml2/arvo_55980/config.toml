@@ -1,0 +1,4 @@
+task_id = "arvo:55980"
+target_prog = "xml"
+vul_commit = "1743c4c3fc58cf38ecce68db9de51d0f3651e033"
+patch_commit = "5d55315e32b34af7070d38060ccf9a60941b9696"

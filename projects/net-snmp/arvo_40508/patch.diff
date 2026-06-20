@@ -1,0 +1,31 @@
+From 23a12825781d463c0509b034035c60ef9c90af11 Mon Sep 17 00:00:00 2001
+From: David Korczynski <david@adalogics.com>
+Date: Mon, 1 Nov 2021 21:36:49 +0000
+Subject: [PATCH] libsnmp: Fix stack-based buffer overflow
+
+Ensure len is above 0 before the code 'utc[len - 1]'.
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=40508
+
+Signed-off-by: David Korczynski <david@adalogics.com>
+---
+ snmplib/parse.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/snmplib/parse.c b/snmplib/parse.c
+index 02d14c8874..8c052235a6 100644
+--- a/snmplib/parse.c
++++ b/snmplib/parse.c
+@@ -3447,6 +3447,10 @@ check_utc(const char *utc)
+     int             len, year, month, day, hour, minute;
+ 
+     len = strlen(utc);
++    if (len == 0) {
++        print_error("Timestamp has zero length", utc, QUOTESTRING);
++        return;
++    }
+     if (utc[len - 1] != 'Z' && utc[len - 1] != 'z') {
+         print_error("Timestamp should end with Z", utc, QUOTESTRING);
+         return;
+-- 
+2.43.2
+

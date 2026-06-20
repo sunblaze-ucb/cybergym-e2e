@@ -1,0 +1,35 @@
+From b9460dd9591583fa287cf031bf57629bffb20a84 Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Tue, 8 Aug 2023 16:01:00 +0000
+Subject: [PATCH] Fix UNKNOWN READ in std::__1::basic_string<char,
+ std::__1::char_traits<char>, std::__1::allocator<ch
+
+---
+ code/AssetLib/NDO/NDOLoader.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/code/AssetLib/NDO/NDOLoader.cpp b/code/AssetLib/NDO/NDOLoader.cpp
+index bf2fa113d..edccc1624 100644
+--- a/code/AssetLib/NDO/NDOLoader.cpp
++++ b/code/AssetLib/NDO/NDOLoader.cpp
+@@ -52,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <assimp/importerdesc.h>
+ #include <assimp/StreamReader.h>
+ #include <map>
++#include <limits>
+ 
+ using namespace Assimp;
+ 
+@@ -160,6 +161,9 @@ void NDOImporter::InternReadFile( const std::string& pFile,
+ 
+         temp = file_format >= 12 ? reader.GetU4() : reader.GetU2();
+         head = (const char*)reader.GetPtr();
++        if (std::numeric_limits<unsigned int>::max() - 76 < temp) {
++            throw DeadlyImportError("Invalid name length");
++        }
+         reader.IncPtr(temp + 76); /* skip unknown stuff */
+ 
+         obj.name = std::string(head, temp);
+-- 
+2.25.1
+

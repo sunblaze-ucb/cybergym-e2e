@@ -1,0 +1,149 @@
+From 5a805384b831e5946cc8dae13a75617cb4b9c080 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Fri, 25 Sep 2020 10:05:57 +0930
+Subject: [PATCH] asan: readelf buffer overflow and abort
+
+	* elfcomm.c (byte_put_little_endian, byte_put_big_endian): Support
+	more field sizes.
+	* readelf.c (target_specific_reloc_handling <MSP430>): Limit
+	allowed reloc_size.  Don't read_leb128 outside of section.
+---
+ binutils/ChangeLog |  7 ++++++
+ binutils/elfcomm.c | 59 ++++++++++------------------------------------
+ binutils/readelf.c |  9 +++----
+ 3 files changed, 24 insertions(+), 51 deletions(-)
+
+diff --git a/binutils/ChangeLog b/binutils/ChangeLog
+index c1e78305edc..59750dd1a26 100644
+--- a/binutils/ChangeLog
++++ b/binutils/ChangeLog
+@@ -1,3 +1,10 @@
++2020-09-25  Alan Modra  <amodra@gmail.com>
++
++	* elfcomm.c (byte_put_little_endian, byte_put_big_endian): Support
++	more field sizes.
++	* readelf.c (target_specific_reloc_handling <MSP430>): Limit
++	allowed reloc_size.  Don't read_leb128 outside of section.
++
+ 2020-09-23  Mark Wielaard  <mark@klomp.org>
+ 
+ 	* dwarf.c (process_debug_info): Print Unit Type for DWARF5.
+diff --git a/binutils/elfcomm.c b/binutils/elfcomm.c
+index 37f9dbe7eef..81742bf75b1 100644
+--- a/binutils/elfcomm.c
++++ b/binutils/elfcomm.c
+@@ -67,66 +67,31 @@ void (*byte_put) (unsigned char *, elf_vma, int);
+ void
+ byte_put_little_endian (unsigned char * field, elf_vma value, int size)
+ {
+-  switch (size)
++  if (size <= 0 || size > 8)
+     {
+-    case 8:
+-      field[7] = (((value >> 24) >> 24) >> 8) & 0xff;
+-      field[6] = ((value >> 24) >> 24) & 0xff;
+-      field[5] = ((value >> 24) >> 16) & 0xff;
+-      field[4] = ((value >> 24) >> 8) & 0xff;
+-      /* Fall through.  */
+-    case 4:
+-      field[3] = (value >> 24) & 0xff;
+-      /* Fall through.  */
+-    case 3:
+-      field[2] = (value >> 16) & 0xff;
+-      /* Fall through.  */
+-    case 2:
+-      field[1] = (value >> 8) & 0xff;
+-      /* Fall through.  */
+-    case 1:
+-      field[0] = value & 0xff;
+-      break;
+-
+-    default:
+       error (_("Unhandled data length: %d\n"), size);
+       abort ();
+     }
++  while (size--)
++    {
++      *field++ = value & 0xff;
++      value >>= 8;
++    }
+ }
+ 
+ void
+ byte_put_big_endian (unsigned char * field, elf_vma value, int size)
+ {
+-  switch (size)
++  if (size <= 0 || size > 8)
+     {
+-    case 8:
+-      field[7] = value & 0xff;
+-      field[6] = (value >> 8) & 0xff;
+-      field[5] = (value >> 16) & 0xff;
+-      field[4] = (value >> 24) & 0xff;
+-      value >>= 16;
+-      value >>= 16;
+-      /* Fall through.  */
+-    case 4:
+-      field[3] = value & 0xff;
+-      value >>= 8;
+-      /* Fall through.  */
+-    case 3:
+-      field[2] = value & 0xff;
+-      value >>= 8;
+-      /* Fall through.  */
+-    case 2:
+-      field[1] = value & 0xff;
+-      value >>= 8;
+-      /* Fall through.  */
+-    case 1:
+-      field[0] = value & 0xff;
+-      break;
+-
+-    default:
+       error (_("Unhandled data length: %d\n"), size);
+       abort ();
+     }
++  while (size--)
++    {
++      field[size] = value & 0xff;
++      value >>= 8;
++    }
+ }
+ 
+ elf_vma (*byte_get) (const unsigned char *, int);
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 95720ea0552..9ba4e29a659 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -12622,7 +12622,7 @@ target_specific_reloc_handling (Filedata *           filedata,
+ 	    if (saved_sym != NULL)
+ 	      {
+ 		bfd_vma value;
+-		unsigned int reloc_size;
++		unsigned int reloc_size = 0;
+ 		int leb_ret = 0;
+ 		switch (reloc_type)
+ 		  {
+@@ -12631,15 +12631,16 @@ target_specific_reloc_handling (Filedata *           filedata,
+ 		    break;
+ 		  case 11: /* R_MSP430_GNU_SET_ULEB128 */
+ 		  case 22: /* R_MSP430X_GNU_SET_ULEB128 */
+-		    read_leb128 (start + reloc->r_offset, end, FALSE,
+-				 &reloc_size, &leb_ret);
++		    if (reloc->r_offset < (size_t) (end - start))
++		      read_leb128 (start + reloc->r_offset, end, FALSE,
++				   &reloc_size, &leb_ret);
+ 		    break;
+ 		  default:
+ 		    reloc_size = 2;
+ 		    break;
+ 		  }
+ 
+-		if (leb_ret != 0)
++		if (leb_ret != 0 || reloc_size == 0 || reloc_size > 8)
+ 		  error (_("MSP430 ULEB128 field at 0x%lx contains invalid "
+ 			   "ULEB128 value\n"),
+ 			 (long) reloc->r_offset);
+-- 
+2.43.2
+

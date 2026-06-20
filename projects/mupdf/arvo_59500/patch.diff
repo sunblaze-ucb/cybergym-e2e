@@ -1,0 +1,51 @@
+From 56a9eef4c66808608ae01bee70e1a4954c34b1d9 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Tue, 6 Jun 2023 13:48:01 +0200
+Subject: [PATCH] Handle underflow of bmp palette size.
+
+This fixes OSS-fuzz issue 59500.
+---
+ source/fitz/load-bmp.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/source/fitz/load-bmp.c b/source/fitz/load-bmp.c
+index db173ce0a..7a37ebc40 100644
+--- a/source/fitz/load-bmp.c
++++ b/source/fitz/load-bmp.c
+@@ -932,15 +932,18 @@ static const unsigned char *
+ bmp_read_palette(fz_context *ctx, struct info *info, const unsigned char *begin, const unsigned char *end, const unsigned char *p)
+ {
+ 	int i, expected, present, entry_size;
+-	const unsigned char *bitmap;
+ 
+ 	entry_size = palette_entry_size(info);
+-	bitmap = begin + info->bitmapoffset;
+ 
+-	expected = fz_mini(info->colors, 1 << info->bitcount);
+-	if (expected == 0)
+-		expected = 1 << info->bitcount;
+-	present = fz_mini(expected, (bitmap - p) / entry_size);
++	if (info->colors == 0)
++		expected = info->colors = 1 << info->bitcount;
++	else
++		expected = fz_mini(info->colors, 1 << info->bitcount);
++
++	if (info->bitmapoffset == 0)
++		present = fz_mini(expected, (end - p) / entry_size);
++	else
++		present = fz_mini(expected, (begin + info->bitmapoffset - p) / entry_size);
+ 
+ 	for (i = 0; i < present; i++)
+ 	{
+@@ -1100,6 +1103,8 @@ bmp_read_image(fz_context *ctx, struct info *info, const unsigned char *begin, c
+ 	p = bmp_read_info_header(ctx, info, begin, end, p);
+ 
+ 	/* clamp bitmap offset to buffer size */
++	if (info->bitmapoffset < (uint32_t)(p - begin))
++		info->bitmapoffset = 0;
+ 	if ((uint32_t)(end - begin) < info->bitmapoffset)
+ 		info->bitmapoffset = end - begin;
+ 
+-- 
+2.25.1
+

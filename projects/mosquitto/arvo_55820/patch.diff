@@ -1,0 +1,33 @@
+From 7adf77e9664a7099c747071bbde3e40718450e67 Mon Sep 17 00:00:00 2001
+From: "Roger A. Light" <roger@atchoo.org>
+Date: Sun, 12 Feb 2023 22:50:48 +0000
+Subject: [PATCH] Fix crash on exit.
+
+This only occurs when the broker is exiting anyway.
+
+Fixes oss-fuzz #55820.
+---
+ src/conf.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/conf.c b/src/conf.c
+index 72d3fe38..57204a02 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -1001,7 +1001,12 @@ static int config__read_file_core(struct mosquitto__config *config, bool reload,
+ 							log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
+ 							return MOSQ_ERR_NOMEM;
+ 						}
+-						cur_bridge->addresses[cur_bridge->address_count-1].address = token;
++						memset(&cur_bridge->addresses[cur_bridge->address_count-1], 0, sizeof(struct bridge_address));
++						cur_bridge->addresses[cur_bridge->address_count-1].address = mosquitto__strdup(token);
++						if(!cur_bridge->addresses[cur_bridge->address_count-1].address){
++							log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
++							return MOSQ_ERR_NOMEM;
++						}
+ 					}
+ 					for(i=0; i<cur_bridge->address_count; i++){
+ 						/* cur_bridge->addresses[i].address is now
+-- 
+2.25.1
+

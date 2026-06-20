@@ -1,0 +1,67 @@
+From 3cacdbc078fc3269f2273a45220f3d127e0d87e9 Mon Sep 17 00:00:00 2001
+From: Manisha Jajoo <manisha.jajoo@ittiam.com>
+Date: Mon, 13 Jul 2020 09:54:55 +0530
+Subject: [PATCH] decoder: Fix memory uninitialized issue in
+ ihevcd_sao_shift_ctb
+
+Test: poc in bug
+Bug: 158484516
+
+Change-Id: I83e89056be52b96760d95f5826c2bfdcfd3962e2
+---
+ decoder/ihevcd_sao.c | 24 +++++++++---------------
+ 1 file changed, 9 insertions(+), 15 deletions(-)
+
+diff --git a/decoder/ihevcd_sao.c b/decoder/ihevcd_sao.c
+index 3940b6a..243e2ce 100644
+--- a/decoder/ihevcd_sao.c
++++ b/decoder/ihevcd_sao.c
+@@ -103,16 +103,14 @@ void ihevcd_sao_ctb(sao_ctxt_t *ps_sao_ctxt)
+     UWORD8 *pu1_no_loop_filter_flag;
+     WORD32 loop_filter_strd;
+ 
+-    WORD8 ai1_offset_y[5];
+-    WORD8 ai1_offset_cb[5];
+-    WORD8 ai1_offset_cr[5];
++    /* Only first 5 values are used, but arrays are large
++     enough so that SIMD functions can read 64 bits at a time */
++    WORD8 ai1_offset_y[8] = {0};
++    WORD8 ai1_offset_cb[8] = {0};
++    WORD8 ai1_offset_cr[8] = {0};
+ 
+     PROFILE_DISABLE_SAO();
+ 
+-    ai1_offset_y[0] = 0;
+-    ai1_offset_cb[0] = 0;
+-    ai1_offset_cr[0] = 0;
+-
+     ps_sps = ps_sao_ctxt->ps_sps;
+     log2_ctb_size = ps_sps->i1_log2_ctb_size;
+     ctb_size = (1 << log2_ctb_size);
+@@ -568,19 +566,15 @@ void ihevcd_sao_shift_ctb(sao_ctxt_t *ps_sao_ctxt)
+     UWORD8  *pu1_sao_src_top_left_luma_bot_left;
+     UWORD8 *au1_sao_src_top_left_chroma_bot_left;
+     UWORD8 *pu1_sao_src_top_left_chroma_bot_left;
+-    /* Only 5 values are used, but arrays are large
++    /* Only first 5 values are used, but arrays are large
+      enough so that SIMD functions can read 64 bits at a time */
+-    WORD8 ai1_offset_y[8];
+-    WORD8 ai1_offset_cb[8];
+-    WORD8 ai1_offset_cr[8];
++    WORD8 ai1_offset_y[8] = {0};
++    WORD8 ai1_offset_cb[8] = {0};
++    WORD8 ai1_offset_cr[8] = {0};
+     WORD32  chroma_yuv420sp_vu = ps_sao_ctxt->is_chroma_yuv420sp_vu;
+ 
+     PROFILE_DISABLE_SAO();
+ 
+-    ai1_offset_y[0] = 0;
+-    ai1_offset_cb[0] = 0;
+-    ai1_offset_cr[0] = 0;
+-
+     ps_sps = ps_sao_ctxt->ps_sps;
+     ps_pps = ps_sao_ctxt->ps_pps;
+     ps_tile = ps_sao_ctxt->ps_tile;
+-- 
+2.43.2
+

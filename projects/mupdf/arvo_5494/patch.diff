@@ -1,0 +1,27 @@
+From 71ceebcf56e682504da22c4035b39a2d451e8ffd Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Tue, 23 Jan 2018 03:04:33 +0100
+Subject: [PATCH] Bug 698888: Keep one-to-many state when splitting nodes in
+ cmap splay trees.
+
+Thanks to oss-fuzz for reporting this.
+---
+ source/pdf/pdf-cmap.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/pdf/pdf-cmap.c b/source/pdf/pdf-cmap.c
+index ade72c4..bedc130 100644
+--- a/source/pdf/pdf-cmap.c
++++ b/source/pdf/pdf-cmap.c
+@@ -520,7 +520,7 @@ add_range(fz_context *ctx, pdf_cmap *cmap, unsigned int low, unsigned int high,
+ 					/* case 3, reduces to case 5 */
+ 					int new_high = tree[current].high;
+ 					tree[current].high = low-1;
+-					add_range(ctx, cmap, high+1, new_high, tree[current].out + high + 1 - tree[current].low, 0, many);
++					add_range(ctx, cmap, high+1, new_high, tree[current].out + high + 1 - tree[current].low, 0, tree[current].many);
+ 				}
+ 				/* Now look for where to move to next (left for case 0, right for case 5) */
+ 				if (tree[current].low > high) {
+-- 
+2.7.4
+

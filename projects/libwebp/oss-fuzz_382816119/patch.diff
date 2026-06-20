@@ -1,0 +1,29 @@
+From 9e5ecfaf0040241da6f541c7a138229b61b10626 Mon Sep 17 00:00:00 2001
+From: Vincent Rabaud <vrabaud@google.com>
+Date: Mon, 9 Dec 2024 23:00:12 +0100
+Subject: [PATCH] Properly check the data size against the end of the RIFF
+ chunk
+
+Bug: oss-fuzz:382816119
+
+Change-Id: I629870246d8f1bd7c6cb0d66e89018600cecee3a
+---
+ src/mux/muxread.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/mux/muxread.c b/src/mux/muxread.c
+index ddb0cd78..aa406c1a 100644
+--- a/src/mux/muxread.c
++++ b/src/mux/muxread.c
+@@ -223,6 +223,8 @@ WebPMux* WebPMuxCreateInternal(const WebPData* bitstream, int copy_data,
+   // Note this padding is historical and differs from demux.c which does not
+   // pad the file size.
+   riff_size = SizeWithPadding(riff_size);
++  // Make sure the whole RIFF header is available.
++  if (riff_size < RIFF_HEADER_SIZE) goto Err;
+   if (riff_size > size) goto Err;
+   // There's no point in reading past the end of the RIFF chunk. Note riff_size
+   // includes CHUNK_HEADER_SIZE after SizeWithPadding().
+-- 
+2.25.1
+

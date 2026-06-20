@@ -1,0 +1,28 @@
+From 4c42db1805758c3f4223ec83b7f1d1156c81c029 Mon Sep 17 00:00:00 2001
+From: Dongge Liu <donggeliu@google.com>
+Date: Thu, 21 Aug 2025 17:31:15 +1000
+Subject: [PATCH] Fixed a `heap-use-after-free` in `SortByPTypeProcess`.
+ (#6326)
+
+The process incorrectly deleted original meshes from the scene when cleaning up after an error if those meshes had been added to its output list (outMeshes). The fix ensures proper ownership transfer by nullifying the original mesh pointer in the scene (pScene->mMeshes[i] = nullptr;) when the mesh is moved to outMeshes. This prevents the scene destructor from attempting to delete the mesh again later, while allowing the error cleanup path in SortByPTypeProcess to correctly delete all meshes it owns (both newly created and transferred originals).
+
+Co-authored-by: Kim Kulling <kimkulling@users.noreply.github.com>
+---
+ code/PostProcessing/SortByPTypeProcess.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/code/PostProcessing/SortByPTypeProcess.cpp b/code/PostProcessing/SortByPTypeProcess.cpp
+index e4bffa6a4..27d9e4f74 100644
+--- a/code/PostProcessing/SortByPTypeProcess.cpp
++++ b/code/PostProcessing/SortByPTypeProcess.cpp
+@@ -165,6 +165,7 @@ void SortByPTypeProcess::Execute(aiScene *pScene) {
+             if (!(mConfigRemoveMeshes & mesh->mPrimitiveTypes)) {
+                 *meshIdx = static_cast<unsigned int>(outMeshes.size());
+                 outMeshes.emplace_back(mesh);
++                pScene->mMeshes[i] = nullptr; // Indicate ownership transfer
+             } else {
+                 delete mesh;
+                 pScene->mMeshes[i] = nullptr;
+-- 
+2.25.1
+

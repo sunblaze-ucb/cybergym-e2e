@@ -1,0 +1,35 @@
+From 090b62ee46e8af9c539b2881aa36787e1de08079 Mon Sep 17 00:00:00 2001
+From: Dennis Potman <dennis@zettascale.tech>
+Date: Tue, 30 May 2023 14:48:45 +0200
+Subject: [PATCH] Fix error handling for ddsi_type_ref_proxy in OSS fuzz type
+ object test
+
+Signed-off-by: Dennis Potman <dennis@zettascale.tech>
+---
+ fuzz/fuzz_type_object/fuzz_type_object.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/fuzz/fuzz_type_object/fuzz_type_object.c b/fuzz/fuzz_type_object/fuzz_type_object.c
+index 082d793b..da95a035 100644
+--- a/fuzz/fuzz_type_object/fuzz_type_object.c
++++ b/fuzz/fuzz_type_object/fuzz_type_object.c
+@@ -85,10 +85,13 @@ int LLVMFuzzerTestOneInput(
+         ddsi_typeid_copy_impl (&type_info.x.complete.typeid_with_size.type_id, &type_id_complete->x);
+ 
+         struct ddsi_type *type;
+-        ddsi_type_ref_proxy (&gv, &type, &type_info, DDSI_TYPEID_KIND_COMPLETE, NULL);
+-        if (type)
++        dds_return_t ret = ddsi_type_ref_proxy (&gv, &type, &type_info, DDSI_TYPEID_KIND_COMPLETE, NULL);
++        if (ret == DDS_RETCODE_OK)
++        {
++          assert (type != NULL);
+           ddsi_type_add_typeobj (&gv, type, &type_object_complete->x);
+-        ddsi_type_unref (&gv, type);
++          ddsi_type_unref (&gv, type);
++        }
+         ddsi_typeinfo_fini (&type_info);
+       }
+     }
+-- 
+2.25.1
+

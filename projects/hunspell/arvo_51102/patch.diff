@@ -1,0 +1,40 @@
+From 5aa940a5a3b65263db809953024e9689e191868f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Caol=C3=A1n=20McNamara?= <caolanm@redhat.com>
+Date: Thu, 8 Sep 2022 12:38:52 +0100
+Subject: [PATCH] ofz#51102 handle utf-8 encoding failure in bad .aff
+
+---
+ src/hunspell/suggestmgr.cxx | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/hunspell/suggestmgr.cxx b/src/hunspell/suggestmgr.cxx
+index 3c59c1d..a81e5df 100644
+--- a/src/hunspell/suggestmgr.cxx
++++ b/src/hunspell/suggestmgr.cxx
+@@ -119,7 +119,10 @@ SuggestMgr::SuggestMgr(const std::string& tryme, unsigned int maxn, AffixMgr* ap
+ 
+   if (!ckey.empty()) {
+     if (utf8) {
+-      ckeyl = u8_u16(ckey_utf, ckey);
++      int len = u8_u16(ckey_utf, ckey);
++      if (len != -1) {
++        ckeyl = len;
++      }
+     } else {
+       ckeyl = ckey.size();
+     }
+@@ -128,7 +131,10 @@ SuggestMgr::SuggestMgr(const std::string& tryme, unsigned int maxn, AffixMgr* ap
+   ctry = tryme;
+   if (!ctry.empty()) {
+     if (utf8) {
+-      ctryl = u8_u16(ctry_utf, ctry);
++      int len = u8_u16(ctry_utf, ctry);
++      if (len != -1) {
++        ctryl = len;
++      }
+     } else {
+       ctryl = ctry.size();
+     }
+-- 
+2.43.2
+

@@ -1,0 +1,7 @@
+name = "libssh2"
+language = "c++"
+homepage = "https://github.com/libssh2/libssh2"
+main_repo = "https://github.com/libssh2/libssh2.git"
+repo_to_patch = "libssh2"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:8eda74a11e800aead5a041ee479a65b33dab3150d6e89e5694e2b6eb27be98fc"
+immutable_files = ["tests/"]

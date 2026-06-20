@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537578"
+target_prog = "ffmpeg_AV_CODEC_ID_WMAVOICE_fuzzer"
+vul_commit = "53066e8cc2c185e8b3c93148023df6568f218dd1"
+patch_commit = "53387079301690f1bd38b97fdf31d63194201d17"
+build_image = "cybergym/oss-fuzz:42537578-fix"

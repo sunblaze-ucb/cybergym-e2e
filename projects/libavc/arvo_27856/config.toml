@@ -1,0 +1,4 @@
+task_id = "arvo:27856"
+target_prog = "avc_dec_fuzzer"
+vul_commit = "a8fb1c1a55de0578be09b631dd5c1905443fda20"
+patch_commit = "afa70ddff5cbf887cee26264c00ce12d08553bca"

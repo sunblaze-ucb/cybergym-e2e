@@ -1,0 +1,26 @@
+From 4de8f6922a9be7d0a51a429e367283fd40031b26 Mon Sep 17 00:00:00 2001
+From: DRC <information@libjpeg-turbo.org>
+Date: Fri, 16 Apr 2021 16:34:12 -0500
+Subject: [PATCH] jdhuff.h: Fix ASan regression caused by 8fa70367
+
+The 0xFF is, in fact, necessary.
+---
+ jdhuff.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/jdhuff.h b/jdhuff.h
+index 60d8e8b0..cfa0b7f5 100644
+--- a/jdhuff.h
++++ b/jdhuff.h
+@@ -237,7 +237,7 @@ slowlabel: \
+     if (nb > 16) \
+       s = 0; \
+     else \
+-      s = htbl->pub->huffval[(int)(s + htbl->valoffset[nb])]; \
++      s = htbl->pub->huffval[(int)(s + htbl->valoffset[nb]) & 0xFF]; \
+   }
+ 
+ /* Out-of-line case for Huffman code fetching */
+-- 
+2.43.2
+

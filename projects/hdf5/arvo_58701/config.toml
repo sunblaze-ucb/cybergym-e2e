@@ -1,0 +1,5 @@
+task_id = "arvo:58701"
+target_prog = "h5_extended_fuzzer"
+vul_commit = "f73da83a94f6fe563ff351603aa4d34525ef612b"
+patch_commit = "7aed6abd527e88243a450c7809cde6003de1cb6f"
+build_image = "n132/arvo:58701-fix"

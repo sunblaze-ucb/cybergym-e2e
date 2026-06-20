@@ -1,0 +1,26 @@
+From ba70ea20d4bc2fe099ada51d315ee4e76d8b0280 Mon Sep 17 00:00:00 2001
+From: Sebastian Pipping <sebastian@pipping.org>
+Date: Tue, 14 Jan 2025 20:07:15 +0100
+Subject: [PATCH] fuzz/ParseFuzzer.cpp: Fix maxChars input for call to
+ uriToStringW
+
+---
+ fuzz/ParseFuzzer.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fuzz/ParseFuzzer.cpp b/fuzz/ParseFuzzer.cpp
+index f5367bd..1a7c723 100644
+--- a/fuzz/ParseFuzzer.cpp
++++ b/fuzz/ParseFuzzer.cpp
+@@ -110,7 +110,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size) {
+ 
+ 	URI_CHAR buf[1024 * 8] = {0};
+ 	int written = 0;
+-	URI_FUNC(ToString)(buf, state1.uri, sizeof(buf), &written);
++	URI_FUNC(ToString)(buf, state1.uri, sizeof(buf) / sizeof(buf[0]), &written);
+ 
+ 	UriHolder uriHolder2;
+ 	if (URI_FUNC(ParseSingleUri)(uriHolder2.get(), uri2.c_str(), nullptr) != URI_SUCCESS) {
+-- 
+2.25.1
+

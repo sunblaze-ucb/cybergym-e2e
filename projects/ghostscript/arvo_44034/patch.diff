@@ -1,0 +1,29 @@
+From bd747c5c2d320cd80ce08f16627c70a77ff67978 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 25 Jan 2022 08:47:44 +0000
+Subject: [PATCH] oss-fuzz 44034: CIDFont fallback: ensure buffer is large
+ enough
+
+when we try the fallback name of <Registry>-<Ordering> from the CIDSystemInfo
+dictionary.
+---
+ pdf/pdf_font.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_font.c b/pdf/pdf_font.c
+index 7bc8cb75a..16aa75a6b 100644
+--- a/pdf/pdf_font.c
++++ b/pdf/pdf_font.c
+@@ -329,7 +329,8 @@ pdfi_open_CIDFont_substitute_file(pdf_context * ctx, pdf_dict *font_dict, pdf_di
+         const char *fsprefix = "CIDFont/";
+         const int fsprefixlen = strlen(fsprefix);
+ 
+-        if (cidname == NULL || cidname->type != PDF_NAME)
++        if (cidname == NULL || cidname->type != PDF_NAME
++         || fsprefixlen + cidname->length >= gp_file_name_sizeof)
+             goto exit;
+ 
+         memcpy(fontfname, fsprefix, fsprefixlen);
+-- 
+2.43.2
+

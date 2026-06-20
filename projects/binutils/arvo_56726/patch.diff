@@ -1,0 +1,580 @@
+From d64c8f7181fd21f90983f8d55369f6f9a2960c43 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Tue, 7 Mar 2023 22:21:28 +1030
+Subject: [PATCH] z8 and z80 coff_reloc16_extra_cases sanity checks
+
+	* reloc16.c (bfd_coff_reloc16_get_relocated_section_contents):
+	Use size_t variables.  Sanity check reloc address.  Handle
+	errors from bfd_coff_reloc16_extra_cases.
+	* coffcode.h (_bfd_coff_reloc16_extra_cases): Return bool, take
+	size_t* args.
+	(dummy_reloc16_extra_cases): Adjust to suit.  Don't abort.
+	* coff-z80.c (extra_case): Sanity check reloc address.  Return
+	errors.  Tidy formatting.  Use bfd_signed_vma temp var to
+	check for reloc overflow.  Don't abort on unexpected reloc type,
+	instead print an error and return false.
+	* coff-z8k.c (extra_case): Likewise.
+	* libcoff.h: Regenerate.
+---
+ bfd/coff-z80.c | 118 ++++++++++++++++++++++----------------
+ bfd/coff-z8k.c | 150 ++++++++++++++++++++++++++++---------------------
+ bfd/coffcode.h |  14 ++---
+ bfd/libcoff.h  |   4 +-
+ bfd/reloc16.c  |  28 +++++----
+ 5 files changed, 182 insertions(+), 132 deletions(-)
+
+diff --git a/bfd/coff-z80.c b/bfd/coff-z80.c
+index c782e326bdb..702fe6550b5 100644
+--- a/bfd/coff-z80.c
++++ b/bfd/coff-z80.c
+@@ -330,77 +330,92 @@ reloc_processing (arelent *relent,
+   relent->address -= section->vma;
+ }
+ 
+-static void
++static bool
+ extra_case (bfd *in_abfd,
+ 	    struct bfd_link_info *link_info,
+ 	    struct bfd_link_order *link_order,
+ 	    arelent *reloc,
+ 	    bfd_byte *data,
+-	    unsigned int *src_ptr,
+-	    unsigned int *dst_ptr)
++	    size_t *src_ptr,
++	    size_t *dst_ptr)
+ {
+   asection * input_section = link_order->u.indirect.section;
+-  int val = bfd_coff_reloc16_get_value (reloc, link_info, input_section);
++  bfd_size_type end = bfd_get_section_limit_octets (in_abfd, input_section);
++  bfd_size_type reloc_size = bfd_get_reloc_size (reloc->howto);
++
++  if (*src_ptr > end
++      || reloc_size > end - *src_ptr)
++    {
++      link_info->callbacks->einfo
++	/* xgettext:c-format */
++	(_("%X%P: %pB(%pA): relocation \"%pR\" goes out of range\n"),
++	 in_abfd, input_section, reloc);
++      return false;
++    }
+ 
++  int val = bfd_coff_reloc16_get_value (reloc, link_info, input_section);
+   switch (reloc->howto->type)
+     {
+     case R_OFF8:
+       if (reloc->howto->partial_inplace)
+-        val += (signed char)(bfd_get_8 ( in_abfd, data+*src_ptr)
+-                             & reloc->howto->src_mask);
+-      if (val>127 || val<-128) /* Test for overflow.  */
+-	  (*link_info->callbacks->reloc_overflow)
++	val += (signed char) (bfd_get_8 (in_abfd, data + *src_ptr)
++			      & reloc->howto->src_mask);
++      if (val > 127 || val < -128)
++	{
++	  link_info->callbacks->reloc_overflow
+ 	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+ 	     reloc->howto->name, reloc->addend, input_section->owner,
+ 	     input_section, reloc->address);
++	  return false;
++	}
+ 
+-	bfd_put_8 (in_abfd, val, data + *dst_ptr);
+-	(*dst_ptr) += 1;
+-	(*src_ptr) += 1;
++      bfd_put_8 (in_abfd, val, data + *dst_ptr);
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_BYTE3:
+       bfd_put_8 (in_abfd, val >> 24, data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_BYTE2:
+       bfd_put_8 (in_abfd, val >> 16, data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_BYTE1:
+       bfd_put_8 (in_abfd, val >> 8, data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_IMM8:
+       if (reloc->howto->partial_inplace)
+-        val += bfd_get_8 ( in_abfd, data+*src_ptr) & reloc->howto->src_mask;
++	val += bfd_get_8 (in_abfd, data + *src_ptr) & reloc->howto->src_mask;
+       /* Fall through.  */
+     case R_BYTE0:
+       bfd_put_8 (in_abfd, val, data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_WORD1:
+       bfd_put_16 (in_abfd, val >> 16, data + *dst_ptr);
+-      (*dst_ptr) += 2;
+-      (*src_ptr) += 2;
++      *dst_ptr += 2;
++      *src_ptr += 2;
+       break;
+ 
+     case R_IMM16:
+       if (reloc->howto->partial_inplace)
+-        val += bfd_get_16 ( in_abfd, data+*src_ptr) & reloc->howto->src_mask;
++	val += bfd_get_16 (in_abfd, data + *src_ptr) & reloc->howto->src_mask;
+       /* Fall through.  */
+     case R_WORD0:
+       bfd_put_16 (in_abfd, val, data + *dst_ptr);
+-      (*dst_ptr) += 2;
+-      (*src_ptr) += 2;
++      *dst_ptr += 2;
++      *src_ptr += 2;
+       break;
+ 
+     case R_IMM24:
+@@ -408,53 +423,62 @@ extra_case (bfd *in_abfd,
+ 	val += (bfd_get_24 (in_abfd, data + *src_ptr)
+ 		& reloc->howto->src_mask);
+       bfd_put_24 (in_abfd, val, data + *dst_ptr);
+-      (*dst_ptr) += 3;
+-      (*src_ptr) += 3;
++      *dst_ptr += 3;
++      *src_ptr += 3;
+       break;
+ 
+     case R_IMM32:
+       if (reloc->howto->partial_inplace)
+-        val += bfd_get_32 ( in_abfd, data+*src_ptr) & reloc->howto->src_mask;
++	val += bfd_get_32 (in_abfd, data + *src_ptr) & reloc->howto->src_mask;
+       bfd_put_32 (in_abfd, val, data + *dst_ptr);
+-      (*dst_ptr) += 4;
+-      (*src_ptr) += 4;
++      *dst_ptr += 4;
++      *src_ptr += 4;
+       break;
+ 
+     case R_JR:
+       {
+-        if (reloc->howto->partial_inplace)
+-          val += (signed char)(bfd_get_8 ( in_abfd, data+*src_ptr) 
+-                               & reloc->howto->src_mask);
++	if (reloc->howto->partial_inplace)
++	  val += (signed char) (bfd_get_8 (in_abfd, data + *src_ptr)
++				& reloc->howto->src_mask);
+ 	bfd_vma dot = (*dst_ptr
+ 		       + input_section->output_offset
+ 		       + input_section->output_section->vma);
+-	int gap = val - dot;
++	bfd_signed_vma gap = val - dot;
+ 	if (gap >= 128 || gap < -128)
+-	  (*link_info->callbacks->reloc_overflow)
+-	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+-	     reloc->howto->name, reloc->addend, input_section->owner,
+-	     input_section, reloc->address);
++	  {
++	    link_info->callbacks->reloc_overflow
++	      (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
++	       reloc->howto->name, reloc->addend, input_section->owner,
++	       input_section, reloc->address);
++	    return false;
++	  }
+ 
+ 	bfd_put_8 (in_abfd, gap, data + *dst_ptr);
+-	(*dst_ptr)++;
+-	(*src_ptr)++;
++	*dst_ptr += 1;
++	*src_ptr += 1;
+ 	break;
+       }
+ 
+     case R_IMM16BE:
+       if (reloc->howto->partial_inplace)
+-	val += (bfd_get_8 ( in_abfd, data+*src_ptr+0) * 0x100 +
+-		bfd_get_8 ( in_abfd, data+*src_ptr+1)) & reloc->howto->src_mask;
++	val += ((bfd_get_8 (in_abfd, data + *src_ptr + 0) * 0x100
++		 + bfd_get_8 (in_abfd, data + *src_ptr + 1))
++		& reloc->howto->src_mask);
+       
+-      bfd_put_8 (in_abfd, val >> 8, data + *dst_ptr+0);
+-      bfd_put_8 (in_abfd, val, data + *dst_ptr+1);
+-      (*dst_ptr) += 2;
+-      (*src_ptr) += 2;
++      bfd_put_8 (in_abfd, val >> 8, data + *dst_ptr + 0);
++      bfd_put_8 (in_abfd, val, data + *dst_ptr + 1);
++      *dst_ptr += 2;
++      *src_ptr += 2;
+       break;
+ 
+     default:
+-      abort ();
++      link_info->callbacks->einfo
++	/* xgettext:c-format */
++	(_("%X%P: %pB(%pA): relocation \"%pR\" is not supported\n"),
++	 in_abfd, input_section, reloc);
++      return false;
+     }
++  return true;
+ }
+ 
+ static bool
+diff --git a/bfd/coff-z8k.c b/bfd/coff-z8k.c
+index d030056f372..f50e1c819ae 100644
+--- a/bfd/coff-z8k.c
++++ b/bfd/coff-z8k.c
+@@ -193,16 +193,28 @@ reloc_processing (arelent *relent,
+   relent->address -= section->vma;
+ }
+ 
+-static void
++static bool
+ extra_case (bfd *in_abfd,
+ 	    struct bfd_link_info *link_info,
+ 	    struct bfd_link_order *link_order,
+ 	    arelent *reloc,
+ 	    bfd_byte *data,
+-	    unsigned int *src_ptr,
+-	    unsigned int *dst_ptr)
++	    size_t *src_ptr,
++	    size_t *dst_ptr)
+ {
+   asection * input_section = link_order->u.indirect.section;
++  bfd_size_type end = bfd_get_section_limit_octets (in_abfd, input_section);
++  bfd_size_type reloc_size = bfd_get_reloc_size (reloc->howto);
++
++  if (*src_ptr > end
++      || reloc_size > end - *src_ptr)
++    {
++      link_info->callbacks->einfo
++	/* xgettext:c-format */
++	(_("%X%P: %pB(%pA): relocation \"%pR\" goes out of range\n"),
++	 in_abfd, input_section, reloc);
++      return false;
++    }
+ 
+   switch (reloc->howto->type)
+     {
+@@ -210,8 +222,8 @@ extra_case (bfd *in_abfd,
+       bfd_put_8 (in_abfd,
+ 		 bfd_coff_reloc16_get_value (reloc, link_info, input_section),
+ 		 data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_IMM32:
+@@ -234,27 +246,26 @@ extra_case (bfd *in_abfd,
+ 	  dst = (dst & 0xffff) | ((dst & 0xff0000) << 8) | 0x80000000;
+ 	  bfd_put_32 (in_abfd, dst, data + *dst_ptr);
+ 	}
+-      (*dst_ptr) += 4;
+-      (*src_ptr) += 4;
++      *dst_ptr += 4;
++      *src_ptr += 4;
+       break;
+ 
+     case R_IMM4L:
+       bfd_put_8 (in_abfd,
+ 		 ((bfd_get_8 (in_abfd, data + *dst_ptr) & 0xf0)
+-		  | (0x0f
+-		     & bfd_coff_reloc16_get_value (reloc, link_info,
+-						   input_section))),
++		  | (0x0f & bfd_coff_reloc16_get_value (reloc, link_info,
++							input_section))),
+ 		 data + *dst_ptr);
+-      (*dst_ptr) += 1;
+-      (*src_ptr) += 1;
++      *dst_ptr += 1;
++      *src_ptr += 1;
+       break;
+ 
+     case R_IMM16:
+       bfd_put_16 (in_abfd,
+ 		  bfd_coff_reloc16_get_value (reloc, link_info, input_section),
+ 		  data + *dst_ptr);
+-      (*dst_ptr) += 2;
+-      (*src_ptr) += 2;
++      *dst_ptr += 2;
++      *src_ptr += 2;
+       break;
+ 
+     case R_JR:
+@@ -264,21 +275,22 @@ extra_case (bfd *in_abfd,
+ 	bfd_vma dot = (*dst_ptr
+ 		       + input_section->output_offset
+ 		       + input_section->output_section->vma);
+-	int gap = dst - dot - 1;  /* -1, since we're in the odd byte of the
+-				     word and the pc's been incremented.  */
+-
+-	if (gap & 1)
+-	  abort ();
+-	gap /= 2;
+-	if (gap > 127 || gap < -128)
+-	  (*link_info->callbacks->reloc_overflow)
+-	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+-	     reloc->howto->name, reloc->addend, input_section->owner,
+-	     input_section, reloc->address);
+-
+-	bfd_put_8 (in_abfd, gap, data + *dst_ptr);
+-	(*dst_ptr)++;
+-	(*src_ptr)++;
++	/* -1, since we're in the odd byte of the word and the pc has
++	   been incremented.  */
++	bfd_signed_vma gap = dst - dot - 1;
++
++	if ((gap & 1) != 0 || gap > 254 || gap < -256)
++	  {
++	    link_info->callbacks->reloc_overflow
++	      (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
++	       reloc->howto->name, reloc->addend, input_section->owner,
++	       input_section, reloc->address);
++	    return false;
++	  }
++
++	bfd_put_8 (in_abfd, gap / 2, data + *dst_ptr);
++	*dst_ptr += 1;
++	*src_ptr += 1;
+ 	break;
+       }
+ 
+@@ -289,24 +301,23 @@ extra_case (bfd *in_abfd,
+ 	bfd_vma dot = (*dst_ptr
+ 		       + input_section->output_offset
+ 		       + input_section->output_section->vma);
+-	int gap = dst - dot - 1;  /* -1, since we're in the odd byte of the
+-				     word and the pc's been incremented.  */
+-
+-	if (gap & 1)
+-	  abort ();
+-	gap /= 2;
++	bfd_signed_vma gap = dst - dot - 1;
+ 
+-	if (gap > 0 || gap < -127)
+-	  (*link_info->callbacks->reloc_overflow)
+-	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+-	     reloc->howto->name, reloc->addend, input_section->owner,
+-	     input_section, reloc->address);
++	if ((gap & 1) != 0 || gap > 0 || gap < -254)
++	  {
++	    link_info->callbacks->reloc_overflow
++	      (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
++	       reloc->howto->name, reloc->addend, input_section->owner,
++	       input_section, reloc->address);
++	    return false;
++	  }
+ 
+ 	bfd_put_8 (in_abfd,
+-		   (bfd_get_8 ( in_abfd, data + *dst_ptr) & 0x80) + (-gap & 0x7f),
++		   ((bfd_get_8 (in_abfd, data + *dst_ptr) & 0x80)
++		    + (-gap / 2 & 0x7f)),
+ 		   data + *dst_ptr);
+-	(*dst_ptr)++;
+-	(*src_ptr)++;
++	*dst_ptr += 1;
++	*src_ptr += 1;
+ 	break;
+       }
+ 
+@@ -317,22 +328,23 @@ extra_case (bfd *in_abfd,
+ 	bfd_vma dot = (*dst_ptr
+ 		       + input_section->output_offset
+ 		       + input_section->output_section->vma);
+-	int gap = dst - dot - 2;
++	bfd_signed_vma gap = dst - dot - 2;
+ 
+-	if (gap & 1)
+-	  abort ();
+-	if (gap > 4096 || gap < -4095)
+-	  (*link_info->callbacks->reloc_overflow)
+-	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+-	     reloc->howto->name, reloc->addend, input_section->owner,
+-	     input_section, reloc->address);
++	if ((gap & 1) != 0 || gap > 4096 || gap < -4095)
++	  {
++	    link_info->callbacks->reloc_overflow
++	      (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
++	       reloc->howto->name, reloc->addend, input_section->owner,
++	       input_section, reloc->address);
++	    return false;
++	  }
+ 
+-	gap /= 2;
+ 	bfd_put_16 (in_abfd,
+-		    (bfd_get_16 ( in_abfd, data + *dst_ptr) & 0xf000) | (-gap & 0x0fff),
++		    ((bfd_get_16 (in_abfd, data + *dst_ptr) & 0xf000)
++		     | (-gap / 2 & 0x0fff)),
+ 		    data + *dst_ptr);
+-	(*dst_ptr) += 2;
+-	(*src_ptr) += 2;
++	*dst_ptr += 2;
++	*src_ptr += 2;
+ 	break;
+       }
+ 
+@@ -343,23 +355,31 @@ extra_case (bfd *in_abfd,
+ 	bfd_vma dot = (*dst_ptr
+ 		       + input_section->output_offset
+ 		       + input_section->output_section->vma);
+-	int gap = dst - dot - 2;
++	bfd_signed_vma gap = dst - dot - 2;
+ 
+ 	if (gap > 32767 || gap < -32768)
+-	  (*link_info->callbacks->reloc_overflow)
+-	    (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
+-	     reloc->howto->name, reloc->addend, input_section->owner,
+-	     input_section, reloc->address);
+-
+-	bfd_put_16 (in_abfd, (bfd_vma) gap, data + *dst_ptr);
+-	(*dst_ptr) += 2;
+-	(*src_ptr) += 2;
++	  {
++	    link_info->callbacks->reloc_overflow
++	      (link_info, NULL, bfd_asymbol_name (*reloc->sym_ptr_ptr),
++	       reloc->howto->name, reloc->addend, input_section->owner,
++	       input_section, reloc->address);
++	    return false;
++	  }
++
++	bfd_put_16 (in_abfd, gap, data + *dst_ptr);
++	*dst_ptr += 2;
++	*src_ptr += 2;
+ 	break;
+       }
+ 
+     default:
+-      abort ();
++      link_info->callbacks->einfo
++	/* xgettext:c-format */
++	(_("%X%P: %pB(%pA): relocation \"%pR\" is not supported\n"),
++	 in_abfd, input_section, reloc);
++      return false;
+     }
++  return true;
+ }
+ 
+ #define coff_reloc16_extra_cases    extra_case
+diff --git a/bfd/coffcode.h b/bfd/coffcode.h
+index c4f7d199c82..7a4c409a756 100644
+--- a/bfd/coffcode.h
++++ b/bfd/coffcode.h
+@@ -1495,9 +1495,9 @@ Special entry points for gdb to swap in coff symbol table parts:
+ .    (bfd *, FILE *, combined_entry_type *, combined_entry_type *,
+ .     combined_entry_type *, unsigned int);
+ .
+-.  void (*_bfd_coff_reloc16_extra_cases)
++.  bool (*_bfd_coff_reloc16_extra_cases)
+ .    (bfd *, struct bfd_link_info *, struct bfd_link_order *, arelent *,
+-.     bfd_byte *, unsigned int *, unsigned int *);
++.     bfd_byte *, size_t *, size_t *);
+ .
+ .  int (*_bfd_coff_reloc16_estimate)
+ .    (bfd *, asection *, arelent *, unsigned int,
+@@ -5331,18 +5331,16 @@ dummy_reloc16_estimate (bfd *abfd ATTRIBUTE_UNUSED,
+ 
+ #define coff_reloc16_extra_cases dummy_reloc16_extra_cases
+ 
+-/* This works even if abort is not declared in any header file.  */
+-
+-static void
++static bool
+ dummy_reloc16_extra_cases (bfd *abfd ATTRIBUTE_UNUSED,
+ 			   struct bfd_link_info *link_info ATTRIBUTE_UNUSED,
+ 			   struct bfd_link_order *link_order ATTRIBUTE_UNUSED,
+ 			   arelent *reloc ATTRIBUTE_UNUSED,
+ 			   bfd_byte *data ATTRIBUTE_UNUSED,
+-			   unsigned int *src_ptr ATTRIBUTE_UNUSED,
+-			   unsigned int *dst_ptr ATTRIBUTE_UNUSED)
++			   size_t *src_ptr ATTRIBUTE_UNUSED,
++			   size_t *dst_ptr ATTRIBUTE_UNUSED)
+ {
+-  abort ();
++  return false;
+ }
+ #endif
+ 
+diff --git a/bfd/libcoff.h b/bfd/libcoff.h
+index c2c1f4add3a..b7a4f677411 100644
+--- a/bfd/libcoff.h
++++ b/bfd/libcoff.h
+@@ -801,9 +801,9 @@ typedef struct
+     (bfd *, FILE *, combined_entry_type *, combined_entry_type *,
+      combined_entry_type *, unsigned int);
+ 
+-  void (*_bfd_coff_reloc16_extra_cases)
++  bool (*_bfd_coff_reloc16_extra_cases)
+     (bfd *, struct bfd_link_info *, struct bfd_link_order *, arelent *,
+-     bfd_byte *, unsigned int *, unsigned int *);
++     bfd_byte *, size_t *, size_t *);
+ 
+   int (*_bfd_coff_reloc16_estimate)
+     (bfd *, asection *, arelent *, unsigned int,
+diff --git a/bfd/reloc16.c b/bfd/reloc16.c
+index fb4c04d558e..3b4e483f75e 100644
+--- a/bfd/reloc16.c
++++ b/bfd/reloc16.c
+@@ -292,10 +292,10 @@ bfd_coff_reloc16_get_relocated_section_contents
+     {
+       arelent **parent = reloc_vector;
+       arelent *reloc;
+-      unsigned int dst_address = 0;
+-      unsigned int src_address = 0;
+-      unsigned int run;
+-      unsigned int idx;
++      size_t dst_address = 0;
++      size_t src_address = 0;
++      size_t run;
++      size_t idx;
+ 
+       /* Find how long a run we can do.  */
+       while (dst_address < link_order->size)
+@@ -306,6 +306,15 @@ bfd_coff_reloc16_get_relocated_section_contents
+ 	      /* Note that the relaxing didn't tie up the addresses in the
+ 		 relocation, so we use the original address to work out the
+ 		 run of non-relocated data.  */
++	      if (reloc->address > link_order->size
++		  || reloc->address < src_address)
++		{
++		  link_info->callbacks->einfo
++		    /* xgettext:c-format */
++		    (_("%X%P: %pB(%pA): relocation \"%pR\" goes out of range\n"),
++		     input_bfd, input_section, reloc);
++		  goto error_return;
++		}
+ 	      run = reloc->address - src_address;
+ 	      parent++;
+ 	    }
+@@ -319,12 +328,11 @@ bfd_coff_reloc16_get_relocated_section_contents
+ 	    data[dst_address++] = data[src_address++];
+ 
+ 	  /* Now do the relocation.  */
+-	  if (reloc)
+-	    {
+-	      bfd_coff_reloc16_extra_cases (input_bfd, link_info, link_order,
+-					    reloc, data, &src_address,
+-					    &dst_address);
+-	    }
++	  if (reloc
++	      && !bfd_coff_reloc16_extra_cases (input_bfd, link_info,
++						link_order, reloc, data,
++						&src_address, &dst_address))
++	    goto error_return;
+ 	}
+     }
+   free (reloc_vector);
+-- 
+2.25.1
+

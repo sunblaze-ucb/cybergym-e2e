@@ -1,0 +1,27 @@
+From 05efb77627aa0e05ab59ec1d6cb6988e1eb9710e Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Wed, 17 Aug 2022 08:29:34 +0100
+Subject: [PATCH] oss-fuzz 50306: Add bounds check in Type 2 charstring
+ interpreter
+
+Missing stack bounds check
+---
+ base/gstype2.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/base/gstype2.c b/base/gstype2.c
+index 35b7f3f2b..2e7a4ce7e 100644
+--- a/base/gstype2.c
++++ b/base/gstype2.c
+@@ -690,6 +690,8 @@ gs_type2_interpret(gs_type1_state * pcis, const gs_glyph_data_t *pgd,
+                         csp -= 3;
+                         break;
+                     case ce2_neg:
++                        if (!CS_CHECK_CSTACK_BOUNDS(csp, cstack))
++                            return_error(gs_error_invalidfont);
+                         *csp = -*csp;
+                         break;
+                     case ce2_eq:
+-- 
+2.43.2
+

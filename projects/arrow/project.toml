@@ -1,0 +1,7 @@
+name = "arrow"
+language = "c++"
+homepage = "https://arrow.apache.org/"
+main_repo = "https://github.com/apache/arrow.git"
+repo_to_patch = "arrow"
+build_image = "n132/arvo:63679-fix"
+immutable_files = []

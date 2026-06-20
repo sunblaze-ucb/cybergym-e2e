@@ -1,0 +1,26 @@
+From ff627002687235bc6c585fc7ce24137cc6eeb73b Mon Sep 17 00:00:00 2001
+From: Aurelien David <aurelien.david@telecom-paristech.fr>
+Date: Tue, 27 Feb 2024 14:42:42 +0100
+Subject: [PATCH] gz_uncompress: add size check
+
+ossfuzz issue 67043
+---
+ src/utils/base_encoding.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/utils/base_encoding.c b/src/utils/base_encoding.c
+index aaf12fc65..42617eaf6 100644
+--- a/src/utils/base_encoding.c
++++ b/src/utils/base_encoding.c
+@@ -294,7 +294,7 @@ GF_Err gf_gz_decompress_payload_ex(u8 *data, u32 data_len, u8 **uncompressed_dat
+ 			d_stream.avail_out = (u32) (size - d_stream.total_out);
+ 			d_stream.next_out = (Bytef*) ( *uncompressed_data + d_stream.total_out);
+ 		}
+-		*out_size = (u32) d_stream.total_out;
++		*out_size = MIN( (size?size-1:0) , (u32) d_stream.total_out );
+ 		inflateEnd(&d_stream);
+ 		//force last byte to 0
+ 		(*uncompressed_data)[*out_size] = 0;
+-- 
+2.25.1
+

@@ -1,0 +1,7 @@
+name = "pcre2"
+language = "c++"
+homepage = "http://www.pcre.org/"
+main_repo = "https://github.com/PCRE2Project/pcre2"
+repo_to_patch = "pcre2"
+build_image = "n132/arvo:67297-fix"
+immutable_files = []

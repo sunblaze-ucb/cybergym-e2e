@@ -1,0 +1,29 @@
+From e2c524ba7bf0487ba3df569cce8855cb753f084a Mon Sep 17 00:00:00 2001
+From: David Korczynski <david@adalogics.com>
+Date: Fri, 9 Sep 2022 14:40:14 +0100
+Subject: [PATCH] parser: fix double-free
+
+It's not necessary to free tmp here as tmp is freed at fconf_error
+
+Fixes: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=51132
+
+Signed-off-by: David Korczynski <david@adalogics.com>
+---
+ src/flb_parser.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/flb_parser.c b/src/flb_parser.c
+index 0edf40fa2..51b1b62f2 100644
+--- a/src/flb_parser.c
++++ b/src/flb_parser.c
+@@ -753,7 +753,6 @@ static int multiline_parser_conf_file(const char *cfg, struct flb_cf *cf,
+             type = flb_ml_type_lookup(tmp);
+             if (type == -1) {
+                 flb_error("[multiline_parser] invalid type '%s'", tmp);
+-                flb_sds_destroy(tmp);
+                 goto fconf_error;
+             }
+             flb_sds_destroy(tmp);
+-- 
+2.43.2
+

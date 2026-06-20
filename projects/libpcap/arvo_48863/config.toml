@@ -1,0 +1,4 @@
+task_id = "arvo:48863"
+target_prog = "fuzz_pcap"
+vul_commit = "7610a61d72c818067a1e51f150b81ee7d489a577"
+patch_commit = "e2c0fd75e48a3cbf1bf48b8afe28fff50d8e0877"

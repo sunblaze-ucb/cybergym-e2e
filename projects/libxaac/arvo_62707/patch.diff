@@ -1,0 +1,81 @@
+From 3c8329953cd596b4f5b2163910be223fb6a52e3c Mon Sep 17 00:00:00 2001
+From: Shashank Pathmudi <shashank.pathmudi@ittiam.com>
+Date: Fri, 29 Sep 2023 17:43:26 +0530
+Subject: [PATCH] Fix for index-out-of-bounds in ixheaacd_res_ctns_apply
+
+These changes handle the index-out-of-bounds runtime error
+reported when the value of residual sampling frequency index
+is greater than max residual sampling frequency index.
+
+Bug: ossFuzz:62707
+Test: poc in bug
+---
+ decoder/ixheaacd_config.h        | 2 ++
+ decoder/ixheaacd_ld_mps_config.c | 6 ++++++
+ decoder/ixheaacd_mps_bitdec.c    | 6 ++++++
+ 3 files changed, 14 insertions(+)
+
+diff --git a/decoder/ixheaacd_config.h b/decoder/ixheaacd_config.h
+index 59bacf0..5c7bd59 100644
+--- a/decoder/ixheaacd_config.h
++++ b/decoder/ixheaacd_config.h
+@@ -68,6 +68,8 @@
+   (MAX_OUTPUT_CHANNELS * (1 << MAX_ARBITRARY_TREE_LEVELS))
+ #define MAX_ARBITRARY_TREE_INDEX ((1 << (MAX_ARBITRARY_TREE_LEVELS + 1)) - 1)
+ 
++#define MAX_RES_SAMP_FREQ_IDX 11
++
+ typedef UWORD8 UINT8;
+ typedef UWORD32 UINT32;
+ 
+diff --git a/decoder/ixheaacd_ld_mps_config.c b/decoder/ixheaacd_ld_mps_config.c
+index 346c028..850b128 100644
+--- a/decoder/ixheaacd_ld_mps_config.c
++++ b/decoder/ixheaacd_ld_mps_config.c
+@@ -85,6 +85,9 @@ static IA_ERRORCODE ixheaacd_ld_spatial_extension_config(
+ 
+           config->bs_residual_sampling_freq_index =
+               ixheaacd_read_bits_buf(it_bit_buff, 4);
++          if (config->bs_residual_sampling_freq_index > MAX_RES_SAMP_FREQ_IDX) {
++            return IA_FATAL_ERROR;
++          }
+           config->bs_residual_frames_per_spatial_frame =
+               ixheaacd_read_bits_buf(it_bit_buff, 2);
+ 
+@@ -110,6 +113,9 @@ static IA_ERRORCODE ixheaacd_ld_spatial_extension_config(
+ 
+           config->bs_arbitrary_downmix_residual_sampling_freq_index =
+               ixheaacd_read_bits_buf(it_bit_buff, 4);
++          if (config->bs_arbitrary_downmix_residual_sampling_freq_index > MAX_RES_SAMP_FREQ_IDX) {
++            return IA_FATAL_ERROR;
++          }
+           config->bs_arbitrary_downmix_residual_frames_per_spatial_frame =
+               ixheaacd_read_bits_buf(it_bit_buff, 2);
+           config->bs_arbitrary_downmix_residual_bands =
+diff --git a/decoder/ixheaacd_mps_bitdec.c b/decoder/ixheaacd_mps_bitdec.c
+index a8aa783..4d9e1ce 100644
+--- a/decoder/ixheaacd_mps_bitdec.c
++++ b/decoder/ixheaacd_mps_bitdec.c
+@@ -102,6 +102,9 @@ static IA_ERRORCODE ixheaacd_parse_extension_config(
+         config->bs_residual_coding = 1;
+         temp = ixheaacd_read_bits_buf(it_bit_buff, 6);
+         config->bs_residual_sampling_freq_index = (temp >> 2) & FOUR_BIT_MASK;
++        if (config->bs_residual_sampling_freq_index > MAX_RES_SAMP_FREQ_IDX) {
++          return IA_FATAL_ERROR;
++        }
+         config->bs_residual_frames_per_spatial_frame = temp & TWO_BIT_MASK;
+ 
+         for (i = 0; i < num_ott_boxes + num_ttt_boxes; i++) {
+@@ -121,6 +124,9 @@ static IA_ERRORCODE ixheaacd_parse_extension_config(
+ 
+         temp = ixheaacd_read_bits_buf(it_bit_buff, 11);
+         config->bs_arbitrary_downmix_residual_sampling_freq_index = (temp >> 7) & FOUR_BIT_MASK;
++        if (config->bs_arbitrary_downmix_residual_sampling_freq_index > MAX_RES_SAMP_FREQ_IDX) {
++          return IA_FATAL_ERROR;
++        }
+         config->bs_arbitrary_downmix_residual_frames_per_spatial_frame =
+             (temp >> 5) & TWO_BIT_MASK;
+         config->bs_arbitrary_downmix_residual_bands = temp & FIVE_BIT_MASK;
+-- 
+2.25.1
+

@@ -1,0 +1,89 @@
+From 9ceb800ac26fd81a5eaf27ef366d5fce47e80447 Mon Sep 17 00:00:00 2001
+From: Qunxin Liu <qxliu@google.com>
+Date: Thu, 28 Sep 2023 10:37:48 -0700
+Subject: [PATCH] fuzzer fix
+ https://oss-fuzz.com/testcase-detail/5842152921628672
+
+Access TupleVariationData through blob, because we don't sanitize
+var_data
+---
+ src/hb-ot-var-cvar-table.hh                     |   7 ++++---
+ src/test-tuple-varstore.cc                      |  16 +++++++++++++++-
+ ...-minimized-hb-subset-fuzzer-5842152921628672 | Bin 0 -> 2501 bytes
+ 3 files changed, 19 insertions(+), 4 deletions(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5842152921628672
+
+diff --git a/src/hb-ot-var-cvar-table.hh b/src/hb-ot-var-cvar-table.hh
+index 0814940aa..381ae3c61 100644
+--- a/src/hb-ot-var-cvar-table.hh
++++ b/src/hb-ot-var-cvar-table.hh
+@@ -54,14 +54,14 @@ struct cvar
+ 
+   bool decompile_tuple_variations (unsigned axis_count,
+                                    unsigned point_count,
++                                   hb_blob_t *blob,
+                                    bool is_gvar,
+                                    const hb_map_t *axes_old_index_tag_map,
+                                    TupleVariationData::tuple_variations_t& tuple_variations /* OUT */) const
+   {
+     hb_vector_t<unsigned> shared_indices;
+     TupleVariationData::tuple_iterator_t iterator;
+-    unsigned var_data_length = tupleVariationData.get_size (axis_count);
+-    hb_bytes_t var_data_bytes = hb_bytes_t (reinterpret_cast<const char*> (get_tuple_var_data ()), var_data_length);
++    hb_bytes_t var_data_bytes = blob->as_bytes ().sub_array (4);
+     if (!TupleVariationData::get_tuple_iterator (var_data_bytes, axis_count, this,
+                                                  shared_indices, &iterator))
+       return false;
+@@ -151,7 +151,8 @@ struct cvar
+     unsigned point_count = hb_blob_get_length (cvt_blob) / FWORD::static_size;
+     hb_blob_destroy (cvt_blob);
+ 
+-    if (!decompile_tuple_variations (axis_count, point_count, false,
++    if (!decompile_tuple_variations (axis_count, point_count,
++                                     c->source_blob, false,
+                                      &(c->plan->axes_old_index_tag_map),
+                                      tuple_variations))
+       return_trace (false);
+diff --git a/src/test-tuple-varstore.cc b/src/test-tuple-varstore.cc
+index f1286e749..e3787a243 100644
+--- a/src/test-tuple-varstore.cc
++++ b/src/test-tuple-varstore.cc
+@@ -39,7 +39,21 @@ test_decompile_cvar ()
+   axis_idx_tag_map.set (0, axis_tag);
+ 
+   OT::TupleVariationData::tuple_variations_t tuple_variations;
+-  bool result = cvar_table->decompile_tuple_variations (axis_count, point_count, false, &axis_idx_tag_map, tuple_variations);
++  hb_vector_t<unsigned> shared_indices;
++  OT::TupleVariationData::tuple_iterator_t iterator;
++
++  const OT::TupleVariationData* tuple_var_data = reinterpret_cast<const OT::TupleVariationData*> (cvar_data + 4);
++
++  unsigned len = strlen (cvar_data);
++  hb_bytes_t var_data_bytes{cvar_data+4, len - 4};
++  bool result = OT::TupleVariationData::get_tuple_iterator (var_data_bytes, axis_count, cvar_table,
++                                                            shared_indices, &iterator);
++  assert (result);
++
++  result = tuple_var_data->decompile_tuple_variations (point_count, false, iterator, &axis_idx_tag_map,
++                                                       shared_indices, hb_array<const OT::F2DOT14> (),
++                                                       tuple_variations);
++
+   assert (result);
+   assert (tuple_variations.tuple_vars.length == 2);
+   for (unsigned i = 0; i < 2; i++)
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5842152921628672 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-subset-fuzzer-5842152921628672
+new file mode 100644
+index 0000000000000000000000000000000000000000..c33e2b9ba64d2535745242552d256e101ab11fe9
+GIT binary patch
+literal 2501
+zcmeYd3Gru8zy$v>h0sL)g8`Z#Mcm}F#3GOZ3=Et+AUYY%5orkd8jw7iG)RaffK5L(
+zF_H|0C<cZNf`P|OJW^!XN_{PmNG8FR=t_wV2<khXCMFJZ@1choJoeBfu=CMF2fM04
+zDGJQ5L)i6{1?gxeCpY{^%pc@hGYIsJg#5w42n=W}r2tLx2Lli=0<i$Fy~D&H!oUD(
+J_kc(;008DSga7~l
+
+literal 0
+HcmV?d00001
+
+-- 
+2.25.1
+

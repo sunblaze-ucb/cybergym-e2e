@@ -1,0 +1,4 @@
+task_id = "arvo:50414"
+target_prog = "cms_profile_fuzzer"
+vul_commit = "7600d91699256c0b2929023700c41772e8b61a99"
+patch_commit = "54390818348493a88c43b0dadbad77bdc9750699"

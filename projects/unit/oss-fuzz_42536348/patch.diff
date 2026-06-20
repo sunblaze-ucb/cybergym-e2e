@@ -1,0 +1,47 @@
+From 932b914618791b6c9648b1066e0cfe4ee6d25cff Mon Sep 17 00:00:00 2001
+From: Arjun <pkillarjun@protonmail.com>
+Date: Fri, 23 Aug 2024 09:15:18 +0530
+Subject: [PATCH] socket: Prevent buffer under-read in nxt_inet_addr()
+
+This was found via ASan.
+
+Given a listener address like ":" (or any address where the first
+character is a colon) we can end up under-reading the addr->start
+buffer here
+
+  if (nxt_slow_path(*(buf + length - 1) == '.')) {
+
+due to length (essentially the position of the ":" in the string) being
+0.
+
+Seeing as any address that starts with a ":" is invalid Unit config
+wise, we should simply reject the address if length == 0 in
+nxt_sockaddr_inet_parse().
+
+Link: <https://clang.llvm.org/docs/AddressSanitizer.html>
+Signed-off-by: Arjun <pkillarjun@protonmail.com>
+[ Commit message - Andrew ]
+Signed-off-by: Andrew Clayton <a.clayton@nginx.com>
+---
+ src/nxt_sockaddr.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/nxt_sockaddr.c b/src/nxt_sockaddr.c
+index 32941893..4d1e723b 100644
+--- a/src/nxt_sockaddr.c
++++ b/src/nxt_sockaddr.c
+@@ -732,6 +732,11 @@ nxt_sockaddr_inet_parse(nxt_mp_t *mp, nxt_str_t *addr)
+         length = p - addr->start;
+     }
+ 
++    if (length == 0) {
++        nxt_thread_log_error(NXT_LOG_ERR, "invalid address \"%V\"", addr);
++        return NULL;
++    }
++
+     inaddr = INADDR_ANY;
+ 
+     if (length != 1 || addr->start[0] != '*') {
+-- 
+2.25.1
+

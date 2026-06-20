@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:399388654"
+target_prog = "gs_device_pdfwrite_fuzzer"
+vul_commit = "714ef06bede27cd12bf3c7d3278fa6327d7a81eb"
+patch_commit = "4c4dcc85ce4f3c7fe53f72dd0098cd7906312dbd"
+build_image = "cybergym/e2e:ghostscript"

@@ -1,0 +1,381 @@
+From 5f7c06a71ee0c4a10550bbb31dc479c285637773 Mon Sep 17 00:00:00 2001
+From: Kim Kulling <kimkulling@users.noreply.github.com>
+Date: Thu, 23 Oct 2025 22:44:54 +0200
+Subject: [PATCH] COB: fix validation for ascii header (#6376)
+
+* COB: fix validation for ascii header
+---
+ code/AssetLib/COB/COBLoader.cpp              |  40 +++++---
+ code/AssetLib/COB/COBLoader.h                |   9 +-
+ code/AssetLib/COB/COBScene.h                 | 100 +++++++++++--------
+ include/assimp/StreamReader.h                |  17 ++--
+ test/unit/ImportExport/utCOBImportExport.cpp |   7 ++
+ 5 files changed, 108 insertions(+), 65 deletions(-)
+
+diff --git a/code/AssetLib/COB/COBLoader.cpp b/code/AssetLib/COB/COBLoader.cpp
+index bce7a2a7f..eaa242331 100644
+--- a/code/AssetLib/COB/COBLoader.cpp
++++ b/code/AssetLib/COB/COBLoader.cpp
+@@ -62,6 +62,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <memory>
+ 
+ namespace Assimp {
++
+ using namespace Assimp::COB;
+ using namespace Assimp::Formatter;
+ 
+@@ -109,10 +110,29 @@ void COBImporter::SetupProperties(const Importer * /*pImp*/) {
+ }
+ 
+ // ------------------------------------------------------------------------------------------------
+-/*static*/ AI_WONT_RETURN void COBImporter::ThrowException(const std::string &msg) {
++AI_WONT_RETURN void COBImporter::ThrowException(const std::string &msg) {
+     throw DeadlyImportError("COB: ", msg);
+ }
+ 
++// ------------------------------------------------------------------------------------------------
++static bool isValidASCIIHeader(const char *head) {
++    ai_assert(head != nullptr);
++
++    if (strncmp(head, "Caligari ", 9) != 0) {
++        COBImporter::ThrowException("Could not found magic id: `Caligari`");
++    }
++
++    if (strncmp(&head[9], "V00.", 4) != 0) {
++        COBImporter::ThrowException("Could not found Version tag: `V00.`");
++    }
++    ASSIMP_LOG_INFO("File format tag: ", std::string(head + 9, 6));
++    if (head[16] != 'L') {
++        COBImporter::ThrowException("File is big-endian, which is not supported");
++    }
++
++    return true;
++}
++
+ // ------------------------------------------------------------------------------------------------
+ // Imports the given file into the given scene structure.
+ void COBImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSystem *pIOHandler) {
+@@ -126,19 +146,15 @@ void COBImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
+     std::unique_ptr<StreamReaderLE> stream(new StreamReaderLE(file));
+ 
+     // check header
+-    char head[32];
+-    stream->CopyAndAdvance(head, 32);
+-    if (strncmp(head, "Caligari ", 9) != 0) {
+-        ThrowException("Could not found magic id: `Caligari`");
+-    }
+-
+-    ASSIMP_LOG_INFO("File format tag: ", std::string(head + 9, 6));
+-    if (head[16] != 'L') {
+-        ThrowException("File is big-endian, which is not supported");
+-    }
++    static constexpr size_t HeaderSize = 32u;
++    char head[HeaderSize] = {};
++    stream->CopyAndAdvance(head, HeaderSize);
+ 
+     // load data into intermediate structures
+     if (head[15] == 'A') {
++        if (!isValidASCIIHeader(head)) {
++            ThrowException("Invalid ASCII file header");
++        }
+         ReadAsciiFile(scene, stream.get());
+     } else {
+         ReadBinaryFile(scene, stream.get());
+@@ -1170,6 +1186,6 @@ void COBImporter::ReadUnit_Binary(COB::Scene &out, StreamReaderLE &reader, const
+     ASSIMP_LOG_WARN("`Unit` chunk ", nfo.id, " is a child of ", nfo.parent_id, " which does not exist");
+ }
+ 
+-}
++} // namespace Assimp
+ 
+ #endif // ASSIMP_BUILD_NO_COB_IMPORTER
+diff --git a/code/AssetLib/COB/COBLoader.h b/code/AssetLib/COB/COBLoader.h
+index 0b89eef98..c802eb227 100644
+--- a/code/AssetLib/COB/COBLoader.h
++++ b/code/AssetLib/COB/COBLoader.h
+@@ -81,6 +81,10 @@ public:
+     bool CanRead(const std::string &pFile, IOSystem *pIOHandler,
+             bool checkSig) const override;
+ 
++    // -------------------------------------------------------------------
++    /** Prepend 'COB: ' and throw msg.*/
++    AI_WONT_RETURN static void ThrowException(const std::string &msg) AI_WONT_RETURN_SUFFIX;
++
+ protected:
+     // --------------------
+     const aiImporterDesc *GetInfo() const override;
+@@ -93,10 +97,6 @@ protected:
+             IOSystem *pIOHandler) override;
+ 
+ private:
+-    // -------------------------------------------------------------------
+-    /** Prepend 'COB: ' and throw msg.*/
+-    AI_WONT_RETURN static void ThrowException(const std::string &msg) AI_WONT_RETURN_SUFFIX;
+-
+     // -------------------------------------------------------------------
+     /** @brief Read from an ascii scene/object file
+      *  @param out Receives output data.
+@@ -148,4 +148,5 @@ private:
+ }; // !class COBImporter
+ 
+ } // end of namespace Assimp
++
+ #endif // AI_UNREALIMPORTER_H_INC
+diff --git a/code/AssetLib/COB/COBScene.h b/code/AssetLib/COB/COBScene.h
+index 7a8ffca13..ce99ecd59 100644
+--- a/code/AssetLib/COB/COBScene.h
++++ b/code/AssetLib/COB/COBScene.h
+@@ -65,7 +65,8 @@ struct VertexIndex {
+ /** COB Face data structure */
+ struct Face {
+     // intentionally uninitialized
+-    unsigned int material, flags;
++    unsigned int material;
++    unsigned int flags;
+     std::vector<VertexIndex> indices;
+ };
+ 
+@@ -74,41 +75,43 @@ struct Face {
+ constexpr unsigned int NO_SIZE = UINT_MAX;
+ 
+ struct ChunkInfo {
+-    ChunkInfo ()
+-        :   id        (0)
+-        ,   parent_id (0)
+-        ,   version   (0)
+-        ,   size      (NO_SIZE)
+-    {}
++    ChunkInfo() = default;
++    virtual ~ChunkInfo() = default;
+ 
+     // Id of this chunk, unique within file
+-    unsigned int id;
++    unsigned int id{ 0 };
+ 
+     // and the corresponding parent
+-    unsigned int parent_id;
++    unsigned int parent_id{ 0 };
+ 
+     // version. v1.23 becomes 123
+-    unsigned int version;
++    unsigned int version{ 0 };
+ 
+     // chunk size in bytes, only relevant for binary files
+     // NO_SIZE is also valid.
+-    unsigned int size;
++    unsigned int size{NO_SIZE};
+ };
+ 
+ // ------------------
+ /** A node in the scenegraph */
+ struct Node : ChunkInfo {
+     enum Type {
+-        TYPE_MESH,TYPE_GROUP,TYPE_LIGHT,TYPE_CAMERA,TYPE_BONE
++        TYPE_INVALID = -1,
++        TYPE_MESH = 0,
++        TYPE_GROUP,
++        TYPE_LIGHT,
++        TYPE_CAMERA,
++        TYPE_BONE,
++        TYPE_COUNT
+     };
+ 
+-    virtual ~Node() = default;
++    ~Node() override = default;
+     Node(Type type) : type(type), unit_scale(1.f){}
+ 
+     Type type;
+ 
+     // used during resolving
+-    typedef std::deque<const Node*> ChildList;
++    using ChildList = std::deque<const Node*> ;
+     mutable ChildList temp_children;
+ 
+     // unique name
+@@ -123,8 +126,7 @@ struct Node : ChunkInfo {
+ 
+ // ------------------
+ /** COB Mesh data structure */
+-struct Mesh final : Node
+-{
++struct Mesh final : Node {
+     using ChunkInfo::operator=;
+     enum DrawFlags {
+         SOLID = 0x1,
+@@ -159,36 +161,49 @@ struct Mesh final : Node
+ /** COB Group data structure */
+ struct Group final : Node {
+     using ChunkInfo::operator=;
+-    Group() : Node(TYPE_GROUP) {}
++    
++    Group() : Node(TYPE_GROUP) {
++        // empty
++    }
+ };
+ 
+ // ------------------
+ /** COB Bone data structure */
+ struct Bone final : Node {
+     using ChunkInfo::operator=;
+-    Bone() : Node(TYPE_BONE) {}
++    
++    Bone() : Node(TYPE_BONE) {
++        // empty
++    }
+ };
+ 
+ // ------------------
+ /** COB Light data structure */
+ struct Light final : Node {
+     enum LightType {
+-        SPOT,LOCAL,INFINITE
++        SPOT,
++        LOCAL,
++        INFINITE
+     };
+ 
+     using ChunkInfo::operator=;
+-    Light() : Node(TYPE_LIGHT),angle(),inner_angle(),ltype(SPOT) {}
++
++    Light() : Node(TYPE_LIGHT), ltype() {
++        // empty
++    }
+ 
+     aiColor3D color;
+-    float angle,inner_angle;
++    float angle{ 0.0f };
++    float inner_angle{ 0.0f };
+ 
+-    LightType ltype;
++    LightType ltype{SPOT};
+ };
+ 
+ // ------------------
+ /** COB Camera data structure */
+ struct Camera final : Node {
+     using ChunkInfo::operator=;
++
+     Camera() : Node(TYPE_CAMERA) {
+         // empty
+     }
+@@ -205,47 +220,48 @@ struct Texture {
+ /** COB Material data structure */
+ struct Material : ChunkInfo {
+     using ChunkInfo::operator=;
++
+     enum Shader {
+-        FLAT,PHONG,METAL
++        FLAT,
++        PHONG,
++        METAL
+     };
+ 
+     enum AutoFacet {
+-        FACETED,AUTOFACETED,SMOOTH
++        FACETED,
++        AUTOFACETED,
++        SMOOTH
+     };
+ 
+-    Material() : alpha(),exp(),ior(),ka(),ks(1.f),
+-        matnum(UINT_MAX),
+-        shader(FLAT),autofacet(FACETED),
+-        autofacet_angle()
+-    {}
++    Material() : shader(FLAT) {
++        // empty
++    }
+ 
+     std::string type;
+-
+     aiColor3D rgb;
+-    float alpha, exp, ior,ka,ks;
+-
+-    unsigned int matnum;
++    float alpha{ 0.0f };
++    float exp{ 0.0f };
++    float ior{ 0.0f };
++    float ka{ 0.0f };
++    float ks{ 1.0f };
++    unsigned int matnum{ UINT_MAX };
+     Shader shader;
+-
+-    AutoFacet autofacet;
+-    float autofacet_angle;
+-
++    AutoFacet autofacet{FACETED};
++    float autofacet_angle{ 0.0f };
+     std::shared_ptr<Texture> tex_env,tex_bump,tex_color;
+ };
+ 
+ // ------------------
+ /** Embedded bitmap, for instance for the thumbnail image */
+ struct Bitmap : ChunkInfo {
+-    Bitmap() : orig_size() {
+-        // empty
+-    }
++    Bitmap() = default;
+ 
+     struct BitmapHeader {
+         // empty
+     };
+ 
+     BitmapHeader head;
+-    size_t orig_size;
++    size_t orig_size{ 0u };
+     std::vector<char> buff_zipped;
+ };
+ 
+@@ -264,4 +280,4 @@ struct Scene {
+ 
+ } // end Assimp::COB
+ 
+-#endif
++#endif // INCLUDED_AI_COB_SCENE_H
+diff --git a/include/assimp/StreamReader.h b/include/assimp/StreamReader.h
+index 2d1e6ba74..b3e87b222 100644
+--- a/include/assimp/StreamReader.h
++++ b/include/assimp/StreamReader.h
+@@ -59,14 +59,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ namespace Assimp {
+ 
+ // --------------------------------------------------------------------------------------------
+-/** Wrapper class around IOStream to allow for consistent reading of binary data in both
+- *  little and big endian format. Don't attempt to instance the template directly. Use
+- *  StreamReaderLE to read from a little-endian stream and StreamReaderBE to read from a
+- *  BE stream. The class expects that the endianness of any input data is known at
+- *  compile-time, which should usually be true (#BaseImporter::ConvertToUTF8 implements
+- *  runtime endianness conversions for text files).
++/**
++ * @brief  Wrapper class around IOStream to allow for consistent reading of binary data in both
++ *         little and big endian format.
+  *
+- *  XXX switch from unsigned int for size types to size_t? or ptrdiff_t?*/
++ * Don't attempt to instance the template directly. Use StreamReaderLE to read from a
++ * little-endian stream and StreamReaderBE to read from a BE stream. The class expects that
++ * the endianness of any input data is known at compile-time, which should usually be true
++ * (#BaseImporter::ConvertToUTF8 implements runtime endianness conversions for text files).
++ *
++ *  XXX switch from unsigned int for size types to size_t? or ptrdiff_t?
++ */
+ // --------------------------------------------------------------------------------------------
+ template <bool SwapEndianness = false, bool RuntimeSwitch = false>
+ class StreamReader {
+diff --git a/test/unit/ImportExport/utCOBImportExport.cpp b/test/unit/ImportExport/utCOBImportExport.cpp
+index 05a8e3e91..e53952769 100644
+--- a/test/unit/ImportExport/utCOBImportExport.cpp
++++ b/test/unit/ImportExport/utCOBImportExport.cpp
+@@ -95,3 +95,10 @@ TEST(utCOBImporter, importSpider66) {
+     const aiScene *scene = importer.ReadFile(ASSIMP_TEST_MODELS_DIR "/COB/spider_6_6.cob", aiProcess_ValidateDataStructure);
+     ASSERT_NE(nullptr, scene);
+ }
++
++TEST(utCOBImporter, importInvalidHeader) {
++    Assimp::Importer importer;
++    constexpr char Header[] = "Caligari ??LZSCALEb";
++    const aiScene *scene = importer.ReadFileFromMemory(Header, sizeof(Header), aiProcess_ValidateDataStructure);
++    ASSERT_EQ(nullptr, scene);
++}
+-- 
+2.25.1
+

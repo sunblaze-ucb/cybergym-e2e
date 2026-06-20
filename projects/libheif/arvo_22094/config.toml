@@ -1,0 +1,4 @@
+task_id = "arvo:22094"
+target_prog = "file-fuzzer"
+vul_commit = "0e329635b8539d4a22f45dfc4d537c7717932eb8"
+patch_commit = "b7484d2ed35338970b727e55adb509f2200b0e40"

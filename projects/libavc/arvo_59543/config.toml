@@ -1,0 +1,5 @@
+task_id = "arvo:59543"
+target_prog = "avc_enc_fuzzer"
+vul_commit = "a75597f2402949d941bdabfd3c52ee8dee4b6a4d"
+patch_commit = "30858f49ad57b9a888e6768b0ae1558e5f895176"
+build_image = "n132/arvo:59543-fix"

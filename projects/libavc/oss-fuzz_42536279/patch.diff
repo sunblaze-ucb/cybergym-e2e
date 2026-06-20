@@ -1,0 +1,47 @@
+From b0117e32b9555e7069c2aef571d921bff22f502f Mon Sep 17 00:00:00 2001
+From: Mallikarjun Kamble <mallikarjun.kamble@ittiam.com>
+Date: Tue, 9 Jul 2024 17:24:32 +0530
+Subject: [PATCH] svcdec: Ensure decoder display dimensions match subset
+ sequence dimensions
+
+- Fixes for heap buffer overflow
+
+Bug = ossfuzz:68807, ossfuzz:69682
+Test: svc_dec_fuzzer
+---
+ decoder/svc/isvcd_parse_slice.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/decoder/svc/isvcd_parse_slice.c b/decoder/svc/isvcd_parse_slice.c
+index 226a6e4..60bed2a 100644
+--- a/decoder/svc/isvcd_parse_slice.c
++++ b/decoder/svc/isvcd_parse_slice.c
+@@ -766,6 +766,12 @@ WORD32 isvcd_parse_decode_slice_ext_nal(UWORD8 u1_is_idr_slice, UWORD8 u1_nal_re
+         if(ps_dec->u2_frm_ht_in_mbs != ps_seq->u2_frm_ht_in_mbs) return ERROR_INV_SLICE_HDR_T;
+     }
+ 
++    if(ps_dec->u1_init_dec_flag == 1)
++    {
++        if(ps_dec->u2_disp_height != ps_subset_seq->u2_disp_height) return ERROR_INV_SLICE_HDR_T;
++        if(ps_dec->u2_disp_width != ps_subset_seq->u2_disp_width) return ERROR_INV_SLICE_HDR_T;
++    }
++
+     ps_dec->i4_reorder_depth = ps_subset_seq->i4_reorder_depth;
+ 
+     ps_dec->u2_disp_height = ps_subset_seq->u2_disp_height;
+@@ -2004,6 +2010,12 @@ WORD32 isvcd_parse_decode_slice(UWORD8 u1_is_idr_slice, UWORD8 u1_nal_ref_idc,
+         if(ps_dec->u2_frm_ht_in_mbs != ps_seq->u2_frm_ht_in_mbs) return ERROR_INV_SLICE_HDR_T;
+     }
+ 
++    if(ps_dec->u1_init_dec_flag == 1)
++    {
++        if(ps_dec->u2_disp_height != ps_subset_seq->u2_disp_height) return ERROR_INV_SLICE_HDR_T;
++        if(ps_dec->u2_disp_width != ps_subset_seq->u2_disp_width) return ERROR_INV_SLICE_HDR_T;
++    }
++
+     if(ps_seq->u1_profile_idc == BASE_PROFILE_IDC)
+     {
+         if(ps_pps->u1_entropy_coding_mode != 0)
+-- 
+2.25.1
+

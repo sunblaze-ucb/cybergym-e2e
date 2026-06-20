@@ -1,0 +1,101 @@
+From d9ec8f102eb211f0b230a5ec3bf5da59f333e697 Mon Sep 17 00:00:00 2001
+From: Fabrice Bellard <fabrice@bellard.org>
+Date: Mon, 25 Aug 2025 17:14:47 +0200
+Subject: [PATCH] limit function and regexp bytecode to 1G to avoid buffer
+ overflows (the bytecode generators assume that bytecode offsets can fit a 32
+ bit signed integer
+
+---
+ libregexp.c | 13 ++++++++++++-
+ quickjs.c   | 23 ++++++++++++++++++++---
+ 2 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/libregexp.c b/libregexp.c
+index 2b33c86..1c519af 100644
+--- a/libregexp.c
++++ b/libregexp.c
+@@ -2433,6 +2433,17 @@ static int compute_stack_size(const uint8_t *bc_buf, int bc_buf_len)
+     return stack_size_max;
+ }
+ 
++static void *lre_bytecode_realloc(void *opaque, void *ptr, size_t size)
++{
++    if (size > (INT32_MAX / 2)) {
++        /* the bytecode cannot be larger than 2G. Leave some slack to 
++           avoid some overflows. */
++        return NULL;
++    } else {
++        return lre_realloc(opaque, ptr, size);
++    }
++}
++
+ /* 'buf' must be a zero terminated UTF-8 string of length buf_len.
+    Return NULL if error and allocate an error message in *perror_msg,
+    otherwise the compiled bytecode and its length in plen.
+@@ -2461,7 +2472,7 @@ uint8_t *lre_compile(int *plen, char *error_msg, int error_msg_size,
+     s->total_capture_count = -1;
+     s->has_named_captures = -1;
+ 
+-    dbuf_init2(&s->byte_code, opaque, lre_realloc);
++    dbuf_init2(&s->byte_code, opaque, lre_bytecode_realloc);
+     dbuf_init2(&s->group_names, opaque, lre_realloc);
+ 
+     dbuf_put_u16(&s->byte_code, re_flags); /* first element is the flags */
+diff --git a/quickjs.c b/quickjs.c
+index b3fd19f..d4fd62a 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -1470,6 +1470,23 @@ static inline void js_dbuf_init(JSContext *ctx, DynBuf *s)
+     dbuf_init2(s, ctx->rt, (DynBufReallocFunc *)js_realloc_rt);
+ }
+ 
++static void *js_realloc_bytecode_rt(void *opaque, void *ptr, size_t size)
++{
++    JSRuntime *rt = opaque;
++    if (size > (INT32_MAX / 2)) {
++        /* the bytecode cannot be larger than 2G. Leave some slack to 
++           avoid some overflows. */
++        return NULL;
++    } else {
++        return rt->mf.js_realloc(&rt->malloc_state, ptr, size);
++    }
++}
++
++static inline void js_dbuf_bytecode_init(JSContext *ctx, DynBuf *s)
++{
++    dbuf_init2(s, ctx->rt, js_realloc_bytecode_rt);
++}
++
+ static inline int is_digit(int c) {
+     return c >= '0' && c <= '9';
+ }
+@@ -30809,7 +30826,7 @@ static JSFunctionDef *js_new_function_def(JSContext *ctx,
+ 
+     fd->is_eval = is_eval;
+     fd->is_func_expr = is_func_expr;
+-    js_dbuf_init(ctx, &fd->byte_code);
++    js_dbuf_bytecode_init(ctx, &fd->byte_code);
+     fd->last_opcode_pos = -1;
+     fd->func_name = JS_ATOM_NULL;
+     fd->var_object_idx = -1;
+@@ -32904,7 +32921,7 @@ static __exception int resolve_variables(JSContext *ctx, JSFunctionDef *s)
+ 
+     cc.bc_buf = bc_buf = s->byte_code.buf;
+     cc.bc_len = bc_len = s->byte_code.size;
+-    js_dbuf_init(ctx, &bc_out);
++    js_dbuf_bytecode_init(ctx, &bc_out);
+ 
+     /* first pass for runtime checks (must be done before the
+        variables are created) */
+@@ -33524,7 +33541,7 @@ static __exception int resolve_labels(JSContext *ctx, JSFunctionDef *s)
+ 
+     cc.bc_buf = bc_buf = s->byte_code.buf;
+     cc.bc_len = bc_len = s->byte_code.size;
+-    js_dbuf_init(ctx, &bc_out);
++    js_dbuf_bytecode_init(ctx, &bc_out);
+ 
+ #if SHORT_OPCODES
+     if (s->jump_size) {
+-- 
+2.25.1
+

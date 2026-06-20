@@ -1,0 +1,4 @@
+task_id = "oss-fuzz:42537493"
+target_prog = "lint"
+vul_commit = "36ea881b9d92166568b1d107181a05f673fd4ab1"
+patch_commit = "a530ff125dbf8ab4f297c0b91fc8fa34d4183bf5"

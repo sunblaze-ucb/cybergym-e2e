@@ -1,0 +1,69 @@
+From c4e193f3a360817eb097fb54f2f9f84d5dda7112 Mon Sep 17 00:00:00 2001
+From: David Bryant <david@wavpack.com>
+Date: Mon, 13 Jan 2020 14:00:14 -0800
+Subject: [PATCH] fix for uninitialized memory access (oss-fuzz issue 20060,
+ trigger file included) note that this was not a vulnerability because the
+ accessed values were always discarded
+
+---
+ ...lusterfuzz-testcase-minimized-fuzzer-5730671461138432 | Bin 0 -> 2069 bytes
+ src/tag_utils.c                                          |   8 ++++----
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+ create mode 100644 fuzzing/regression/clusterfuzz-testcase-minimized-fuzzer-5730671461138432
+
+diff --git a/fuzzing/regression/clusterfuzz-testcase-minimized-fuzzer-5730671461138432 b/fuzzing/regression/clusterfuzz-testcase-minimized-fuzzer-5730671461138432
+new file mode 100644
+index 0000000000000000000000000000000000000000..96572c5bce4193683ac5e802210a51cd886fb7ee
+GIT binary patch
+literal 2069
+zcmb1RU|<knar@uRkn??SfNKatd07Di7gLzcDkcyRXX0e~&mjAsmx%?akZuy&scAXm
+zKU(@DF{LC29#(&U(Lb!<mXi@tv<w(riAV^S1mV=h2~Lp&(<2l85-RzDk0sw_*MS9<
+z7_w)xF)-*$KK~A+$hUzL7!Gj2$}muQnGz2WjB23&$WKlfrlXY<%oLf9k+%j(Nx>ve
+zPLYn`8$!X(3<NJgAqZj==N9CEXb6BON+9F^|NnQ9`3wxKA&%~-BAI!`C8#2^O0`1P
+zY@On!`(n>=h>QRO!%GGQR8=4zP#gn%`;Q?65;$@tHVZ}Ks7&1)c46P-WkpsW&OTUC
+zvvt4wYyShg!WU%fy8ApW{muM~f#Da}OYb529!jNL-1YZ^uj-e&{Xo_KZ@&J1DsJNS
+z_mc~gOH&oTFfi6k{W5QVW9c96z6Y`OOs{{4JNi59`p0_tgWkNk|8F`1>t9EA*N6-3
+Z3=E<i3=FbQIe>tZ1IPpepjGs-2msAcbmIU3
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/tag_utils.c b/src/tag_utils.c
+index 2040e1c..d3825b6 100644
+--- a/src/tag_utils.c
++++ b/src/tag_utils.c
+@@ -186,11 +186,11 @@ int WavpackDeleteTagItem (WavpackContext *wpc, const char *item)
+         unsigned char *q = p + m_tag->ape_tag_hdr.length - sizeof (APE_Tag_Hdr);
+         int i;
+ 
+-        for (i = 0; i < m_tag->ape_tag_hdr.item_count; ++i) {
++        for (i = 0; i < m_tag->ape_tag_hdr.item_count && q - p > 8; ++i) {
+             int vsize, isize;
+ 
+             vsize = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24); p += 8;   // skip flags because we don't need them
+-            for (isize = 0; p[isize] && p + isize < q; ++isize);
++            for (isize = 0; p + isize < q && p[isize]; ++isize);
+ 
+             if (vsize < 0 || vsize > m_tag->ape_tag_hdr.length || p + isize + vsize + 1 > q)
+                 break;
+@@ -242,7 +242,7 @@ static int get_ape_tag_item (M_Tag *m_tag, const char *item, char *value, int si
+ 
+         vsize = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24); p += 4;
+         flags = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24); p += 4;
+-        for (isize = 0; p[isize] && p + isize < q; ++isize);
++        for (isize = 0; p + isize < q && p[isize]; ++isize);
+ 
+         if (vsize < 0 || vsize > m_tag->ape_tag_hdr.length || p + isize + vsize + 1 > q)
+             break;
+@@ -333,7 +333,7 @@ static int get_ape_tag_item_indexed (M_Tag *m_tag, int index, char *item, int si
+ 
+         vsize = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24); p += 4;
+         flags = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24); p += 4;
+-        for (isize = 0; p[isize] && p + isize < q; ++isize);
++        for (isize = 0; p + isize < q && p[isize]; ++isize);
+ 
+         if (vsize < 0 || vsize > m_tag->ape_tag_hdr.length || p + isize + vsize + 1 > q)
+             break;
+-- 
+2.7.4
+

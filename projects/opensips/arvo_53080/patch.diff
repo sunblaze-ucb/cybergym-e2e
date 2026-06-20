@@ -1,0 +1,67 @@
+From 6135ff05d0897342ca5c81585cef5a650eae67b9 Mon Sep 17 00:00:00 2001
+From: Liviu Chircu <liviu@opensips.org>
+Date: Mon, 7 Nov 2022 10:55:03 +0200
+Subject: [PATCH] parse_via_param(): Fix out-of-bounds read edge-case
+ (OSS-Fuzz)
+
+Similar to 5e9f72d3d, but for the parse_via_param() function.
+
+Severity: Low
+Fixes OSS-Fuzz#53080
+---
+ parser/parse_via.c        | 5 ++++-
+ parser/test/test_parser.c | 8 +++++---
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/parser/parse_via.c b/parser/parse_via.c
+index 667fa39a3..68a0d18e1 100644
+--- a/parser/parse_via.c
++++ b/parser/parse_via.c
+@@ -742,7 +742,7 @@ static /*inline*/ char* parse_via_param(char* p, char* end,
+ 
+  find_value:
+ 	tmp++;
+-	for(;*tmp;tmp++){
++	for(;tmp<end;tmp++){
+ 		switch(*tmp){
+ 			case ' ':
+ 			case '\t':
+@@ -909,6 +909,9 @@ static /*inline*/ char* parse_via_param(char* p, char* end,
+ 						goto parse_error;
+ 				}
+ 				break;
++			case '\0':
++				break;
++
+ 			default:
+ 				switch(state){
+ 					case F_VALUE:
+diff --git a/parser/test/test_parser.c b/parser/test/test_parser.c
+index 627effc38..f566e5b7b 100644
+--- a/parser/test/test_parser.c
++++ b/parser/test/test_parser.c
+@@ -163,16 +163,18 @@ static const struct tts {
+ 		/* test for read overflow on Via header (the @end pointer) */
+ 		"Q e  M\nV:SIP/2.0  /1P 4rr;TT;TT;TT;TT;TT;TT;T\xd2;TT;",
+ 		-1,
++	}, {
++		/* test for read overflow on Via header param (the @end pointer) */
++		"A  !\nV:SIP/2.0/? M;recEIVeD\n ",
++		-1,
+ 	},
+-
+-	{"\0", 0},
+ };
+ 
+ void test_parse_msg(void)
+ {
+ 	int i;
+ 
+-	for (i = 0; tset[i].tmsg[0]; i++) {
++	for (i = 0; i < sizeof tset/sizeof *tset; i++) {
+ 		struct sip_msg msg;
+ 
+ 		memset(&msg, 0, sizeof msg);
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:9230"
+target_prog = "fuzzshark_udp_port-bootp"
+vul_commit = "6f665e36edb3c8d748682c2702b952656c6c273b"
+patch_commit = "5a560f3f6aa2cbfad957cf6223e50c3b61ef575b"

@@ -1,0 +1,31 @@
+From 796ff2d599449ed798b69ab798ebcbcc0a5853f5 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Mon, 19 Aug 2024 17:02:12 +0200
+Subject: [PATCH] avformat/apetag: Check APETAGEX
+
+Fixes: Use of uninitialized value
+Fixes: 71074/clusterfuzz-testcase-minimized-ffmpeg_IO_DEMUXER_fuzzer-5697034877730816
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/apetag.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/apetag.c b/libavformat/apetag.c
+index bd0a19e4d6..0989fcb094 100644
+--- a/libavformat/apetag.c
++++ b/libavformat/apetag.c
+@@ -121,7 +121,8 @@ int64_t ff_ape_parse_tag(AVFormatContext *s)
+ 
+     avio_seek(pb, file_size - APE_TAG_FOOTER_BYTES, SEEK_SET);
+ 
+-    avio_read(pb, buf, 8);     /* APETAGEX */
++    if(avio_read(pb, buf, 8) != 8)     /* APETAGEX */
++        return 0;
+     if (strncmp(buf, APE_TAG_PREAMBLE, 8)) {
+         return 0;
+     }
+-- 
+2.25.1
+

@@ -1,0 +1,27 @@
+From ad2f3a3f72a57fcce5213567fd77d920e953316a Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 14 Dec 2022 14:46:07 +1030
+Subject: [PATCH] asan: buffer overflow in sh_reloc
+
+	* coff-sh.c (sh_reloc): Use bfd_reloc_offset_in_range.
+---
+ bfd/coff-sh.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/coff-sh.c b/bfd/coff-sh.c
+index c5b69a8592f..d030c475539 100644
+--- a/bfd/coff-sh.c
++++ b/bfd/coff-sh.c
+@@ -597,7 +597,8 @@ sh_reloc (bfd *      abfd,
+       && bfd_is_und_section (symbol_in->section))
+     return bfd_reloc_undefined;
+ 
+-  if (addr > input_section->size)
++  if (!bfd_reloc_offset_in_range (reloc_entry->howto, abfd, input_section,
++				  addr))
+     return bfd_reloc_outofrange;
+ 
+   sym_value = get_symbol_value (symbol_in);
+-- 
+2.25.1
+

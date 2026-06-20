@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:407185361"
+target_prog = "matio_fuzzer"
+vul_commit = "16f2de4845297c79de7c00cb6fe8ac8cb105a620"
+patch_commit = "a44f2bca079db909c0930af51cd66d5768f4964d"
+build_image = "cybergym/e2e:matio"

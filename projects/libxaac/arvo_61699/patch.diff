@@ -1,0 +1,378 @@
+From f39922ae991f3fdd66da1e02d2fdebe6619ae28e Mon Sep 17 00:00:00 2001
+From: Akshay Ragir <akshay.ragir@ittiam.com>
+Date: Fri, 8 Sep 2023 16:25:11 +0530
+Subject: [PATCH] Fix for the Global-buffer-overflow READ 4 in
+ iaace_quantize_lines
+
+These changes handle the runtime error reported when the gain
+value exceeds the maximum supported value because of zero
+spectrum. This is resolved by exiting the rate distortion loop
+when zero spectrum is detected. The issue is reported with AAC
+and the same changes are extended to USAC.
+
+Bug: ossFuzz:61699
+Test: poc in bug
+---
+ encoder/iusace_enc_main.c      |  5 +++--
+ encoder/iusace_fd_enc.h        |  3 ++-
+ encoder/iusace_main.h          |  2 +-
+ encoder/ixheaace_api.c         | 16 ++++++++++++----
+ encoder/ixheaace_api_defs.h    |  3 ++-
+ encoder/ixheaace_enc_main.c    |  5 +++--
+ encoder/ixheaace_enc_main.h    |  3 ++-
+ encoder/ixheaace_error_codes.h |  4 ++--
+ encoder/ixheaace_fd_enc.c      |  6 ++++--
+ encoder/ixheaace_fd_quant.c    |  5 ++++-
+ encoder/ixheaace_qc_main_hp.c  | 27 ++++++++++++++++++++++++++-
+ encoder/ixheaace_qc_util.h     |  3 ++-
+ encoder/ixheaace_struct_def.h  |  1 +
+ test/encoder/ixheaace_error.c  |  9 +++++++++
+ 14 files changed, 73 insertions(+), 19 deletions(-)
+
+diff --git a/encoder/iusace_enc_main.c b/encoder/iusace_enc_main.c
+index dcb3224..492d300 100644
+--- a/encoder/iusace_enc_main.c
++++ b/encoder/iusace_enc_main.c
+@@ -934,7 +934,8 @@ IA_ERRORCODE ixheaace_usac_encode(FLOAT32 **ptr_input,
+                                   ia_usac_data_struct *pstr_state,
+                                   ixheaace_audio_specific_config_struct *pstr_asc,
+                                   ia_bit_buf_struct *pstr_it_bit_buff,
+-                                  ixheaace_pstr_sbr_enc ptr_env_encoder, FLOAT32 **pp_drc_inp) {
++                                  ixheaace_pstr_sbr_enc ptr_env_encoder, FLOAT32 **pp_drc_inp,
++                                  WORD32 *is_quant_spec_zero) {
+   IA_ERRORCODE err = IA_NO_ERROR;
+   WORD32 i_ch, i, k;
+   ia_usac_data_struct *ptr_usac_data = pstr_state;
+@@ -1287,7 +1288,7 @@ IA_ERRORCODE ixheaace_usac_encode(FLOAT32 **ptr_input,
+             : ((ptr_usac_data->core_mode[ch_offset] == CORE_MODE_FD))) {
+       err = iusace_fd_encode(pstr_sfb_prms, usac_independency_flg, ptr_usac_data, ptr_usac_config,
+                              pstr_it_bit_buff, nr_core_coder_channels, ch_offset, elem_idx,
+-                             &bits_written);
++                             &bits_written, is_quant_spec_zero);
+ 
+       if (err) {
+         return err;
+diff --git a/encoder/iusace_fd_enc.h b/encoder/iusace_fd_enc.h
+index 396f017..2fa8b8d 100644
+--- a/encoder/iusace_fd_enc.h
++++ b/encoder/iusace_fd_enc.h
+@@ -23,4 +23,5 @@ IA_ERRORCODE iusace_fd_encode(ia_sfb_params_struct *pstr_sfb_prms, WORD32 usac_i
+                               ia_usac_data_struct *pstr_usac_data,
+                               ia_usac_encoder_config_struct *pstr_usac_config,
+                               ia_bit_buf_struct *pstr_it_bit_buff, WORD32 nr_core_coder_ch,
+-                              WORD32 chn, WORD32 ele_id, WORD32 *bit_written);
++                              WORD32 chn, WORD32 ele_id, WORD32 *bit_written,
++                              WORD32 *is_quant_spec_zero);
+diff --git a/encoder/iusace_main.h b/encoder/iusace_main.h
+index bf8b9e5..f869ccb 100644
+--- a/encoder/iusace_main.h
++++ b/encoder/iusace_main.h
+@@ -111,7 +111,7 @@ IA_ERRORCODE iusace_quantize_spec(ia_sfb_params_struct *pstr_sfb_prms,
+                                   WORD32 usac_independancy_flag, WORD32 num_chans,
+                                   ia_usac_data_struct *ptr_usac_data,
+                                   ia_usac_encoder_config_struct *ptr_usac_config, WORD32 chn,
+-                                  WORD32 ele_id);
++                                  WORD32 ele_id, WORD32 *is_quant_spec_zero);
+ 
+ IA_ERRORCODE iusace_grouping(ia_sfb_params_struct *pstr_sfb_prms, WORD32 num_chans,
+                              ia_usac_data_struct *ptr_usac_data,
+diff --git a/encoder/ixheaace_api.c b/encoder/ixheaace_api.c
+index 57bd1b0..18d19ff 100644
+--- a/encoder/ixheaace_api.c
++++ b/encoder/ixheaace_api.c
+@@ -2698,7 +2698,7 @@ static IA_ERRORCODE ia_enhaacplus_enc_execute(ixheaace_api_struct *pstr_api_stru
+         &(pstr_api_struct->pstr_state->bit_stream), flag_last_element,
+         write_program_config_element, i_num_coup_channels, i_channels_mask, ele_idx,
+         total_fill_bits, total_channels, aot, pstr_api_struct->config->adts_flag,
+-        num_bs_elements);
++        num_bs_elements, &pstr_api_struct->pstr_state->is_quant_spec_zero);
+     if (error != IA_NO_ERROR) {
+       return error;
+     }
+@@ -3244,7 +3244,8 @@ static IA_ERRORCODE iusace_process(ixheaace_api_struct *pstr_api_struct) {
+       ixheaace_usac_encode(pstr_api_struct->pstr_state->ptr_in_buf, pstr_config,
+                            &pstr_api_struct->pstr_state->str_usac_enc_data,
+                            &pstr_api_struct->pstr_state->audio_specific_config, pstr_it_bit_buff,
+-                           pstr_sbr_encoder, pstr_api_struct->pstr_state->pp_drc_in_buf);
++                           pstr_sbr_encoder, pstr_api_struct->pstr_state->pp_drc_in_buf,
++                           &pstr_api_struct->pstr_state->is_quant_spec_zero);
+   if (error) return error;
+ 
+   padding_bits = 8 - (pstr_it_bit_buff->cnt_bits & 7);
+@@ -3283,6 +3284,7 @@ static IA_ERRORCODE iusace_process(ixheaace_api_struct *pstr_api_struct) {
+               write_off_set * sizeof(ptr_input_buffer[0]));
+     }
+   }
++
+   return IA_NO_ERROR;
+ }
+ IA_ERRORCODE ixheaace_get_lib_id_strings(pVOID pv_output) {
+@@ -3547,6 +3549,7 @@ IA_ERRORCODE ixheaace_init(pVOID pstr_obj_ixheaace, pVOID pv_input, pVOID pv_out
+         pstr_api_struct->config[0].usac_config.native_sample_rate;
+     pstr_output_config->audio_profile = AUDIO_PROFILE_USAC_L2;
+   }
++
+   pstr_api_struct->pstr_state->ui_init_done = 1;
+   pstr_output_config->i_out_bytes = pstr_api_struct->pstr_state->i_out_bytes;
+ 
+@@ -3572,16 +3575,21 @@ IA_ERRORCODE ixheaace_process(pVOID pstr_obj_ixheaace, pVOID pv_input, pVOID pv_
+   (VOID) pv_input;
+   ixheaace_api_struct *pstr_api_struct = (ixheaace_api_struct *)pstr_obj_ixheaace;
+   ixheaace_output_config *pstr_output_config = (ixheaace_output_config *)pv_output;
+-
++  pstr_api_struct->pstr_state->is_quant_spec_zero = 0;
+   if (!pstr_api_struct->usac_en) {
+     for (ele_idx = 0; ele_idx < pstr_api_struct->config[0].num_bs_elements; ele_idx++) {
+       error = ia_enhaacplus_enc_execute(pstr_api_struct, ele_idx);
+     }
++    if ((error == IA_NO_ERROR) && (pstr_api_struct->pstr_state->is_quant_spec_zero)) {
++      error = IA_EXHEAACE_EXE_NONFATAL_QUANTIZATION_SPECTRUM_ZERO;
++    }
+   } else {
+     error = iusace_process(pstr_api_struct);
++    if ((error == IA_NO_ERROR) && (pstr_api_struct->pstr_state->is_quant_spec_zero)) {
++      error = IA_EXHEAACE_EXE_NONFATAL_USAC_QUANTIZATION_SPECTRUM_ZERO;
++    }
+   }
+   pstr_output_config->i_out_bytes = pstr_api_struct->pstr_state->i_out_bytes;
+-
+   return error;
+ }
+ 
+diff --git a/encoder/ixheaace_api_defs.h b/encoder/ixheaace_api_defs.h
+index 3160077..99dbdba 100644
+--- a/encoder/ixheaace_api_defs.h
++++ b/encoder/ixheaace_api_defs.h
+@@ -43,4 +43,5 @@ IA_ERRORCODE ixheaace_usac_encode(FLOAT32 **ptr_input,
+                                   ia_usac_data_struct *pstr_state,
+                                   ixheaace_audio_specific_config_struct *pstr_asc,
+                                   ia_bit_buf_struct *pstr_it_bit_buff,
+-                                  ixheaace_pstr_sbr_enc ptr_env_encoder, FLOAT32 **ptr_drc_inp);
++                                  ixheaace_pstr_sbr_enc ptr_env_encoder, FLOAT32 **ptr_drc_inp,
++                                  WORD32 *is_quant_spec_zero);
+diff --git a/encoder/ixheaace_enc_main.c b/encoder/ixheaace_enc_main.c
+index 3e813fe..048f63f 100644
+--- a/encoder/ixheaace_enc_main.c
++++ b/encoder/ixheaace_enc_main.c
+@@ -65,7 +65,8 @@ IA_ERRORCODE ia_enhaacplus_enc_aac_core_encode(
+     WORD32 *num_out_bytes, ixheaace_aac_tables *pstr_aac_tabs, VOID *ptr_bit_stream_handle,
+     VOID *ptr_bit_stream, FLAG flag_last_element, WORD32 *write_program_config_element,
+     WORD32 i_num_coup_channels, WORD32 i_channels_mask, WORD32 ele_idx, WORD32 *total_fill_bits,
+-    WORD32 total_channels, WORD32 aot, WORD32 adts_flag, WORD32 num_bs_elements) {
++    WORD32 total_channels, WORD32 aot, WORD32 adts_flag, WORD32 num_bs_elements,
++    WORD32 *is_quant_spec_zero) {
+   IA_ERRORCODE err_code = IA_NO_ERROR;
+   iexheaac_encoder_str *pstr_aac_encoder = pstr_aac_enc[ele_idx];
+   ixheaace_element_info *pstr_element_info = &pstr_aac_encoder->element_info;
+@@ -173,7 +174,7 @@ IA_ERRORCODE ia_enhaacplus_enc_aac_core_encode(
+       pstr_aac_encoder->qc_out.qc_channel[pstr_element_info->channel_index[0]],
+       &pstr_aac_encoder->qc_out.qc_element, MIN(anc_data_bytes_left, anc_data_bytes),
+       pstr_aac_tabs, adts_flag, aot, stat_bits_flag, flag_last_element, frame_len_long,
+-      pstr_aac_encoder->pstr_aac_scratch->shared_buffer5);
++      pstr_aac_encoder->pstr_aac_scratch->shared_buffer5, is_quant_spec_zero);
+ 
+   if (err_code != IA_NO_ERROR) {
+     return err_code;
+diff --git a/encoder/ixheaace_enc_main.h b/encoder/ixheaace_enc_main.h
+index c7997ce..e3c34ca 100644
+--- a/encoder/ixheaace_enc_main.h
++++ b/encoder/ixheaace_enc_main.h
+@@ -108,7 +108,8 @@ IA_ERRORCODE ia_enhaacplus_enc_aac_core_encode(
+     WORD32 *num_out_bytes, ixheaace_aac_tables *pstr_aac_tables, VOID *ptr_bit_stream_handle,
+     VOID *ptr_bit_stream, FLAG flag_last_element, WORD32 *write_program_config_element,
+     WORD32 i_num_coup_channels, WORD32 i_channels_mask, WORD32 ele_idx, WORD32 *total_fill_bits,
+-    WORD32 total_channels, WORD32 aot, WORD32 adts_flag, WORD32 num_bs_elements);
++    WORD32 total_channels, WORD32 aot, WORD32 adts_flag, WORD32 num_bs_elements,
++    WORD32 *is_quant_spec_zero);
+ 
+ VOID ia_enhaacplus_enc_set_shared_bufs(iaace_scratch *scr, WORD32 **shared_buf1,
+                                        WORD32 **shared_buf2, WORD32 **shared_buf3,
+diff --git a/encoder/ixheaace_error_codes.h b/encoder/ixheaace_error_codes.h
+index 12de2c9..99e7992 100644
+--- a/encoder/ixheaace_error_codes.h
++++ b/encoder/ixheaace_error_codes.h
+@@ -138,13 +138,13 @@ typedef enum {
+   /* Non Fatal Errors */
+ 
+   // AAC Profiles
+-
++  IA_EXHEAACE_EXE_NONFATAL_QUANTIZATION_SPECTRUM_ZERO = 0x00001800,
+   // MPS
+   IA_EXHEAACE_EXE_NONFATAL_MPS_ENCODE_ERROR = 0x00001900,
+   IA_EXHEAACE_EXE_NONFATAL_MPS_INVALID_DATA_BANDS,
+ 
+   // USAC
+-
++  IA_EXHEAACE_EXE_NONFATAL_USAC_QUANTIZATION_SPECTRUM_ZERO = 0x00001A00,
+   // DRC
+ 
+   // ESBR
+diff --git a/encoder/ixheaace_fd_enc.c b/encoder/ixheaace_fd_enc.c
+index 34556e9..5c55594 100644
+--- a/encoder/ixheaace_fd_enc.c
++++ b/encoder/ixheaace_fd_enc.c
+@@ -56,7 +56,8 @@ IA_ERRORCODE iusace_fd_encode(ia_sfb_params_struct *pstr_sfb_prms, WORD32 usac_i
+                               ia_usac_data_struct *pstr_usac_data,
+                               ia_usac_encoder_config_struct *pstr_usac_config,
+                               ia_bit_buf_struct *pstr_it_bit_buff, WORD32 nr_core_coder_ch,
+-                              WORD32 chn, WORD32 ele_id, WORD32 *bit_written) {
++                              WORD32 chn, WORD32 ele_id, WORD32 *bit_written,
++                              WORD32 *is_quant_spec_zero) {
+   iusace_scratch_mem *pstr_scratch = &pstr_usac_data->str_scratch;
+   IA_ERRORCODE err_code = 0;
+   WORD32 i_ch, idx = 0;
+@@ -94,7 +95,8 @@ IA_ERRORCODE iusace_fd_encode(ia_sfb_params_struct *pstr_sfb_prms, WORD32 usac_i
+   }
+ 
+   err_code = iusace_quantize_spec(pstr_sfb_prms, usac_independancy_flag, nr_core_coder_ch,
+-                                  pstr_usac_data, pstr_usac_config, chn, ele_id);
++                                  pstr_usac_data, pstr_usac_config, chn, ele_id,
++                                  is_quant_spec_zero);
+   if (err_code) return err_code;
+ 
+   for (i_ch = chn; i_ch < chn + nr_core_coder_ch; i_ch++) {
+diff --git a/encoder/ixheaace_fd_quant.c b/encoder/ixheaace_fd_quant.c
+index 799f832..bcaf31d 100644
+--- a/encoder/ixheaace_fd_quant.c
++++ b/encoder/ixheaace_fd_quant.c
+@@ -444,7 +444,7 @@ IA_ERRORCODE iusace_quantize_spec(ia_sfb_params_struct *pstr_sfb_prms,
+                                   WORD32 usac_independancy_flag, WORD32 num_chans,
+                                   ia_usac_data_struct *ptr_usac_data,
+                                   ia_usac_encoder_config_struct *ptr_usac_config, WORD32 chn,
+-                                  WORD32 ele_id) {
++                                  WORD32 ele_id, WORD32 *is_quant_spec_zero) {
+   IA_ERRORCODE err_code;
+   WORD32 i = 0, sfb;
+   WORD32 j = 0;
+@@ -605,7 +605,10 @@ IA_ERRORCODE iusace_quantize_spec(ia_sfb_params_struct *pstr_sfb_prms,
+       }
+       if (quant_spec_is_zero == 1) {
+         constraints_fulfilled = 1;
++        /*Bit consuption is exceding bit reserviour, there is no scope left for bit consumption
++          reduction, as spectrum is zero. Hence breaking the quantization loop. */
+         if (iterations > 0) {
++          *is_quant_spec_zero = 1;
+           max_bits = max_ch_dyn_bits[idx];
+         }
+       }
+diff --git a/encoder/ixheaace_qc_main_hp.c b/encoder/ixheaace_qc_main_hp.c
+index d531b9b..1a039ea 100644
+--- a/encoder/ixheaace_qc_main_hp.c
++++ b/encoder/ixheaace_qc_main_hp.c
+@@ -74,9 +74,13 @@ IA_ERRORCODE ia_enhaacplus_enc_qc_main(
+     ixheaace_qc_out_channel pstr_qc_out_ch[IXHEAACE_MAX_CH_IN_BS_ELE],
+     ixheaace_qc_out_element *pstr_qc_out_element, WORD32 ancillary_data_bytes,
+     ixheaace_aac_tables *pstr_aac_tables, WORD32 adts_flag, WORD32 aot, WORD32 stat_bits_flag,
+-    WORD32 flag_last_element, WORD32 frame_len_long, WORD8 *ptr_scratch) {
++    WORD32 flag_last_element, WORD32 frame_len_long, WORD8 *ptr_scratch,
++    WORD32 *is_quant_spec_zero) {
+   IA_ERRORCODE err_code;
+   WORD32 ch;
++  WORD32 i = 0;
++  WORD32 k = 0;
++  WORD32 j = 0;
+   WORD32 iterations = 0;
+   WORD32 constraints_fulfilled;
+   WORD32 ch_dyn_bits;
+@@ -146,6 +150,7 @@ IA_ERRORCODE ia_enhaacplus_enc_qc_main(
+     do {
+       WORD32 max_val;
+       constraints_fulfilled = 1;
++      WORD32 quant_spec_is_zero = 1;
+       if (iterations > 0) {
+         for (sfb_offs = 0; sfb_offs < psy_out_ch[ch].sfb_count;
+              sfb_offs += psy_out_ch[ch].sfb_per_group) {
+@@ -171,6 +176,17 @@ IA_ERRORCODE ia_enhaacplus_enc_qc_main(
+         constraints_fulfilled = 0;
+       }
+ 
++      for (k = 0; ((k < psy_out_ch[ch].sfb_count) && (quant_spec_is_zero));
++           k += psy_out_ch[ch].sfb_per_group) {
++        for (i = 0; ((i < psy_out_ch[ch].max_sfb_per_grp) && (quant_spec_is_zero)); i++) {
++          for (j = psy_out_ch[ch].sfb_offsets[i+k]; j < psy_out_ch[ch].sfb_offsets[i+k+1]; j++) {
++            if (pstr_qc_out_ch[ch].quant_spec[j] != 0) {
++              quant_spec_is_zero = 0;
++              break;
++            }
++          }
++        }
++      }
+       err_code = ia_enhaacplus_enc_dyn_bitcount(
+           pstr_qc_out_ch[ch].quant_spec, pstr_qc_out_ch[ch].max_val_in_sfb,
+           pstr_qc_out_ch[ch].scalefactor, psy_out_ch[ch].window_sequence,
+@@ -192,6 +208,15 @@ IA_ERRORCODE ia_enhaacplus_enc_qc_main(
+         pstr_qc_out_ch[ch].global_gain++;
+       }
+ 
++      if (quant_spec_is_zero == 1) {
++        constraints_fulfilled = 1;
++        /*Bit consuption is exceding bit reserviour, there is no scope left for bit consumption
++          reduction, as spectrum is zero. Hence breaking the quantization loop. */
++        if (iterations > 0) {
++          *is_quant_spec_zero = 1;
++          ch_dyn_bits = max_ch_dyn_bits[ch];
++        }
++      }
+       iterations++;
+ 
+     } while (!constraints_fulfilled);
+diff --git a/encoder/ixheaace_qc_util.h b/encoder/ixheaace_qc_util.h
+index 0db1dd7..3c9b025 100644
+--- a/encoder/ixheaace_qc_util.h
++++ b/encoder/ixheaace_qc_util.h
+@@ -37,7 +37,8 @@ IA_ERRORCODE ia_enhaacplus_enc_qc_main(
+     ixheaace_qc_out_channel pstr_qc_out_ch[IXHEAACE_MAX_CH_IN_BS_ELE],
+     ixheaace_qc_out_element *pstr_qc_out_element, WORD32 ancillary_data_bytes,
+     ixheaace_aac_tables *pstr_aac_tables, WORD32 adts_flag, WORD32 aot, WORD32 stat_bits_flag,
+-    WORD32 flag_last_element, WORD32 frame_len_long, WORD8 *ptr_scratch);
++    WORD32 flag_last_element, WORD32 frame_len_long, WORD8 *ptr_scratch,
++    WORD32 *is_quant_spec_zero);
+ 
+ VOID ia_enhaacplus_enc_update_bit_reservoir(ixheaace_qc_state *pstr_qc_kernel,
+                                             ixheaace_qc_out *pstr_qc_out);
+diff --git a/encoder/ixheaace_struct_def.h b/encoder/ixheaace_struct_def.h
+index d1b921a..23ad23d 100644
+--- a/encoder/ixheaace_struct_def.h
++++ b/encoder/ixheaace_struct_def.h
+@@ -104,6 +104,7 @@ typedef struct ixheaace_state_struct {
+   ia_bit_buf_struct str_bit_buf;
+   ixheaace_mps_212_memory_struct *mps_pers_mem;
+   ixheaace_mps_515_memory_struct *mps_515_pers_mem;
++  WORD32 is_quant_spec_zero;
+ } ixheaace_state_struct;
+ 
+ typedef struct ixheaace_api_struct {
+diff --git a/test/encoder/ixheaace_error.c b/test/encoder/ixheaace_error.c
+index 3861665..63204fe 100644
+--- a/test/encoder/ixheaace_error.c
++++ b/test/encoder/ixheaace_error.c
+@@ -115,10 +115,15 @@ pWORD8 ppb_ia_enhaacplus_enc_sbr_init_fatal[IA_MAX_ERROR_SUB_CODE] = {
+ /* Class 2: Execution Errors
+ *****************************************************************************/
+ /* Non Fatal Errors */
++pWORD8 ppb_ia_enhaacplus_enc_aac_exe_non_fatal[IA_MAX_ERROR_SUB_CODE] = {
++    (pWORD8) "Quantization zero spectrum detected"};
+ 
+ pWORD8 ppb_ia_enhaacplus_enc_mps_exe_non_fatal[IA_MAX_ERROR_SUB_CODE] = {
+     (pWORD8) "Encoding Failed", (pWORD8) "Invalid MPS data bands"};
+ 
++pWORD8 ppb_ia_enhaacplus_enc_usac_exe_non_fatal[IA_MAX_ERROR_SUB_CODE] = {
++    (pWORD8) "Quantization zero spectrum detected"};
++
+ pWORD8 ppb_ia_enhaacplus_enc_esbr_exe_non_fatal[IA_MAX_ERROR_SUB_CODE] = {
+     (pWORD8) "Invalid bandwidth index encountered",
+     (pWORD8) "Invalid number of patches",
+@@ -251,6 +256,10 @@ VOID ia_enhaacplus_enc_error_handler_init() {
+       ppb_ia_enhaacplus_enc_mps_exe_fatal;
+   ia_enhaacplus_enc_error_info.ppppb_error_msg_pointers[1][3][2] =
+       ppb_ia_enhaacplus_enc_usac_exe_fatal;
++  ia_enhaacplus_enc_error_info.ppppb_error_msg_pointers[0][3][0] =
++    ppb_ia_enhaacplus_enc_aac_exe_non_fatal;
++  ia_enhaacplus_enc_error_info.ppppb_error_msg_pointers[0][3][2] =
++    ppb_ia_enhaacplus_enc_usac_exe_non_fatal;
+ }
+ 
+ IA_ERRORCODE ia_error_handler(ia_error_info_struct *p_mod_err_info, WORD8 *pb_context,
+-- 
+2.25.1
+

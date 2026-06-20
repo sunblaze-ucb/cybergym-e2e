@@ -1,0 +1,27 @@
+From 970a38be462bda875ac495c51e93af728a8c98de Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 28 Nov 2022 10:16:41 +1030
+Subject: [PATCH] asan: pef: buffer overflow
+
+	* pef.c (bfd_pef_parse_traceback_table): Correct size moved when
+	stripping leading dot.
+---
+ bfd/pef.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bfd/pef.c b/bfd/pef.c
+index 334d802eb75..e8672a40da7 100644
+--- a/bfd/pef.c
++++ b/bfd/pef.c
+@@ -181,7 +181,7 @@ bfd_pef_parse_traceback_table (bfd *abfd,
+ 
+       /* Strip leading period inserted by compiler.  */
+       if (namebuf[0] == '.')
+-	memmove (namebuf, namebuf + 1, name.name_len + 1);
++	memmove (namebuf, namebuf + 1, name.name_len);
+ 
+       sym->name = namebuf;
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:52066"
+target_prog = "mapfuzzer"
+vul_commit = "ae65a28202c50fc134b98b3137e1735665a270e1"
+patch_commit = "bf41b35362b3f6b8fbb0eb54d92ba01ead9b418e"
+build_image = "n132/arvo:52066-fix"

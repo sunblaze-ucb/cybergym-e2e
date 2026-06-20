@@ -1,0 +1,79 @@
+From ff2bd4e2b723c39c26d3d8a4371ac0c3ad7f6655 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 4 Feb 2025 13:46:53 +0000
+Subject: [PATCH] Fix the stream dummy buffer workaround.
+
+UBSAN complained because the stream code initialises the cursor buffer pointer
+to one byte behind the actualy buffer address. But there are cases where that
+buffer pointer is NULL, and assigning "NULL - 1" is undefined.
+
+The original fix:
+58d93d87dfc0edaffdde8b093df8acc11a6a6066
+
+avoided the problem by special casing the NULL pointer case, and simply
+using NULL (rather than NULL - 1). But this caused an undesireable ioerror when
+reading an empty file.
+
+To work around that, the second fix:
+8d7f8b9702d908b0f113e22d701ca2d7fbab71a3
+
+was to use static, dummy, empty buffers
+one for read and one for write cursors. This causes a problem because of how
+the stream cursor union overlaps values. Read cursors end up with the buffer
+start pointing the read dummy buffer, and the buffer limit pointing to the
+end of the write dummy buffer.
+
+So, make the two cases (read and write) use the same dummy buffer.
+
+The dummy buffer is one byte (rather than zero bytes) because some versions of
+Visual Studio won't accept a zero length array.
+
+oss-fuzz 393414239, 393411521, 393408793
+---
+ base/scommon.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/base/scommon.h b/base/scommon.h
+index eb4009e5c..9b59676d2 100644
+--- a/base/scommon.h
++++ b/base/scommon.h
+@@ -113,17 +113,18 @@ typedef union stream_cursor_s {
+ #  pragma GCC diagnostic push
+ #  pragma GCC diagnostic ignored "-Warray-bounds"
+ #endif
++static byte gs_fake_sbuf[1];
++
+ static inline void
+ stream_cursor_read_init(stream_cursor_read *r, const byte *buf, size_t length)
+ {
+-    static byte gs_fake_rbuf[0];
+     if (buf != NULL) {
+         /* starting pos for pointer is always one position back */
+         r->ptr = buf - 1;
+         r->limit = r->ptr + length;
+     }
+     else {
+-        r->ptr = gs_fake_rbuf - 1;
++        r->ptr = gs_fake_sbuf - 1;
+         r->limit = r->ptr;
+     }
+ }
+@@ -131,14 +132,13 @@ stream_cursor_read_init(stream_cursor_read *r, const byte *buf, size_t length)
+ static inline void
+ stream_cursor_write_init(stream_cursor_write *w, const byte *buf, size_t length)
+ {
+-    static byte gs_fake_wbuf[0];
+     if (buf != NULL) {
+         /* starting pos for pointer is always one position back */
+         w->ptr = (byte *)buf - 1;
+         w->limit = (byte *)w->ptr + length;
+     }
+     else {
+-        w->ptr = gs_fake_wbuf - 1;
++        w->ptr = gs_fake_sbuf - 1;
+         w->limit = w->ptr;
+     }
+ }
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42536536"
+target_prog = "future_qpdf_fuzzer"
+vul_commit = "3d569e217187acc206afe6a7d6fb942ac61c5400"
+patch_commit = "8ae3ef28ac34fddb1cc8b03b2479f499e4af5f8a"
+build_image = "cybergym/oss-fuzz:42536536-fix"

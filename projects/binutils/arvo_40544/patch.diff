@@ -1,0 +1,74 @@
+From c27cdb4c534e0b52ea877b6800f832756ee16a2f Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 1 Nov 2021 00:20:01 +1030
+Subject: [PATCH] objcopy buffer overflow
+
+"tocopy" in this code was an int, which when the size to be copied was
+larger than MAXINT could result in tocopy being negative.  A negative
+value of course is less than BUFSIZE, but when converted to
+bfd_size_type is extremely large.
+
+	PR 995
+	* objcopy.c (copy_unknown_object): Correct calculation of "tocopy".
+	Use better variable types.
+---
+ binutils/objcopy.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
+
+diff --git a/binutils/objcopy.c b/binutils/objcopy.c
+index 0e7400fe4cb..e0d52d114fe 100644
+--- a/binutils/objcopy.c
++++ b/binutils/objcopy.c
+@@ -1894,9 +1894,8 @@ static bool
+ copy_unknown_object (bfd *ibfd, bfd *obfd)
+ {
+   char *cbuf;
+-  int tocopy;
+-  long ncopied;
+-  long size;
++  bfd_size_type tocopy;
++  off_t size;
+   struct stat buf;
+ 
+   if (bfd_stat_arch_elt (ibfd, &buf) != 0)
+@@ -1924,30 +1923,28 @@ copy_unknown_object (bfd *ibfd, bfd *obfd)
+ 	    bfd_get_archive_filename (ibfd), bfd_get_filename (obfd));
+ 
+   cbuf = (char *) xmalloc (BUFSIZE);
+-  ncopied = 0;
+-  while (ncopied < size)
++  while (size != 0)
+     {
+-      tocopy = size - ncopied;
+-      if (tocopy > BUFSIZE)
++      if (size > BUFSIZE)
+ 	tocopy = BUFSIZE;
++      else
++	tocopy = size;
+ 
+-      if (bfd_bread (cbuf, (bfd_size_type) tocopy, ibfd)
+-	  != (bfd_size_type) tocopy)
++      if (bfd_bread (cbuf, tocopy, ibfd) != tocopy)
+ 	{
+ 	  bfd_nonfatal_message (NULL, ibfd, NULL, NULL);
+ 	  free (cbuf);
+ 	  return false;
+ 	}
+ 
+-      if (bfd_bwrite (cbuf, (bfd_size_type) tocopy, obfd)
+-	  != (bfd_size_type) tocopy)
++      if (bfd_bwrite (cbuf, tocopy, obfd) != tocopy)
+ 	{
+ 	  bfd_nonfatal_message (NULL, obfd, NULL, NULL);
+ 	  free (cbuf);
+ 	  return false;
+ 	}
+ 
+-      ncopied += tocopy;
++      size -= tocopy;
+     }
+ 
+   /* We should at least to be able to read it back when copying an
+-- 
+2.43.2
+

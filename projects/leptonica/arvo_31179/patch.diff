@@ -1,0 +1,26 @@
+From 43050bffb966f7438ff177a6f78bc90915889df7 Mon Sep 17 00:00:00 2001
+From: Dan Bloomberg <dan.bloomberg@gmail.com>
+Date: Sun, 21 Feb 2021 22:48:30 -0800
+Subject: [PATCH] Fixed issue 31178 oss-fuzz: uninit value in
+ makeOrientDecision()
+
+---
+ prog/fuzzing/flipdetect_fuzzer.cc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/prog/fuzzing/flipdetect_fuzzer.cc b/prog/fuzzing/flipdetect_fuzzer.cc
+index e1bafeb..c01300b 100644
+--- a/prog/fuzzing/flipdetect_fuzzer.cc
++++ b/prog/fuzzing/flipdetect_fuzzer.cc
+@@ -17,6 +17,8 @@ LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+ 	pixDestroy(&pix_pointer_payload);
+ 
+ 	pix_pointer_payload = pixCopy(NULL, pixs_payload);
++        minupconf = 0.0;
++        minratio = 0.0;
+ 	return_pix = pixOrientCorrect(pix_pointer_payload, minupconf,
+                                       minratio, NULL, NULL, NULL, 1);
+ 	pixDestroy(&pix_pointer_payload);	
+-- 
+2.43.2
+

@@ -1,0 +1,32 @@
+From 01f74bfaa2e0eda42ae68c449ddae6d0a991700f Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 9 Feb 2025 02:08:20 +0100
+Subject: [PATCH] avcodec/rv60dec: Initialize slice gb with actually allocated
+ size
+
+Fixes: out of array access
+Fixes: 385170375/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_RV60_fuzzer-4710055187906560
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Reviewed-by: Peter Ross <pross@xvid.org>
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/rv60dec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/rv60dec.c b/libavcodec/rv60dec.c
+index 0c2e03d737..24981015a9 100644
+--- a/libavcodec/rv60dec.c
++++ b/libavcodec/rv60dec.c
+@@ -2257,7 +2257,7 @@ static int decode_slice(AVCodecContext *avctx, void *tdata, int cu_y, int thread
+     thread.avg_linesize[1] = 32;
+     thread.avg_linesize[2] = 32;
+ 
+-    if ((ret = init_get_bits8(&gb, s->slice[cu_y].data, s->slice[cu_y].size)) < 0)
++    if ((ret = init_get_bits8(&gb, s->slice[cu_y].data, s->slice[cu_y].data_size)) < 0)
+         return ret;
+ 
+     for (int cu_x = 0; cu_x < s->cu_width; cu_x++) {
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:56474"
+target_prog = "fuzz_die_cu_attrs_loclist"
+vul_commit = "a0bb79d65d00fb3e345e6101b52367d7ced8937a"
+patch_commit = "b3df2530732ea515cda5a85438871e15c6723ead"

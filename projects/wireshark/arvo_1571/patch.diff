@@ -1,0 +1,38 @@
+From aa3bbe5aebdc180172e7956719b26199e4784fcc Mon Sep 17 00:00:00 2001
+From: Pascal Quantin <pascal.quantin@gmail.com>
+Date: Sun, 14 May 2017 15:51:23 +0200
+Subject: [PATCH] GSM RLC/MAC: fix another global-buffer-overflow error
+ reported by ASAN
+
+Same root cause as gf751918
+
+Bug: 13708
+Change-Id: I9d1089c3a632ca82370d14beb06ebcd554901415
+Reviewed-on: https://code.wireshark.org/review/21639
+Reviewed-by: Pascal Quantin <pascal.quantin@gmail.com>
+Petri-Dish: Pascal Quantin <pascal.quantin@gmail.com>
+Tested-by: Petri Dish Buildbot <buildbot-no-reply@wireshark.org>
+Reviewed-by: Anders Broman <a.broman58@gmail.com>
+---
+ epan/dissectors/packet-gsm_rlcmac.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/epan/dissectors/packet-gsm_rlcmac.c b/epan/dissectors/packet-gsm_rlcmac.c
+index 6946d54..dae839a 100644
+--- a/epan/dissectors/packet-gsm_rlcmac.c
++++ b/epan/dissectors/packet-gsm_rlcmac.c
+@@ -3055,7 +3055,10 @@ CSN_DESCR_BEGIN(Ext_Channel_Request_desc_t)
+   M_NEXT_EXIST (Ext_Channel_Request_desc_t, Exist_LCC_PDU, 1, &hf_egprs_prr_additionsr6_lcc_pdu_exist),
+   M_UINT       (Ext_Channel_Request_desc_t,  LCC_PDU,  1, &hf_egprs_prr_additionsr6_lcc_pdu),
+ 
+-  M_NEXT_EXIST (Ext_Channel_Request_desc_t, Exist_Ext_Channel_Request_desc, 1, &hf_Ext_Channel_Request_desc_exist), /* Don't use M_REC_TARRAY as we don't support multiple TBFs */
++ /* Don't use M_REC_TARRAY as we don't support multiple TBFs
++  M_NEXT_EXIST (Ext_Channel_Request_desc_t, Exist_Ext_Channel_Request_desc, 1, &hf_Ext_Channel_Request_desc_exist),
++  M_TYPE       (Ext_Channel_Request_desc_t, Ext_Channel_Request_desc, Ext_Channel_Request_desc_t),*/
++  M_UINT       (Ext_Channel_Request_desc_t, Exist_Ext_Channel_Request_desc, 1, &hf_Ext_Channel_Request_desc_exist),
+ 
+ CSN_DESCR_END  (Ext_Channel_Request_desc_t)
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,40 @@
+From 1061537efdf3874c91fd50d18f98c4b8a3518e52 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sun, 26 Mar 2023 22:40:54 +0200
+Subject: [PATCH] malloc-fail: Fix buffer overread with HTML doctype
+ declarations
+
+Found by OSS-Fuzz, see #344.
+---
+ HTMLparser.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/HTMLparser.c b/HTMLparser.c
+index b8b6bd23..abcdfe24 100644
+--- a/HTMLparser.c
++++ b/HTMLparser.c
+@@ -3010,9 +3010,9 @@ htmlParseSystemLiteral(htmlParserCtxtPtr ctxt) {
+         htmlParseErr(ctxt, XML_ERR_LITERAL_NOT_FINISHED,
+                      "Unfinished SystemLiteral\n", NULL, NULL);
+     } else {
+-        NEXT;
+         if (err == 0)
+             ret = xmlStrndup((BASE_PTR+startPosition), len);
++        NEXT;
+     }
+ 
+     return(ret);
+@@ -3065,9 +3065,9 @@ htmlParsePubidLiteral(htmlParserCtxtPtr ctxt) {
+         htmlParseErr(ctxt, XML_ERR_LITERAL_NOT_FINISHED,
+                      "Unfinished PubidLiteral\n", NULL, NULL);
+     } else {
+-        NEXT;
+         if (err == 0)
+             ret = xmlStrndup((BASE_PTR + startPosition), len);
++        NEXT;
+     }
+ 
+     return(ret);
+-- 
+2.25.1
+

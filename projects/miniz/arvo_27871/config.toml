@@ -1,0 +1,4 @@
+task_id = "arvo:27871"
+target_prog = "zip_fuzzer"
+vul_commit = "95795bb9964cc739dab6ec3b27363fdd9c44ddcf"
+patch_commit = "864ecc8d14466bcdf04287cc42b0d7631ad4d831"

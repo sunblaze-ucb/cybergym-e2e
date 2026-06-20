@@ -1,0 +1,5 @@
+task_id = "arvo:61011"
+target_prog = "fuzz_dlltool"
+vul_commit = "e2ce77cd639c86ce89b10ee70e73bd09670e0111"
+patch_commit = "8c8145a43ee4815b8851f8da7091c04f551dff6e"
+build_image = "n132/arvo:61011-fix"

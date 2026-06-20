@@ -1,0 +1,35 @@
+From cf32d1168cf93f4f414e1db6bcfb73fb8617b601 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <Ken.Sharp@artifex.com>
+Date: Sun, 23 Mar 2025 17:30:19 +0000
+Subject: [PATCH] PDF interpreter - prevent buffer overrun
+
+OSS-fuzz #402451731
+
+Make sure that the font name combined with the font directory string
+fits into the fixed length buffer. Return an error if not.
+---
+ pdf/pdf_file.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/pdf/pdf_file.c b/pdf/pdf_file.c
+index 9e95bd2c4..923b5bf81 100644
+--- a/pdf/pdf_file.c
++++ b/pdf/pdf_file.c
+@@ -1940,8 +1940,12 @@ static int pdfi_open_font_file_inner(pdf_context *ctx, const char *fname, const
+         fnlen = gp_file_name_sizeof;
+ 
+         memcpy(fstr, fontdirstr, fontdirstrlen);
+-        if (fname != NULL)
+-            memcpy(fstr + fontdirstrlen, fname, fnamelen);
++        if (fname != NULL) {
++            if (fontdirstrlen + fnamelen < gp_file_name_sizeof)
++                memcpy(fstr + fontdirstrlen, fname, fnamelen);
++            else
++                return_error(gs_error_undefinedfilename);
++        }
+ 
+         r = gp_file_name_combine((char *)ss->data, ss->size, fstr, fontdirstrlen + fnamelen, false, fnametotry, &fnlen);
+         if (r == gp_combine_success || fnlen < gp_file_name_sizeof) {
+-- 
+2.25.1
+

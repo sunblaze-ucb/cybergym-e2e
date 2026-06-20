@@ -1,0 +1,31 @@
+From 3f116fa4ff59f78e1699b950e8ef348b896fc606 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Sun, 14 Jan 2018 17:18:15 +0300
+Subject: [PATCH] Spline::calculateCurve(): clamp interpolated value to the max
+ too.
+
+---
+ src/librawspeed/common/Spline.h | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/src/librawspeed/common/Spline.h b/src/librawspeed/common/Spline.h
+index ebb84b0..fa87f58 100644
+--- a/src/librawspeed/common/Spline.h
++++ b/src/librawspeed/common/Spline.h
+@@ -162,11 +162,8 @@ public:
+         if (!std::is_floating_point<value_type>::value) {
+           interpolated = std::max(
+               interpolated, double(std::numeric_limits<value_type>::min()));
+-
+-          assert(interpolated <=
+-                 double(std::numeric_limits<value_type>::max()));
+-          // interpolated = std::min(interpolated,
+-          // double(std::numeric_limits<value_type>::max()));
++          interpolated = std::min(
++              interpolated, double(std::numeric_limits<value_type>::max()));
+         }
+ 
+         curve[x] = interpolated;
+-- 
+2.7.4
+

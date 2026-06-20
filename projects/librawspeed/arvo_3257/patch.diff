@@ -1,0 +1,33 @@
+From 7d47c5de57aa4abdc6e7426756601a0a55efc7df Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Fri, 1 Sep 2017 17:35:02 +0300
+Subject: [PATCH] SamsungV0Decompressor: upward prediction is invalid for the
+ last block
+
+We are processing 16 pixels of the row at the time, but
+the line size is not guaranteed to be a multiple of 16...
+Thus, we need to check here.
+
+In downward case, we are conditionally writing, so that should be fine.
+---
+ src/librawspeed/decompressors/SamsungV0Decompressor.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/librawspeed/decompressors/SamsungV0Decompressor.cpp b/src/librawspeed/decompressors/SamsungV0Decompressor.cpp
+index d3bc500..891d0db 100644
+--- a/src/librawspeed/decompressors/SamsungV0Decompressor.cpp
++++ b/src/librawspeed/decompressors/SamsungV0Decompressor.cpp
+@@ -175,6 +175,10 @@ void SamsungV0Decompressor::decompressStrip(uint32 y,
+ 
+     if (dir) {
+       // Upward prediction
++
++      if (x + 16 >= width)
++        ThrowRDE("Upward prediction for the last block of pixels. Raw corrupt");
++
+       // First we decode even pixels
+       for (int c = 0; c < 16; c += 2) {
+         int b = len[c >> 3];
+-- 
+2.7.4
+

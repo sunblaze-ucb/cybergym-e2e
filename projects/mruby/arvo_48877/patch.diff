@@ -1,0 +1,26 @@
+From 960021e51989881c06c7c87b2661440c1fb2a784 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 8 Jul 2022 21:57:05 +0900
+Subject: [PATCH] numeric.c (cmpnum): call mrb_bigint_cmp() if v1 is bigint,
+ not v2.
+
+---
+ src/numeric.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/numeric.c b/src/numeric.c
+index 27a7cb8c3..7c8754e49 100644
+--- a/src/numeric.c
++++ b/src/numeric.c
+@@ -1801,7 +1801,7 @@ static mrb_int
+ cmpnum(mrb_state *mrb, mrb_value v1, mrb_value v2)
+ {
+ #ifdef MRB_USE_BIGINT
+-  if (mrb_bigint_p(v2)) {
++  if (mrb_bigint_p(v1)) {
+     return mrb_bint_cmp(mrb, v1, v2);
+   }
+ #endif
+-- 
+2.43.2
+

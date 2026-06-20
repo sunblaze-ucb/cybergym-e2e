@@ -1,0 +1,123 @@
+From 57763ca1e28547bf5a2b3989c66b600c5384da97 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Tue, 21 May 2024 17:14:21 -0700
+Subject: [PATCH] ELF stubs: go_lang different placement of DT_STRTAB,
+ DT_SYMTAB
+
+https://github.com/upx/upx/issues/825
+	modified:   p_lx_elf.cpp
+---
+ src/p_lx_elf.cpp | 34 ++++++++++++++++++++++++----------
+ 1 file changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/src/p_lx_elf.cpp b/src/p_lx_elf.cpp
+index 00c58733..ad11847d 100644
+--- a/src/p_lx_elf.cpp
++++ b/src/p_lx_elf.cpp
+@@ -2096,7 +2096,9 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+     unsigned const z_str = dt_table[Elf32_Dyn::DT_STRSZ];
+     strtab_max = !z_str ? 0 : get_te32(&dynp0[-1+ z_str].d_val);
+     unsigned const z_tab = dt_table[Elf32_Dyn::DT_STRTAB];
+-    unsigned const strtab_beg = !z_tab ? 0 : get_te32(&dynp0[-1+ z_tab].d_val);
++    unsigned const strtab_beg = !z_tab ? 0
++        : elf_get_offset_from_address(get_te32(&dynp0[-1+ z_tab].d_val));
++
+     if (!z_str || !z_tab
+     || (this->file_size - strtab_beg) < strtab_max  // strtab overlaps EOF
+         // last string in table must have terminating NUL
+@@ -2111,8 +2113,14 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+     symnum_max = elf_find_table_size(
+         Elf32_Dyn::DT_SYMTAB, Elf32_Shdr::SHT_DYNSYM) / sizeof(Elf32_Sym);
+ 
+-    unsigned const x_sym = dt_table[Elf32_Dyn::DT_SYMTAB];
+-    unsigned const v_hsh = elf_unsigned_dynamic(Elf32_Dyn::DT_HASH);
++    unsigned v_sym = dt_table[Elf32_Dyn::DT_SYMTAB];
++    if (v_sym) {
++        v_sym = elf_get_offset_from_address(get_te32(&dynp0[-1+ v_sym].d_val));
++    }
++    unsigned v_hsh = dt_table[Elf32_Dyn::DT_HASH];
++    if (v_hsh) {
++        v_hsh = elf_get_offset_from_address(get_te32(&dynp0[-1+ v_hsh].d_val));
++    }
+     if (v_hsh && file_image) {
+         hashtab = (unsigned const *)elf_find_dynamic(Elf32_Dyn::DT_HASH);
+         if (!hashtab) {
+@@ -2134,7 +2142,6 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+             throwCantPack(msg);
+         }
+ 
+-        unsigned const v_sym = !x_sym ? 0 : get_te32(&dynp0[-1+ x_sym].d_val);
+         if ((unsigned)(hashend - buckets) < nbucket
+         || !v_sym || (unsigned)file_size <= v_sym
+         || ((v_hsh < v_sym) && (v_sym - v_hsh) < sizeof(*buckets)*(2+ nbucket))
+@@ -2161,6 +2168,7 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+     }
+     unsigned const v_gsh = elf_unsigned_dynamic(Elf32_Dyn::DT_GNU_HASH);
+     if (v_gsh && file_image) {
++        // Not similar to DT_HASH because DT_GNU_HASH is not small (0x6ffffef5).
+         gashtab = (unsigned const *)elf_find_dynamic(Elf32_Dyn::DT_GNU_HASH);
+         if (!gashtab) {
+             char msg[40]; snprintf(msg, sizeof(msg),
+@@ -2220,7 +2228,6 @@ PackLinuxElf32::invert_pt_dynamic(Elf32_Dyn const *dynp, u32_t headway)
+         }
+         bmax -= symbias;
+ 
+-        u32_t const v_sym = !x_sym ? 0 : get_te32(&dynp0[-1+ x_sym].d_val);
+         unsigned r = 0;
+         if (!n_bucket || !n_bitmask || !v_sym
+         || (r=1, ((-1+ n_bitmask) & n_bitmask))  // not a power of 2
+@@ -8022,7 +8029,8 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+     unsigned const z_str = dt_table[Elf64_Dyn::DT_STRSZ];
+     strtab_max = !z_str ? 0 : get_te64(&dynp0[-1+ z_str].d_val);
+     unsigned const z_tab = dt_table[Elf64_Dyn::DT_STRTAB];
+-    unsigned const strtab_beg = !z_tab ? 0 : get_te64(&dynp0[-1+ z_tab].d_val);
++    unsigned const strtab_beg = !z_tab ? 0
++        : elf_get_offset_from_address(get_te64(&dynp0[-1+ z_tab].d_val));
+     if (!z_str || !z_tab
+     || (this->file_size - strtab_beg) < strtab_max  // strtab overlaps EOF
+         // last string in table must have terminating NUL
+@@ -8037,8 +8045,15 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+     symnum_max = elf_find_table_size(
+         Elf64_Dyn::DT_SYMTAB, Elf64_Shdr::SHT_DYNSYM) / sizeof(Elf64_Sym);
+ 
+-    unsigned const x_sym = dt_table[Elf64_Dyn::DT_SYMTAB];
+-    unsigned const v_hsh = elf_unsigned_dynamic(Elf64_Dyn::DT_HASH);
++    unsigned v_sym = dt_table[Elf64_Dyn::DT_SYMTAB];
++    if (v_sym) {
++        v_sym = elf_get_offset_from_address(get_te64(&dynp0[-1+ v_sym].d_val));
++    }
++
++    unsigned v_hsh = dt_table[Elf64_Dyn::DT_HASH];
++    if (v_hsh) {
++        v_hsh = elf_get_offset_from_address(get_te64(&dynp0[-1+ v_hsh].d_val));
++    }
+     if (v_hsh && file_image) {
+         hashtab = (unsigned const *)elf_find_dynamic(Elf64_Dyn::DT_HASH);
+         if (!hashtab) {
+@@ -8060,7 +8075,6 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+             throwCantPack(msg);
+         }
+ 
+-        unsigned const v_sym = !x_sym ? 0 : get_te64(&dynp0[-1+ x_sym].d_val);  // UPX_RSIZE_MAX_MEM
+         if ((unsigned)(hashend - buckets) < nbucket
+         || !v_sym || file_size_u <= v_sym
+         || ((v_hsh < v_sym) && (v_sym - v_hsh) < sizeof(*buckets)*(2+ nbucket))
+@@ -8087,6 +8101,7 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+     }
+     unsigned const v_gsh = elf_unsigned_dynamic(Elf64_Dyn::DT_GNU_HASH);
+     if (v_gsh && file_image) {
++        // Not similar to DT_HASH because DT_GNU_HASH is not small (0x6ffffef5).
+         gashtab = (unsigned const *)elf_find_dynamic(Elf64_Dyn::DT_GNU_HASH);
+         if (!gashtab) {
+             char msg[40]; snprintf(msg, sizeof(msg),
+@@ -8146,7 +8161,6 @@ PackLinuxElf64::invert_pt_dynamic(Elf64_Dyn const *dynp, upx_uint64_t headway)
+         }
+         bmax -= symbias;
+ 
+-        upx_uint64_t const v_sym = !x_sym ? 0 : get_te64(&dynp0[-1+ x_sym].d_val);
+         unsigned r = 0;
+         if (!n_bucket || !n_bitmask || !v_sym
+         || (r=1, ((-1+ n_bitmask) & n_bitmask))  // not a power of 2
+-- 
+2.25.1
+

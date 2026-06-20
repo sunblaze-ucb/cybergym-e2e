@@ -1,0 +1,5 @@
+task_id = "arvo:66279"
+target_prog = "pixa_recog_fuzzer"
+vul_commit = "0d4477653691a8cb4f63fa751d43574c757ccc9f"
+patch_commit = "f86cdab8d685ce5d2ea0d133c076611e3394c6c8"
+build_image = "n132/arvo:66279-fix"

@@ -1,0 +1,7 @@
+name = "mongoose"
+language = "c++"
+homepage = "https://github.com/cesanta/mongoose"
+main_repo = "https://github.com/cesanta/mongoose"
+repo_to_patch = "mongoose"
+build_image = "n132/arvo:51757-fix"
+immutable_files = ["test"]

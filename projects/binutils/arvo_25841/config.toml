@@ -1,0 +1,4 @@
+task_id = "arvo:25841"
+target_prog = "fuzz_readelf"
+vul_commit = "cc9ea2c21cd6e2c88995a7484d2c848c7d7ce71b"
+patch_commit = "5a805384b831e5946cc8dae13a75617cb4b9c080"

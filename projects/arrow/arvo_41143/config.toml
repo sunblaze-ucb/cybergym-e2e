@@ -1,0 +1,5 @@
+task_id = "arvo:41143"
+target_prog = "arrow-ipc-stream-fuzz"
+vul_commit = "50990ad5e9df494bf6dd108eeac1c8a64c550b52"
+patch_commit = "a36dd8cd208582316322b0dd6e7569785c8f2780"
+build_image = "n132/arvo:41143-fix"

@@ -1,0 +1,77 @@
+From b4c2e4d553099a85f75edf8fe9c64028e7302766 Mon Sep 17 00:00:00 2001
+From: Philip Withnall <pwithnall@endlessos.org>
+Date: Wed, 9 Dec 2020 12:07:41 +0000
+Subject: [PATCH] gdate: Validate input as UTF-8 before parsing
+
+Dates have to be valid UTF-8.
+
+oss-fuzz#28458
+
+Signed-off-by: Philip Withnall <pwithnall@endlessos.org>
+---
+ glib/gdate.c      |  6 +++++-
+ glib/tests/date.c | 24 ++++++++++++++++++++++++
+ 2 files changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/glib/gdate.c b/glib/gdate.c
+index c896c224e..391b142a8 100644
+--- a/glib/gdate.c
++++ b/glib/gdate.c
+@@ -1234,7 +1234,11 @@ g_date_set_parse (GDate       *d,
+   
+   /* set invalid */
+   g_date_clear (d, 1);
+-  
++
++  /* The input has to be valid UTF-8. */
++  if (!g_utf8_validate (str, -1, NULL))
++    return;
++
+   G_LOCK (g_date_global);
+ 
+   g_date_prepare_to_parse (str, &pt);
+diff --git a/glib/tests/date.c b/glib/tests/date.c
+index e49ec3419..38de1d9be 100644
+--- a/glib/tests/date.c
++++ b/glib/tests/date.c
+@@ -184,6 +184,29 @@ test_parse (void)
+   g_date_free (d);
+ }
+ 
++static void
++test_parse_invalid (void)
++{
++  const gchar * const strs[] =
++    {
++      /* Incomplete UTF-8 sequence */
++      "\xfd",
++    };
++  gsize i;
++
++  for (i = 0; i < G_N_ELEMENTS (strs); i++)
++    {
++      GDate *d = g_date_new ();
++
++      g_test_message ("Test %" G_GSIZE_FORMAT, i);
++      g_date_set_parse (d, strs[i]);
++
++      g_assert_false (g_date_valid (d));
++
++      g_date_free (d);
++    }
++}
++
+ static void
+ test_parse_locale_change (void)
+ {
+@@ -770,6 +793,7 @@ main (int argc, char** argv)
+   g_test_add_func ("/date/julian", test_julian_constructor);
+   g_test_add_func ("/date/dates", test_dates);
+   g_test_add_func ("/date/parse", test_parse);
++  g_test_add_func ("/date/parse/invalid", test_parse_invalid);
+   g_test_add_func ("/date/parse_locale_change", test_parse_locale_change);
+   g_test_add_func ("/date/month_substring", test_month_substring);
+   g_test_add_func ("/date/month_names", test_month_names);
+-- 
+2.43.2
+

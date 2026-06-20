@@ -1,0 +1,4 @@
+task_id = "arvo:4071"
+target_prog = "gdal_translate_fuzzer"
+vul_commit = "34ff0e4e814484d7d80eb870ceb3838588aed110"
+patch_commit = "c272d0842c43b5bbde4ccce5189fd196b5359ed9"

@@ -1,0 +1,37 @@
+From 476f3fe96b853fbe96062bff1c29355cabbaac61 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Thu, 3 Mar 2022 09:59:35 +0000
+Subject: [PATCH] oss-fuzz 45173: CFF corrupt string index, give up and error
+ out
+
+---
+ pdf/pdf_font1C.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index 89cc46c94..e68acbebc 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -1212,6 +1212,11 @@ pdfi_count_cff_index(byte *p, byte *e, int *countp)
+     p += offsize;
+     p--;                        /* stupid offsets */
+ 
++    if (last < 0) {
++        gs_throw(-1, "corrupt index");
++        return 0;
++    }
++
+     if (p + last > e) {
+         gs_throw(-1, "not enough data for index data");
+         return 0;
+@@ -1650,6 +1655,7 @@ pdfi_read_cff(pdf_context *ctx, pdfi_gs_cff_font_priv *ptpriv)
+     /* String index */
+     pstore = p;
+     p = pdfi_find_cff_index(p, e, 0, &strp, &stre);
++
+     offsets.strings_off = pstore - font->cffdata;
+ 
+     p = pdfi_count_cff_index(pstore, e, &count);
+-- 
+2.43.2
+

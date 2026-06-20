@@ -1,0 +1,49 @@
+From 519ca4efe92bd16f850cd32ac783c1015191230c Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Sat, 5 Nov 2022 13:33:14 +0000
+Subject: [PATCH] pdfwrite - fix bounds check in type 2 (CFF) font interpreter
+
+OSS-fuzz 53054 "Stack-buffer-underflow in gs_type2_interpret"
+
+The bounds check at case ce3_hflex1 only checked back to csp - 3, but
+the code here accesses back as far as csp - 7.
+
+In addition; at the flex: label (which this code gets to via a goto) we
+access as far back as csp - 12 (and ce2_flex chacks csp - 12) but the
+bounds check in ce2_hflex only goes back to -11 (we add 4 to csp
+so -7 turns into -11).
+
+Similarly at ce2_hflex checks back to csp - 5, and adds 6 to csp which
+again looks like it is potentially accessing off the bottom of the
+buffer.
+
+So fix those cases as well before OSS-fuzz can find them.
+---
+ base/gstype2.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/base/gstype2.c b/base/gstype2.c
+index 211ba10e6..b8ee18152 100644
+--- a/base/gstype2.c
++++ b/base/gstype2.c
+@@ -829,7 +829,7 @@ gs_type2_interpret(gs_type1_state * pcis, const gs_glyph_data_t *pgd,
+                         }
+                         break;
+                     case ce2_hflex:
+-                        if (!CS_CHECK_CSTACK_BOUNDS(&csp[-5], cstack))
++                        if (!CS_CHECK_CSTACK_BOUNDS(&csp[-6], cstack))
+                             return_error(gs_error_invalidfont);
+                         CS_CHECK_PUSHN(csp, cstack, 6);
+                         csp[6] = fixed_half;	/* fd/100 */
+@@ -847,7 +847,7 @@ gs_type2_interpret(gs_type1_state * pcis, const gs_glyph_data_t *pgd,
+                         *csp /= 100;	/* fd/100 */
+                         goto flex;
+                     case ce2_hflex1:
+-                        if (!CS_CHECK_CSTACK_BOUNDS(&csp[-3], cstack))
++                        if (!CS_CHECK_CSTACK_BOUNDS(&csp[-8], cstack))
+                             return_error(gs_error_invalidfont);
+                         CS_CHECK_PUSHN(csp, cstack, 4);
+                         csp[4] = fixed_half;	/* fd/100 */
+-- 
+2.25.1
+

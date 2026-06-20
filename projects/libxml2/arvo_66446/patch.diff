@@ -1,0 +1,27 @@
+From 70da4c089c8a47301697a1fc07c638d1b8f47239 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Sun, 4 Feb 2024 13:30:32 +0100
+Subject: [PATCH] valid: Fix use-after-free in xmlAddIDSafe
+
+Short-lived regression.
+---
+ valid.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/valid.c b/valid.c
+index 19d64472..ed6eeb2e 100644
+--- a/valid.c
++++ b/valid.c
+@@ -2373,7 +2373,8 @@ xmlAddIDSafe(xmlDocPtr doc, const xmlChar *value, xmlAttrPtr attr,
+     }
+ 
+     attr->atype = XML_ATTRIBUTE_ID;
+-    attr->id = ret;
++    if (!streaming)
++        attr->id = ret;
+ 
+     if (id != NULL)
+         *id = ret;
+-- 
+2.25.1
+

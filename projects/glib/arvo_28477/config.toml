@@ -1,0 +1,4 @@
+task_id = "arvo:28477"
+target_prog = "fuzz_date_time_new_from_iso8601"
+vul_commit = "737a853f8db69fb09a51351d3b505d008b03bbb3"
+patch_commit = "c3805d74ba4c46aacf9470646fdecdcba68e11d0"

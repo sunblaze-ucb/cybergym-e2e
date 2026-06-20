@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:382816119"
+target_prog = "mux_demux_api_fuzzer@MuxDemuxApi.MuxDemuxApiTest"
+vul_commit = "fcff86c71b88e5819a9676b3fd1e0a8f8176972b"
+patch_commit = "9e5ecfaf0040241da6f541c7a138229b61b10626"
+build_image = "cybergym/oss-fuzz:382816119-fix"

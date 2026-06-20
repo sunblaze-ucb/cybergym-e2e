@@ -1,0 +1,104 @@
+From 02bc24cd531ae7597dc5c93c85293870c57d8b73 Mon Sep 17 00:00:00 2001
+From: Will Jones <willjones127@gmail.com>
+Date: Tue, 28 Mar 2023 12:19:09 -0700
+Subject: [PATCH] GH-34696: [C++] Check REE arrays have no null buffer in
+ Validate() (#34697)
+
+### Rationale for this change
+
+See #34696
+
+### What changes are included in this PR?
+
+Adds another check. Also removes DCHECKs from `SetData()`, since they are redundant with the `Validate()` checks and I don't think we do that for other arrays. Having them present made it harder to get to the root cause of this error, because `SetData()` is called on the array when validating a record batch.
+
+### Are these changes tested?
+
+* [x] Add tests
+
+### Are there any user-facing changes?
+
+**This PR contains a "Critical Fix".** Without this, sending a REE array with an invalid null buffer through IPC to the C++ implementation will cause it to crash if the array is validated.
+* Closes: #34696
+
+Authored-by: Will Jones <willjones127@gmail.com>
+Signed-off-by: Will Jones <willjones127@gmail.com>
+---
+ cpp/src/arrow/array/array_run_end.cc      | 14 +-------------
+ cpp/src/arrow/array/array_run_end_test.cc | 10 ++++++++++
+ cpp/src/arrow/array/validate.cc           | 10 ++++++++++
+ 3 files changed, 21 insertions(+), 13 deletions(-)
+
+diff --git a/cpp/src/arrow/array/array_run_end.cc b/cpp/src/arrow/array/array_run_end.cc
+index 4ed20982e..f423bdb33 100644
+--- a/cpp/src/arrow/array/array_run_end.cc
++++ b/cpp/src/arrow/array/array_run_end.cc
+@@ -71,22 +71,10 @@ void RunEndEncodedArray::SetData(const std::shared_ptr<ArrayData>& data) {
+   ARROW_CHECK_EQ(data->type->id(), Type::RUN_END_ENCODED);
+   const auto* ree_type =
+       internal::checked_cast<const RunEndEncodedType*>(data->type.get());
++  ARROW_CHECK_EQ(data->child_data.size(), 2);
+   ARROW_CHECK_EQ(ree_type->run_end_type()->id(), data->child_data[0]->type->id());
+   ARROW_CHECK_EQ(ree_type->value_type()->id(), data->child_data[1]->type->id());
+ 
+-  DCHECK_EQ(data->child_data.size(), 2);
+-
+-  // A non-zero number of logical values in this array (offset + length) implies
+-  // a non-zero number of runs and values.
+-  DCHECK(data->offset + data->length == 0 || data->child_data[0]->length > 0);
+-  DCHECK(data->offset + data->length == 0 || data->child_data[1]->length > 0);
+-  // At least as many values as run_ends
+-  DCHECK_GE(data->child_data[1]->length, data->child_data[0]->length);
+-
+-  // The null count for run-end encoded arrays is always 0. Actual number of
+-  // nulls needs to be calculated through other means.
+-  DCHECK_EQ(data->null_count, 0);
+-
+   Array::SetData(data);
+   run_ends_array_ = MakeArray(this->data()->child_data[0]);
+   values_array_ = MakeArray(this->data()->child_data[1]);
+diff --git a/cpp/src/arrow/array/array_run_end_test.cc b/cpp/src/arrow/array/array_run_end_test.cc
+index 4cd55dde9..bc8b929c5 100644
+--- a/cpp/src/arrow/array/array_run_end_test.cc
++++ b/cpp/src/arrow/array/array_run_end_test.cc
+@@ -448,6 +448,16 @@ TEST_P(TestRunEndEncodedArray, Validate) {
+     ASSERT_OK(too_large_for_ree32->ValidateFull());
+   }
+ 
++  std::shared_ptr<Array> has_null_buffer = MakeArray(good_array->data()->Copy());
++  std::shared_ptr<Buffer> null_bitmap;
++  BitmapFromVector<bool>({true, false}, &null_bitmap);
++  has_null_buffer->data()->buffers[0] = null_bitmap;
++  EXPECT_RAISES_WITH_MESSAGE_THAT(
++      Invalid,
++      ::testing::HasSubstr(
++          std::string("Invalid: Run end encoded array should not have a null bitmap.")),
++      has_null_buffer->Validate());
++
+   auto too_many_children = MakeArray(good_array->data()->Copy());
+   too_many_children->data()->child_data.push_back(NULLPTR);
+   EXPECT_RAISES_WITH_MESSAGE_THAT(
+diff --git a/cpp/src/arrow/array/validate.cc b/cpp/src/arrow/array/validate.cc
+index 7da40df8f..04effeba0 100644
+--- a/cpp/src/arrow/array/validate.cc
++++ b/cpp/src/arrow/array/validate.cc
+@@ -639,6 +639,16 @@ struct ValidateArrayImpl {
+ 
+   template <typename RunEndCType>
+   Status ValidateRunEndEncoded(const RunEndEncodedType& type) {
++    if (data.child_data.size() != 2) {
++      return Status::Invalid(
++          "Run end encoded array should have 2 children; this array has ",
++          data.child_data.size());
++    }
++
++    if (data.buffers.size() > 0 && data.buffers[0] != nullptr) {
++      return Status::Invalid("Run end encoded array should not have a null bitmap.");
++    }
++
+     const auto& run_ends_data = data.child_data[0];
+     const auto& values_data = data.child_data[1];
+     RETURN_NOT_OK(ree_util::ValidateRunEndEncodedChildren(
+-- 
+2.25.1
+

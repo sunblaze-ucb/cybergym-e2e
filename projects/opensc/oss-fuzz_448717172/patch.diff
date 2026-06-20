@@ -1,0 +1,30 @@
+From 52401901801429e6b8a2bb4eeaee40a9719ad0ee Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Thu, 2 Oct 2025 09:59:43 +0200
+Subject: [PATCH] cflex: Avoid stack underflow
+
+https://issues.oss-fuzz.com/issues/448717172
+
+Signed-off-by: Jakub Jelen <jjelen@redhat.com>
+---
+ src/pkcs15init/pkcs15-cflex.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/pkcs15init/pkcs15-cflex.c b/src/pkcs15init/pkcs15-cflex.c
+index f288bb43d..8ede1ebd4 100644
+--- a/src/pkcs15init/pkcs15-cflex.c
++++ b/src/pkcs15init/pkcs15-cflex.c
+@@ -652,6 +652,10 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
+ 	sc_path_t	path = *df_path;
+ 	int		r;
+ 
++	if (path.len <= 2) {
++		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
++	}
++
+ 	/* Get the private key file */
+ 	r = sc_profile_get_file_by_path(profile, &path, prkf);
+ 	if (r < 0) {
+-- 
+2.25.1
+

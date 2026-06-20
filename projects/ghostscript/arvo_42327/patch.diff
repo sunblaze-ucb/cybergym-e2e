@@ -1,0 +1,38 @@
+From 632230836e6a5aa347c037a66f478d752b62242a Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 14 Dec 2021 08:38:15 +0000
+Subject: [PATCH] oss-fuzz 42283: Bounds check xref index before using...
+
+... it to derefence a compressed object stream
+---
+ pdf/pdf_deref.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_deref.c b/pdf/pdf_deref.c
+index fb3ce67b4..7a08c8605 100644
+--- a/pdf/pdf_deref.c
++++ b/pdf/pdf_deref.c
+@@ -538,7 +538,7 @@ static int pdfi_deref_compressed(pdf_context *ctx, uint64_t obj, uint64_t gen, p
+                                  const xref_entry *entry)
+ {
+     int code = 0;
+-    xref_entry *compressed_entry = &ctx->xref_table->xref[entry->u.compressed.compressed_stream_num];
++    xref_entry *compressed_entry;
+     pdf_c_stream *compressed_stream = NULL;
+     pdf_c_stream *SubFile_stream = NULL;
+     pdf_c_stream *Object_stream = NULL;
+@@ -552,6 +552,11 @@ static int pdfi_deref_compressed(pdf_context *ctx, uint64_t obj, uint64_t gen, p
+     pdf_name *Type = NULL;
+     pdf_obj *temp_obj;
+ 
++    if (entry->u.compressed.compressed_stream_num > ctx->xref_table->xref_size)
++        return_error(gs_error_undefined);
++
++    compressed_entry = &ctx->xref_table->xref[entry->u.compressed.compressed_stream_num];
++
+     if (ctx->args.pdfdebug) {
+         dmprintf1(ctx->memory, "%% Reading compressed object (%"PRIi64" 0 obj)", obj);
+         dmprintf1(ctx->memory, " from ObjStm with object number %"PRIi64"\n", compressed_entry->object_num);
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "arvo:55214"
+target_prog = "h5_read_fuzzer"
+vul_commit = "65eff22348634144cd5a6e77159c27eb895d54b4"
+patch_commit = "10d4a6d0941240702b5e8d77d57184a88bb69e6c"
+build_image = "n132/arvo:55214-fix"

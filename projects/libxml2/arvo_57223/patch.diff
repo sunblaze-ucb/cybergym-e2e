@@ -1,0 +1,30 @@
+From 62f199ed7d1c99999030810495bd12fd5b86fee1 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Fri, 17 Mar 2023 12:40:46 +0100
+Subject: [PATCH] malloc-fail: Add error check in htmlParseHTMLAttribute
+
+This function must return NULL is an error occurs.
+
+Found by OSS-Fuzz, see #344.
+---
+ HTMLparser.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/HTMLparser.c b/HTMLparser.c
+index 67c39385..67253dcf 100644
+--- a/HTMLparser.c
++++ b/HTMLparser.c
+@@ -2844,6 +2844,10 @@ htmlParseHTMLAttribute(htmlParserCtxtPtr ctxt, const xmlChar stop) {
+ 		out = &buffer[indx];
+ 	    }
+ 	    c = CUR_CHAR(l);
++            if (ctxt->instate == XML_PARSER_EOF) {
++                xmlFree(buffer);
++                return(NULL);
++            }
+ 	    if      (c <    0x80)
+ 		    { *out++  = c;                bits= -6; }
+ 	    else if (c <   0x800)
+-- 
+2.25.1
+

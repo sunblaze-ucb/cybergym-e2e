@@ -1,0 +1,27 @@
+From 1f79b650f75becece4a5346f49f29bea71daa72c Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Tue, 9 Feb 2021 09:48:59 -0800
+Subject: [PATCH] Fixed ASAN negative-size-param when reading content_len in
+ frame_get_metalayers. https://oss-fuzz.com/testcase-detail/5964915892420608
+
+---
+ blosc/frame.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index a9b312b1..565edac1 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -1176,6 +1176,9 @@ static int frame_get_metalayers_from_header(blosc2_frame_s* frame, blosc2_schunk
+       return BLOSC2_ERROR_READ_BUFFER;
+     }
+     swap_store(&content_len, content_marker + 1, sizeof(content_len));
++    if (content_len < 0) {
++      return BLOSC2_ERROR_DATA;
++    }
+     metalayer->content_len = content_len;
+ 
+     // Finally, read the content
+-- 
+2.43.2
+

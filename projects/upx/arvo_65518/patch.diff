@@ -1,0 +1,28 @@
+From 6dde9f7dc03f94648ce65e203eb1ca382a63016a Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Wed, 10 Jan 2024 10:05:28 -0800
+Subject: [PATCH] find_overlay_offset() did not check carefully enough
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=65518
+https://github.com/upx/upx/issues/760
+	modified:   p_unix.cpp
+---
+ src/p_unix.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/p_unix.cpp b/src/p_unix.cpp
+index 40321268..bb472cdc 100644
+--- a/src/p_unix.cpp
++++ b/src/p_unix.cpp
+@@ -581,7 +581,7 @@ int PackUnix::find_overlay_offset(MemBuffer const &buf)
+         return false;
+ 
+     int l = ph.buf_offset + ph.getPackHeaderSize();
+-    if (l < 0 || l + 4 > bufsize)
++    if (l < 0 || i + l + 4 > bufsize)
+         throwCantUnpack("file corrupted");
+     overlay_offset = get_te32(buf + i + l);
+     if ((off_t)overlay_offset >= file_size)
+-- 
+2.25.1
+

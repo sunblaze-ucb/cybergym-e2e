@@ -1,0 +1,170 @@
+From 7ffc340a1fa789eaed82fce740e97888b9afbae1 Mon Sep 17 00:00:00 2001
+From: Oliver Chang <ochang@google.com>
+Date: Mon, 18 Aug 2025 02:00:29 +0000
+Subject: [PATCH] Fix use-after-free on icalreqstattype.debug
+
+This was found by OSS-Fuzz in
+https://issues.oss-fuzz.com/issues/392948871
+https://oss-fuzz.com/testcase-detail/5183821498089472
+
+The root cause of the use-after-free was that the `debug` string in `icalreqstattype` was allocated from a temporary ring buffer but stored in a persistent `icalvalue`. When the ring buffer wrapped, the memory was freed while still in use.
+
+The fix required making the `debug` string persistent when stored in an `icalvalue`. This involved modifying generated files by editing their inputs:
+1. Changed the generation flag for `REQUEST-STATUS` in `design-data/ical-value-types.csv` to `(m)` (manual).
+2. Manually implemented `icalvalue_new/set/get_requeststatus` in `src/libical/icalderivedvalue.c.in`. The `set` function now creates a persistent copy of the `debug` string using `icalmemory_strdup`.
+3. Manually added declarations for these functions in `src/libical/icalderivedvalue.h.in`.
+4. Updated `icalvalue_free` in `src/libical/icalvalue.c` to free the persistent `debug` string.
+5. Updated `icalvalue_clone` in `src/libical/icalvalue.c` to duplicate the persistent `debug` string, preventing double-frees.
+6. Updated documentation in `src/libical/icaltypes.h`.
+---
+ design-data/ical-value-types.csv  |  2 +-
+ src/libical/icalderivedvalue.c.in | 43 +++++++++++++++++++++++++++++++
+ src/libical/icalderivedvalue.h.in |  4 +++
+ src/libical/icaltypes.h           |  9 +++----
+ src/libical/icalvalue.c           | 21 +++++++++++++++
+ 5 files changed, 73 insertions(+), 6 deletions(-)
+
+diff --git a/design-data/ical-value-types.csv b/design-data/ical-value-types.csv
+index 80e453d3..ecb93ec1 100644
+--- a/design-data/ical-value-types.csv
++++ b/design-data/ical-value-types.csv
+@@ -30,7 +30,7 @@
+ "CLASS","5019","(m)enum icalproperty_class","string","unitary","X=10300;PUBLIC;PRIVATE;CONFIDENTIAL;NONE=10399"
+ 
+ "#Other non-standard",,,,
+-"REQUEST-STATUS","5009","(a)struct icalreqstattype","string","unitary"
++"REQUEST-STATUS","5009","(m)struct icalreqstattype","string","unitary"
+ "GEO","5004","(m)struct icalgeotype","tuple","unitary",
+ "STRING","5007","(a)const char*","string","unitary",
+ "X","5022","(m)const char*","string","unitary",
+diff --git a/src/libical/icalderivedvalue.c.in b/src/libical/icalderivedvalue.c.in
+index fabc0a46..ed392c2c 100644
+--- a/src/libical/icalderivedvalue.c.in
++++ b/src/libical/icalderivedvalue.c.in
+@@ -538,6 +538,49 @@ const char *icalvalue_get_binary(const icalvalue *value)
+     return (const char *) icalattach_get_data(value->data.v_attach);
+ }
+ 
++void icalvalue_set_requeststatus(icalvalue *value, struct icalreqstattype v)
++{
++    struct icalvalue_impl *impl;
++
++    icalerror_check_arg_rv((value != 0), "value");
++
++    icalerror_check_value_type(value, ICAL_REQUESTSTATUS_VALUE);
++    impl = (struct icalvalue_impl *)value;
++
++    if (impl->data.v_requeststatus.debug != 0) {
++        icalmemory_free_buffer((void *)impl->data.v_requeststatus.debug);
++    }
++
++    impl->data.v_requeststatus = v;
++
++    if (v.debug != 0) {
++        impl->data.v_requeststatus.debug = icalmemory_strdup(v.debug);
++    }
++
++    icalvalue_reset_kind(impl);
++}
++
++icalvalue *icalvalue_new_requeststatus(struct icalreqstattype v)
++{
++    struct icalvalue_impl *impl = icalvalue_new_impl(ICAL_REQUESTSTATUS_VALUE);
++
++    icalvalue_set_requeststatus((icalvalue *) impl, v);
++    return (icalvalue *) impl;
++}
++
++struct icalreqstattype icalvalue_get_requeststatus(const icalvalue *value)
++{
++    struct icalreqstattype rs;
++
++    rs.code = ICAL_UNKNOWN_STATUS;
++    rs.desc = NULL;
++    rs.debug = NULL;
++
++    icalerror_check_arg_rx((value != 0), "value", rs);
++    icalerror_check_value_type(value, ICAL_REQUESTSTATUS_VALUE);
++    return ((struct icalvalue_impl *)value)->data.v_requeststatus;
++}
++
+ /* The remaining interfaces are 'new', 'set' and 'get' for each of the value
+ types */
+ 
+diff --git a/src/libical/icalderivedvalue.h.in b/src/libical/icalderivedvalue.h.in
+index de985d04..535356f5 100644
+--- a/src/libical/icalderivedvalue.h.in
++++ b/src/libical/icalderivedvalue.h.in
+@@ -89,6 +89,10 @@ LIBICAL_ICAL_EXPORT void icalvalue_reset_kind(icalvalue *value);
+ #define icalvalue_set_relatedto icalvalue_set_text
+ #define icalvalue_get_relatedto icalvalue_get_text
+ 
++LIBICAL_ICAL_EXPORT icalvalue *icalvalue_new_requeststatus(struct icalreqstattype v);
++LIBICAL_ICAL_EXPORT struct icalreqstattype icalvalue_get_requeststatus(const icalvalue *value);
++LIBICAL_ICAL_EXPORT void icalvalue_set_requeststatus(icalvalue *value, struct icalreqstattype v);
++
+ <insert_code_here>
+ 
+ LIBICAL_ICAL_EXPORT icalvalue *icalvalue_new_class(enum icalproperty_class v);
+diff --git a/src/libical/icaltypes.h b/src/libical/icaltypes.h
+index c5f10566..f6260225 100644
+--- a/src/libical/icaltypes.h
++++ b/src/libical/icaltypes.h
+@@ -42,11 +42,10 @@ LIBICAL_ICAL_EXPORT bool icaltriggertype_is_null_trigger(struct icaltriggertype
+ 
+ LIBICAL_ICAL_EXPORT bool icaltriggertype_is_bad_trigger(struct icaltriggertype tr);
+ 
+-/* struct icalreqstattype. This struct contains two string pointers,
+-but don't try to free either of them. The "desc" string is a pointer
+-to a static table inside the library.  Don't try to free it. The
+-"debug" string is allocated in the ring buffer. Don't try to free it
+-either.
++/* struct icalreqstattype. This struct contains two string pointers.
++The "desc" string is a pointer to a static table inside the library.
++Don't try to free it. The "debug" string is owned by the icalvalue
++and should not be freed manually.
+ 
+ BTW, you would get that original string from
+ *icalproperty_get_requeststatus() or icalvalue_get_text(), when
+diff --git a/src/libical/icalvalue.c b/src/libical/icalvalue.c
+index 5bbf8c8d..b59bc939 100644
+--- a/src/libical/icalvalue.c
++++ b/src/libical/icalvalue.c
+@@ -141,6 +141,19 @@ icalvalue *icalvalue_clone(const icalvalue *old)
+         break;
+     }
+ 
++    case ICAL_REQUESTSTATUS_VALUE: {
++        clone->data = old->data;
++        if (old->data.v_requeststatus.debug != 0) {
++            clone->data.v_requeststatus.debug = icalmemory_strdup(old->data.v_requeststatus.debug);
++            if (clone->data.v_requeststatus.debug == 0) {
++                clone->parent = 0;
++                icalvalue_free(clone);
++                return 0;
++            }
++        }
++        break;
++    }
++
+     default: {
+         /* all of the other types are stored as values, not
+                pointers, so we can just copy the whole structure. */
+@@ -818,6 +831,14 @@ void icalvalue_free(icalvalue *v)
+         break;
+     }
+ 
++    case ICAL_REQUESTSTATUS_VALUE: {
++        if (v->data.v_requeststatus.debug != 0) {
++            icalmemory_free_buffer((void *)v->data.v_requeststatus.debug);
++            v->data.v_requeststatus.debug = 0;
++        }
++        break;
++    }
++
+     default: {
+         /* Nothing to do */
+     }
+-- 
+2.25.1
+

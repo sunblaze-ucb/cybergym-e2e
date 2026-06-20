@@ -1,0 +1,4 @@
+task_id = "arvo:10486"
+target_prog = "libssh_server_fuzzer"
+vul_commit = "5123f7955b67341e946987642354c0b123f5e1ff"
+patch_commit = "07f7fa7806e94ccaa271c185213afed80e13a77d"

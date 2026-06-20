@@ -1,0 +1,4 @@
+task_id = "arvo:57223"
+target_prog = "html"
+vul_commit = "c81d0d04bfbdbccea0c5199bced95a6af961885a"
+patch_commit = "62f199ed7d1c99999030810495bd12fd5b86fee1"

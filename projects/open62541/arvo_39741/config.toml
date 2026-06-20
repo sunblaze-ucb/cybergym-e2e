@@ -1,0 +1,5 @@
+task_id = "arvo:39741"
+target_prog = "fuzz_binary_decode"
+vul_commit = "0e340408fa4459d4bbf41ee939bee2aceffd63cd"
+patch_commit = "9e0d1ac7d752b44d4d37fb9da632388dc069f2d7"
+build_image = "n132/arvo:39741-fix"

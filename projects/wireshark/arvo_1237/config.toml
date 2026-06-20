@@ -1,0 +1,4 @@
+task_id = "arvo:1237"
+target_prog = "fuzzshark_ip_proto-udp"
+vul_commit = "26d5b3dab9ee0dc3610d56148b52f35f5cc1c496"
+patch_commit = "22f05d620f428c0769227f0173876c95fb9aead4"

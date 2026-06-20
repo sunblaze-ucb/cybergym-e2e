@@ -1,0 +1,5 @@
+task_id = "arvo:47624"
+target_prog = "fuzzshark_ip"
+vul_commit = "19e1764ca556b0ad4450b0a5b94deb27b336710f"
+patch_commit = "aef4c0c60a3a1b62d0dec952a15a0f269a1b8541"
+build_image = "n132/arvo:47624-fix"

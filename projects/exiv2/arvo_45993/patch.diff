@@ -1,0 +1,42 @@
+From d16ca65b01188d28afbe5a52b1495ac0270dd95a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Luis=20D=C3=ADaz=20M=C3=A1s?= <piponazo@gmail.com>
+Date: Thu, 31 Mar 2022 18:44:32 +0200
+Subject: [PATCH] Fix out of bounds read in isValidBoxFileType()
+
+---
+ src/jp2image_int.cpp            | 2 +-
+ unitTests/test_jp2image_int.cpp | 5 +++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/jp2image_int.cpp b/src/jp2image_int.cpp
+index 9d67bc6cc..c4a356382 100644
+--- a/src/jp2image_int.cpp
++++ b/src/jp2image_int.cpp
+@@ -11,7 +11,7 @@ namespace Exiv2::Internal {
+ 
+ bool isValidBoxFileType(const std::vector<uint8_t>& boxData) {
+   // BR & MinV are obligatory (4 + 4 bytes). Afterwards we have N compatibility lists (of size 4)
+-  if ((boxData.size() - 8u) % 4u != 0) {
++  if (boxData.size() < 8 || ((boxData.size() - 8u) % 4u) != 0) {
+     return false;
+   }
+ 
+diff --git a/unitTests/test_jp2image_int.cpp b/unitTests/test_jp2image_int.cpp
+index 6af2bb2a5..cd83c19bf 100644
+--- a/unitTests/test_jp2image_int.cpp
++++ b/unitTests/test_jp2image_int.cpp
+@@ -58,6 +58,11 @@ TEST(Jp2_FileTypeBox, withInvalidBoxDataSizeIsInvalid) {
+   ASSERT_FALSE(isValidBoxFileType(boxData));
+ }
+ 
++TEST(Jp2_FileTypeBox, withSmallBoxDataSizeIsInvalid) {
++  std::vector<std::uint8_t> boxData(7);  // Minimum size is 8
++  ASSERT_FALSE(isValidBoxFileType(boxData));
++}
++
+ TEST(Jp2_FileTypeBox, with2CLs_lastOneWithBrandValue_isValid) {
+   std::vector<std::uint8_t> boxData(16);
+   // The first 4 bytes correspond to the BR (Brand). It must have the value 'jp2\040'
+-- 
+2.43.2
+

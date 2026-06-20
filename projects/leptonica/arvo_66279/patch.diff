@@ -1,0 +1,45 @@
+From f86cdab8d685ce5d2ea0d133c076611e3394c6c8 Mon Sep 17 00:00:00 2001
+From: danblooomberg <dan.bloomberg@gmail.com>
+Date: Mon, 29 Jan 2024 10:50:58 -0800
+Subject: [PATCH] Fixed fuzzing issue #66279 (asan oss-fuzz in
+ pixa_recog_fuzzer) * test for index before doing lookup in font and baseline
+ tables
+
+---
+ src/bmf.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/bmf.c b/src/bmf.c
+index 7cd3116..f03889a 100644
+--- a/src/bmf.c
++++ b/src/bmf.c
+@@ -208,6 +208,8 @@ PIXA    *pixa;
+         return NULL;
+     if (!bmf)
+         return (PIX *)ERROR_PTR("bmf not defined", __func__, NULL);
++    if (index < 32 || index >= 127)
++        return (PIX *)ERROR_PTR("invalid index", __func__, NULL);
+ 
+     i = bmf->fonttab[index];
+     if (i == UNDEF) {
+@@ -245,6 +247,8 @@ PIXA    *pixa;
+         return ERROR_INT("bmf not defined", __func__, 1);
+     if ((index = (l_int32)chr) == 10)  /* NL */
+         return 0;
++    if (index < 32 || index >= 127)
++        return ERROR_INT("invalid index", __func__, 1);
+ 
+     i = bmf->fonttab[index];
+     if (i == UNDEF) {
+@@ -281,6 +285,8 @@ l_int32  bl, index;
+         return ERROR_INT("bmf not defined", __func__, 1);
+     if ((index = (l_int32)chr) == 10)  /* NL */
+         return 0;
++    if (index < 32 || index >= 127)
++        return ERROR_INT("invalid index", __func__, 1);
+ 
+     bl = bmf->baselinetab[index];
+     if (bl == UNDEF) {
+-- 
+2.25.1
+

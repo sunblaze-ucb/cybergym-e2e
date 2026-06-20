@@ -1,0 +1,149 @@
+From 7d124da53fdacc13f02ba4b3fe4597a352effe77 Mon Sep 17 00:00:00 2001
+From: Allen Winter <winter@kde.org>
+Date: Sat, 30 Nov 2024 15:45:19 -0500
+Subject: [PATCH] icaltypes.c - icalreqstattype_from_string don't allocate
+ empty debug str
+
+In icalreqstattype_from_string() don't allocate memory for an empty
+status.debug string.
+
+Fixes a fuzzer issue
+---
+ src/libical/icaltypes.c |  3 +-
+ src/test/CMakeLists.txt |  1 +
+ test-data/fuzz42536390  | 89 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 91 insertions(+), 2 deletions(-)
+ create mode 100644 test-data/fuzz42536390
+
+diff --git a/src/libical/icaltypes.c b/src/libical/icaltypes.c
+index 182ef1f7..5f4cc1fa 100644
+--- a/src/libical/icaltypes.c
++++ b/src/libical/icaltypes.c
+@@ -140,7 +140,7 @@ struct icalreqstattype icalreqstattype_from_string(const char *str)
+      */
+ 
+     p2 = strchr(p1 + 1, ';');
+-    if (p2 != 0 && *p2 != 0) {
++    if (p2 != 0 && *p2 != 0 && *p2 != ';') { // skipping empty debug strings
+         stat.debug = icalmemory_tmp_copy(p2 + 1);
+     }
+ 
+@@ -171,7 +171,6 @@ char *icalreqstattype_as_string_r(struct icalreqstattype stat)
+     if (stat.debug != 0) {
+         snprintf(temp, TMP_BUF_SIZE, "%d.%d;%s;%s", icalenum_reqstat_major(stat.code),
+                  icalenum_reqstat_minor(stat.code), stat.desc, stat.debug);
+-
+     } else {
+         snprintf(temp, TMP_BUF_SIZE, "%d.%d;%s", icalenum_reqstat_major(stat.code),
+                  icalenum_reqstat_minor(stat.code), stat.desc);
+diff --git a/src/test/CMakeLists.txt b/src/test/CMakeLists.txt
+index 96b456d7..02606594 100644
+--- a/src/test/CMakeLists.txt
++++ b/src/test/CMakeLists.txt
+@@ -263,6 +263,7 @@ if(LIBICAL_BUILD_TESTING_BIGFUZZ)
+     69527
+     69888 # cpu timeout fails beyond 60s
+     42536507 # cpu timeout fails beyond 60s
++    42536390
+     usban
+     usban2
+     usban3
+diff --git a/test-data/fuzz42536390 b/test-data/fuzz42536390
+new file mode 100644
+index 00000000..89adddca
+--- /dev/null
++++ b/test-data/fuzz42536390
+@@ -0,0 +1,89 @@
++BEI:
++NOG0¶CD
++END;
++BEGIN:X-ŠX*EQUEST-STATUS;4.;N;-
++REQUEST-STATUSESTST-STATATUS;4.;N;-
++PEQUEST-ST@TUS;4.;N;-
++REQUEST-STATUS;4.;N;-
++REQUES;-
++REQUEST-STATUS;4.;N;-
++REQUEST-STATUS;4.;N;-
++REQUEST-STATUS;4.;N;-
++REQUE[T-STATUS;4.;N;-
++REQUEST-STATUS;4.;N;-
++REQUEST-STATUS;4.;N;-STATUS;9223372036854775813.;N;-
++REQUEST-STATUS;4.;N;-EÒ;VALUE=ERR*OR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VAPUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROŸ	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUOR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUEVALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;â€®VALUOR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;â€®VALUOR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUOR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++ERROR	:
++X;VALUE=EÒ;VALUE=ERROR	:
++X;VALUE=EÒ;VALUE=ERRM
++REQUEST-STATUS;4.;N;-
++REQUEST-STATUS;4.;N;-
++REQUEST-STATUS;4.-STATUS;4.;NÊÒõ­E®ªº¬³Ò¬«ATUS;4.;N;-
++REQWWWNDG2¶CD
++END;
++BE
+\ No newline at end of file
+-- 
+2.25.1
+

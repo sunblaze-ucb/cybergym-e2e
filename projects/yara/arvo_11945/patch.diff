@@ -1,0 +1,48 @@
+From 7493247020e24407f120b6b29f6dd43c883e2f21 Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Wed, 19 Dec 2018 12:34:12 +0100
+Subject: [PATCH] Fix buffer overflow in dotnet module.
+
+Credit to OSS-Fuzz.
+---
+ libyara/modules/dotnet.c                                 |  10 +++++++---
+ ...uzz-testcase-minimized-dotnet_fuzzer-5725060321509376 | Bin 0 -> 1024 bytes
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+ create mode 100644 tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5725060321509376
+
+diff --git a/libyara/modules/dotnet.c b/libyara/modules/dotnet.c
+index 1fb1f0e..4a5f1a1 100644
+--- a/libyara/modules/dotnet.c
++++ b/libyara/modules/dotnet.c
+@@ -208,9 +208,13 @@ void dotnet_parse_us(
+   const uint8_t* offset = pe->data + metadata_root + us_header->Offset;
+   const uint8_t* end_of_header = offset + us_header->Size;
+ 
+-  // Make sure end of header is not past end of PE, and the first entry MUST be
+-  // a single NULL byte.
+-  if (!fits_in_pe(pe, offset, us_header->Size) || *offset != 0x00)
++  // Make sure the header size is larger than 0 and its end is not past the
++  // end of PE.
++  if (us_header->Size == 0 || !fits_in_pe(pe, offset, us_header->Size))
++    return;
++
++  // The first entry MUST be single NULL byte.
++  if (*offset != 0x00)
+     return;
+ 
+   offset++;
+diff --git a/tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5725060321509376 b/tests/oss-fuzz/dotnet_fuzzer_corpus/clusterfuzz-testcase-minimized-dotnet_fuzzer-5725060321509376
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee5cb6a528f999cbd31a99a4d28191c3391f40d0
+GIT binary patch
+literal 1024
+zcmeZ`QUC)+CI$uwOF`j3jDd#+sc~RnU<hz!U~rs((2GY4t)>1e{09PDw&0Y&ssTea
+z(5nnsRgxiyVK^CPP)&<du$L3uFp@n940CX(g9D!7KO-oZ7#Ng8gW*PEVK6|%230U%
+UaVA)3NH`Lg<59&?;tH0@0W&X}{r~^~
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

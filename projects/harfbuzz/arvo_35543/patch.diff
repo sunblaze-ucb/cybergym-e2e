@@ -1,0 +1,74 @@
+From 48edbef96f41a1ace04232af72bb2d55003614d9 Mon Sep 17 00:00:00 2001
+From: Garret Rieger <grieger@google.com>
+Date: Tue, 29 Jun 2021 13:14:26 -0700
+Subject: [PATCH 1/2] [subset] bail if region_map is in error.
+
+Fixes fuzzer case https://oss-fuzz.com/testcase-detail/5499162606043136.
+---
+ src/hb-ot-layout-common.hh | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index c78f82055..b70dc77fa 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -2788,6 +2788,7 @@ struct VariationStore
+     hb_inc_bimap_t region_map;
+     for (unsigned int i = 0; i < inner_maps.length; i++)
+       (src+src->dataSets[i]).collect_region_refs (region_map, inner_maps[i]);
++    if (region_map.in_error()) return_trace (false);
+     region_map.sort ();
+ 
+     if (unlikely (!regions.serialize_serialize (c, &(src+src->regions), region_map)))
+-- 
+2.43.2
+
+
+From 6269866bddd789be354d189ce31ad444b479a772 Mon Sep 17 00:00:00 2001
+From: Garret Rieger <grieger@google.com>
+Date: Fri, 16 Jul 2021 14:06:55 -0700
+Subject: [PATCH 2/2] [subset] Keep bimap consistent if only one of the
+ internal maps is in error.
+
+---
+ src/hb-bimap.hh            | 5 +++++
+ src/hb-ot-layout-common.hh | 3 ++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/hb-bimap.hh b/src/hb-bimap.hh
+index e9f3a6a52..d40988075 100644
+--- a/src/hb-bimap.hh
++++ b/src/hb-bimap.hh
+@@ -58,10 +58,15 @@ struct hb_bimap_t
+ 
+   void set (hb_codepoint_t lhs, hb_codepoint_t rhs)
+   {
++    if (in_error ()) return;
+     if (unlikely (lhs == HB_MAP_VALUE_INVALID)) return;
+     if (unlikely (rhs == HB_MAP_VALUE_INVALID)) { del (lhs); return; }
++
+     forw_map.set (lhs, rhs);
++    if (in_error ()) return;
++
+     back_map.set (rhs, lhs);
++    if (in_error ()) forw_map.del (lhs);
+   }
+ 
+   hb_codepoint_t get (hb_codepoint_t lhs) const { return forw_map.get (lhs); }
+diff --git a/src/hb-ot-layout-common.hh b/src/hb-ot-layout-common.hh
+index b70dc77fa..187a8816c 100644
+--- a/src/hb-ot-layout-common.hh
++++ b/src/hb-ot-layout-common.hh
+@@ -2788,7 +2788,8 @@ struct VariationStore
+     hb_inc_bimap_t region_map;
+     for (unsigned int i = 0; i < inner_maps.length; i++)
+       (src+src->dataSets[i]).collect_region_refs (region_map, inner_maps[i]);
+-    if (region_map.in_error()) return_trace (false);
++    if (region_map.in_error())
++      return_trace (false);
+     region_map.sort ();
+ 
+     if (unlikely (!regions.serialize_serialize (c, &(src+src->regions), region_map)))
+-- 
+2.43.2
+

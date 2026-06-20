@@ -1,0 +1,31 @@
+From 47e220942dfc68de777b91db1c2b3e81d0275e1b Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Tue, 11 Jan 2022 11:50:42 +0000
+Subject: [PATCH] oss-fuzz 42633: Bounds check (again) against hardcoded CMap
+ value size
+
+---
+ pdf/pdf_cmap.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/pdf/pdf_cmap.c b/pdf/pdf_cmap.c
+index 9799120cb..c0b7fab4c 100644
+--- a/pdf/pdf_cmap.c
++++ b/pdf/pdf_cmap.c
+@@ -119,8 +119,11 @@ static int cmap_endcodespacerange_func(gs_memory_t *mem, pdf_ps_ctx_t *s, byte *
+ 
+         for (i = nr; i < code_space->num_ranges; i++) {
+             int si = i - nr;
+-            memcpy(code_space->ranges[i].first, s->cur[-((si * 2) + 1)].val.string, s->cur[-((si * 2) + 1)].size);
+-            memcpy(code_space->ranges[i].last, s->cur[-(si * 2)].val.string, s->cur[-(si * 2)].size);
++            int s1 = s->cur[-((si * 2) + 1)].size < MAX_CMAP_CODE_SIZE ? s->cur[-((si * 2) + 1)].size : MAX_CMAP_CODE_SIZE;
++            int s2 = s->cur[-(si * 2)].size < MAX_CMAP_CODE_SIZE ? s->cur[-(si * 2)].size : MAX_CMAP_CODE_SIZE;
++
++            memcpy(code_space->ranges[i].first, s->cur[-((si * 2) + 1)].val.string, s1);
++            memcpy(code_space->ranges[i].last, s->cur[-(si * 2)].val.string, s2);
+             code_space->ranges[i].size = s->cur[-(si * 2)].size;
+         }
+     }
+-- 
+2.43.2
+

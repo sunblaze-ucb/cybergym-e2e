@@ -1,0 +1,31 @@
+From 1fee19e70ba0697eb707512e5f30e9eefdaee284 Mon Sep 17 00:00:00 2001
+From: Ram Mohan <ram.mohan@ittiam.com>
+Date: Mon, 13 May 2024 13:41:26 +0530
+Subject: [PATCH] fix oob access in decodeGainmapMetadata()
+
+subtraction between unsigned types results in large values due to
+wrap around behavior. This is allowing out of bound access. This is
+corrected
+
+oss-fuzz: 68933
+Test: ultrahdr_dec_fuzzer fuzzvec
+---
+ lib/src/gainmapmetadata.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/src/gainmapmetadata.cpp b/lib/src/gainmapmetadata.cpp
+index 24ae817..a2ab54c 100644
+--- a/lib/src/gainmapmetadata.cpp
++++ b/lib/src/gainmapmetadata.cpp
+@@ -41,7 +41,7 @@ status_t streamReadU8(const std::vector<uint8_t> &data, uint8_t &value, size_t &
+ }
+ 
+ status_t streamReadU32(const std::vector<uint8_t> &data, uint32_t &value, size_t &pos) {
+-  if (pos >= data.size() - 3) {
++  if (pos + 3 >= data.size()) {
+     return ERROR_JPEGR_METADATA_ERROR;
+   }
+   value = (data[pos] << 24 | data[pos + 1] << 16 | data[pos + 2] << 8 | data[pos + 3]);
+-- 
+2.25.1
+

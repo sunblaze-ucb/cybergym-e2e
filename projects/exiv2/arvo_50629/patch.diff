@@ -1,0 +1,34 @@
+From 337fe1854ff17f169032e993789a24bbb53579c4 Mon Sep 17 00:00:00 2001
+From: Christoph Hasse <hassec@users.noreply.github.com>
+Date: Fri, 26 Aug 2022 14:34:07 +0200
+Subject: [PATCH] fix(quicktimevideo) avoid out of bounds read, closes #2340
+
+---
+ src/quicktimevideo.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/quicktimevideo.cpp b/src/quicktimevideo.cpp
+index a96b3fc4c..5362ea1f4 100644
+--- a/src/quicktimevideo.cpp
++++ b/src/quicktimevideo.cpp
+@@ -668,7 +668,7 @@ void QuickTimeVideo::previewTagDecoder(size_t size) {
+   if (equalsQTimeTag(buf, "PICT"))
+     xmpData_["Xmp.video.PreviewAtomType"] = "QuickDraw Picture";
+   else
+-    xmpData_["Xmp.video.PreviewAtomType"] = Exiv2::toString(buf.data());
++    xmpData_["Xmp.video.PreviewAtomType"] = std::string{buf.c_str(), 4};
+ 
+   io_->seek(cur_pos + size, BasicIo::beg);
+ }  // QuickTimeVideo::previewTagDecoder
+@@ -685,7 +685,7 @@ void QuickTimeVideo::keysTagDecoder(size_t size) {
+   if (equalsQTimeTag(buf, "PICT"))
+     xmpData_["Xmp.video.PreviewAtomType"] = "QuickDraw Picture";
+   else
+-    xmpData_["Xmp.video.PreviewAtomType"] = Exiv2::toString(buf.data());
++    xmpData_["Xmp.video.PreviewAtomType"] = std::string{buf.c_str(), 4};
+ 
+   io_->seek(cur_pos + size, BasicIo::beg);
+ }  // QuickTimeVideo::keysTagDecoder
+-- 
+2.43.2
+

@@ -1,0 +1,5 @@
+task_id = "arvo:43372"
+target_prog = "fuzz_disas_ext-bfd_arch_i386"
+vul_commit = "0b35f123c200522998a81335dc218551ca7b3d92"
+patch_commit = "ce20459e162175710d8ef56118fc34edabfdce5e"
+build_image = "n132/arvo:43372-fix"

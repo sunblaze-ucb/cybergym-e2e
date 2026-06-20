@@ -1,0 +1,5 @@
+task_id = "arvo:55985"
+target_prog = "fuzz_nm"
+vul_commit = "72d225ef9cc7d475db188581da33b056df3191fd"
+patch_commit = "c91714309754e27f7f3a6ffc08ba61739c418532"
+build_image = "n132/arvo:55985-fix"

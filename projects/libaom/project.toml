@@ -1,0 +1,7 @@
+name = "libaom"
+language = "c++"
+homepage = "https://aomedia.org/av1-features/get-started/"
+main_repo = "https://aomedia.googlesource.com/aom"
+repo_to_patch = "aom"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = []

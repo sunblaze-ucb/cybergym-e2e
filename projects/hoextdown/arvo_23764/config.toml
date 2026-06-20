@@ -1,0 +1,4 @@
+task_id = "arvo:23764"
+target_prog = "hoedown_fuzzer"
+vul_commit = "4afac5e4db81fc93619ce139f37cb2bd8597994e"
+patch_commit = "7c7dc6ac9adce5413ab54dcd604db95a9b935b05"

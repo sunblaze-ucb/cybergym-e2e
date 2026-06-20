@@ -1,0 +1,4 @@
+task_id = "arvo:24101"
+target_prog = "arrow-ipc-stream-fuzz"
+vul_commit = "8daf7560a8249b36049e88dbfae45d0b411bd78e"
+patch_commit = "389b1535bbb40da80f441c02ff93335eb5407316"

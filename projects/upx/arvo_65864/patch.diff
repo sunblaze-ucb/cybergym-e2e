@@ -1,0 +1,35 @@
+From 2767ec54e11ac516e4a2233f183c61843d9789f0 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Sat, 27 Jan 2024 13:06:59 -0800
+Subject: [PATCH] more checking of PackUnix::p_info at unpack
+
+https://github.com/upx/upx/issues/781
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=65864
+	modified:   p_unix.cpp
+---
+ src/p_unix.cpp | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/p_unix.cpp b/src/p_unix.cpp
+index bbc30b0b..ee08e751 100644
+--- a/src/p_unix.cpp
++++ b/src/p_unix.cpp
+@@ -619,9 +619,14 @@ void PackUnix::unpack(OutputFile *fo)
+         fi->readx(&hbuf, sizeof(hbuf));
+         orig_file_size = get_te32(&hbuf.p_filesize);
+         blocksize = get_te32(&hbuf.p_blocksize);
++        off_t max_inflated = file_size * 273;  // zlib limit (256 + 16 + 1)
+ 
+-        if (file_size > (off_t)orig_file_size || blocksize > orig_file_size)
++        if (max_inflated < orig_file_size
++        ||  max_inflated < blocksize
++        ||  file_size > (off_t)orig_file_size
++        ||  blocksize > orig_file_size) {
+             throwCantUnpack("file header corrupted");
++        }
+     }
+     else
+     {
+-- 
+2.25.1
+

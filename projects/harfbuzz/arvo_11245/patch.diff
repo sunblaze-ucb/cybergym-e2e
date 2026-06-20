@@ -1,0 +1,25 @@
+From 8d98c51d133b058a845ed7a84bfe8a43083bbb03 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Sat, 3 Nov 2018 15:14:57 -0400
+Subject: [PATCH] [kern] Third try fix access violation in Format3
+
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=11245
+---
+ src/hb-ot-kern-table.hh | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/hb-ot-kern-table.hh b/src/hb-ot-kern-table.hh
+index b0ed439..e361330 100644
+--- a/src/hb-ot-kern-table.hh
++++ b/src/hb-ot-kern-table.hh
+@@ -441,7 +441,6 @@ struct KernSubTableFormat3
+   inline bool sanitize (hb_sanitize_context_t *c) const
+   {
+     TRACE_SANITIZE (this);
+-    return_trace (true); /* Disabled.  See above. */
+     return_trace (c->check_struct (this) &&
+ 		  c->check_range (kernValueZ,
+ 				  kernValueCount * sizeof (FWORD) +
+-- 
+2.7.4
+

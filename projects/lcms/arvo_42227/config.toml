@@ -1,0 +1,4 @@
+task_id = "arvo:42227"
+target_prog = "cmsIT8_load_fuzzer"
+vul_commit = "b949a3840e0ae8ae05898fb96187b0d123693d92"
+patch_commit = "32d19328855dd599bf7f15dcfd5fafd6f87fb0d5"

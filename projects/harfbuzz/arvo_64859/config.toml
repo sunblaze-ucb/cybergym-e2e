@@ -1,0 +1,5 @@
+task_id = "arvo:64859"
+target_prog = "hb-draw-fuzzer"
+vul_commit = "74e897117196629f2f736b8053386cbf2e454e11"
+patch_commit = "5b325c0ae9cdd7ca03c002d7cae92a6d17f5111b"
+build_image = "n132/arvo:64859-fix"

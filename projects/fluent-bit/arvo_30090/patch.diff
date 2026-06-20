@@ -1,0 +1,30 @@
+From 6e6cb845e96de2474456aceb8d6ffdf42b19942c Mon Sep 17 00:00:00 2001
+From: DavidKorczynski <david@adalogics.com>
+Date: Mon, 26 Apr 2021 19:04:17 +0100
+Subject: [PATCH] parser: json: fix type confusion bug (#3417)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_parser_json.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/flb_parser_json.c b/src/flb_parser_json.c
+index f3a55b3d4..1afc39a6a 100644
+--- a/src/flb_parser_json.c
++++ b/src/flb_parser_json.c
+@@ -168,6 +168,12 @@ int flb_parser_json_do(struct flb_parser *parser,
+         return *out_size;
+     }
+ 
++    /* Ensure we have an accurate type */
++    if (v->type != MSGPACK_OBJECT_STR) {
++        msgpack_unpacked_destroy(&result);
++        return *out_size;
++    }
++
+     /* Lookup time */
+     ret = flb_parser_time_lookup(v->via.str.ptr, v->via.str.size,
+                                  0, parser, &tm, &tmfrac);
+-- 
+2.43.2
+

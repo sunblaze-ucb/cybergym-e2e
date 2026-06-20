@@ -1,0 +1,63 @@
+From 2a755e7eecd2f167a5e150551bbdbaa2c4273b84 Mon Sep 17 00:00:00 2001
+From: Vincent Rabaud <vrabaud@google.com>
+Date: Thu, 30 Oct 2025 11:40:58 +0100
+Subject: [PATCH] Set alpha to 0xff in ImportYUVAFromRGBA by default
+
+Change-Id: I09d69aff23d990bf171cc0afaec0fd60e3ba9365
+---
+ src/dsp/yuv.c | 10 ++++++++++
+ src/dsp/yuv.h |  1 +
+ 2 files changed, 11 insertions(+)
+
+diff --git a/src/dsp/yuv.c b/src/dsp/yuv.c
+index fccc394c..d1b2f8a3 100644
+--- a/src/dsp/yuv.c
++++ b/src/dsp/yuv.c
+@@ -15,6 +15,7 @@
+ 
+ #include <assert.h>
+ #include <stdlib.h>
++#include <string.h>
+ 
+ #include "src/dsp/cpu.h"
+ #include "src/dsp/dsp.h"
+@@ -547,7 +548,13 @@ static void ImportYUVAFromRGBA_C(const uint8_t* r_ptr, const uint8_t* g_ptr,
+       rows_have_alpha &=
+           !WebPExtractAlpha(a_ptr, rgb_stride, width, 2, dst_a, a_stride);
+       dst_a += 2 * a_stride;
++    } else if (dst_a != NULL) {
++      int i;
++      for (i = 0; i < 2; ++i, dst_a += a_stride) {
++        memset(dst_a, 0xff, width);
++      }
+     }
++
+     // Collect averaged R/G/B(/A)
+     if (!rows_have_alpha) {
+       WebPAccumulateRGB(r_ptr, g_ptr, b_ptr, step, rgb_stride, tmp_rgb, width);
+@@ -583,7 +590,10 @@ static void ImportYUVAFromRGBALastLine_C(
+   }
+   if (row_has_alpha) {
+     row_has_alpha &= !WebPExtractAlpha(a_ptr, 0, width, 1, dst_a, 0);
++  } else if (dst_a != NULL) {
++    memset(dst_a, 0xff, width);
+   }
++
+   // Collect averaged R/G/B(/A)
+   if (!row_has_alpha) {
+     // Collect averaged R/G/B
+diff --git a/src/dsp/yuv.h b/src/dsp/yuv.h
+index 107c167e..8f1d87f8 100644
+--- a/src/dsp/yuv.h
++++ b/src/dsp/yuv.h
+@@ -232,6 +232,7 @@ static WEBP_INLINE int VP8RGBToV(int r, int g, int b, int rounding) {
+   return VP8ClipUV(v, rounding);
+ }
+ 
++// has_alpha is true if there is an alpha value that is not 0xff.
+ extern void (*WebPImportYUVAFromRGBA)(
+     const uint8_t* r_ptr, const uint8_t* g_ptr, const uint8_t* b_ptr,
+     const uint8_t* a_ptr,
+-- 
+2.25.1
+

@@ -1,0 +1,34 @@
+From 38e5e7a1f535c85f0c0c699214aca533ba552a79 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Sat, 29 Apr 2023 10:32:38 +0100
+Subject: [PATCH] GhostPDF - fix buffer overrun reading corrupted CFF font
+
+OSS-fuzz #58405
+
+There is a guard to prevent buffer overruns, but it wasn't taking the
+NULL terminator into account. In addition, I think it is possible for
+the required number of bytes to be 4, not 3, if the byte pointed to
+is 0xCC (resulting in 'E-', 'E-' being generated) and then still
+potentially requiring a NULL terminator for a total of 5 bytes.
+
+Change the 3-byte minimum space requirement to 5.
+---
+ pdf/pdf_font1C.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index e688de4ba..b1bd30318 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -693,7 +693,7 @@ pdfi_read_cff_real(byte *p, byte *e, float *val)
+ 
+     /* b0 was 30 */
+ 
+-    while (txt < buf + (sizeof buf) - 3 && p < e) {
++    while (txt < buf + (sizeof buf) - 5 && p < e) {
+         int b, n;
+ 
+         b = *p++;
+-- 
+2.25.1
+

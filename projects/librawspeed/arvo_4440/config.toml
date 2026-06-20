@@ -1,0 +1,4 @@
+task_id = "arvo:4440"
+target_prog = "LJpegDecompressorFuzzer"
+vul_commit = "2fb7cad53e051d21db0390b370bff07fcba9f2be"
+patch_commit = "ddd9d4bd666d492ed7f0a58da87caac58c69bbb7"

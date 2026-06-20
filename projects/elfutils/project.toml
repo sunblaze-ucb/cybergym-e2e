@@ -1,0 +1,7 @@
+name = "elfutils"
+language = "c++"
+homepage = "https://sourceware.org/elfutils/"
+main_repo = "git://sourceware.org/git/elfutils.git"
+repo_to_patch = "elfutils"
+build_image = "n132/arvo:42264-fix"
+immutable_files = ["tests"]

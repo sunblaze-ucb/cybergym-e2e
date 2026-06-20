@@ -1,0 +1,35 @@
+From fa8ad362852dbefad5b6796c32f2a33859b8a8e0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Veronika=20Hanul=C3=ADkov=C3=A1?= <vhanulik@redhat.com>
+Date: Fri, 25 Aug 2023 16:31:03 +0200
+Subject: [PATCH] idprime: Store container guid as string
+
+Thanks OSS-Fuzz
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=61750
+---
+ src/libopensc/card-idprime.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/libopensc/card-idprime.c b/src/libopensc/card-idprime.c
+index 962f2aad..c33fa8d4 100644
+--- a/src/libopensc/card-idprime.c
++++ b/src/libopensc/card-idprime.c
+@@ -301,14 +301,14 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t
+ 
+ 	for (i = 0; i < max_entries; i++) {
+ 		u8 *start = &buf[i * CONTAINER_OBJ_LEN];
+-		idprime_container_t new_container;
++		idprime_container_t new_container = {0};
+ 		if (start[0] == 0) /* Empty record */
+ 			break;
+ 
+ 		new_container.index = i;
+ 		/* Reading UNICODE characters but skipping second byte */
+ 		int j = 0;
+-		for (j = 0; j < MAX_CONTAINER_NAME_LEN + 1; j++) {
++		for (j = 0; j < MAX_CONTAINER_NAME_LEN; j++) {
+ 			if (start[2 * j] == 0)
+ 				break;
+ 			new_container.guid[j] = start[2 * j];
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:37211"
+target_prog = "exif_loader_fuzzer"
+vul_commit = "d0ebd6eac1f67c9a7b970179c0a88ea2b229c300"
+patch_commit = "22799320cc1187868d9a572661d12f0c3f9939b5"

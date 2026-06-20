@@ -1,0 +1,4 @@
+task_id = "arvo:56947"
+target_prog = "xpath"
+vul_commit = "457fc622d5e8e3734d9c294c81d6c1babb9c5dd5"
+patch_commit = "483793940c476483eb7ca1873100bf58a2441478"

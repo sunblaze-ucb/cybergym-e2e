@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:442261624"
+target_prog = "fuzzer-wolfssl-client-randomize"
+vul_commit = "0aa789a28907f130c9e27e15fb3bab41555d443a"
+patch_commit = "2b726ebf0bd2b7c58b39a2e89850cd5012424153"
+build_image = "cybergym/e2e:wolfssl"

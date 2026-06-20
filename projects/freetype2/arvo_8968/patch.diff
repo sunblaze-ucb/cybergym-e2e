@@ -1,0 +1,54 @@
+From a6b77ba2b39e379cd9295a9376fedf574a6ba15f Mon Sep 17 00:00:00 2001
+From: Werner Lemberg <wl@gnu.org>
+Date: Tue, 19 Jun 2018 20:09:31 +0200
+Subject: [PATCH] [sfnt] Fix CPAL heap buffer overflow.
+
+Reported as
+
+  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=8968
+
+* src/sfnt/ttcpal.c (tt_face_load_cpal): Guard CPAL version 1
+offsets.
+---
+ ChangeLog         | 11 +++++++++++
+ src/sfnt/ttcpal.c |  3 +++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/ChangeLog b/ChangeLog
+index af02921..0b2a7ee 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,5 +1,16 @@
+ 2018-06-19  Werner Lemberg  <wl@gnu.org>
+ 
++	[sfnt] Fix CPAL heap buffer overflow.
++
++	Reported as
++
++	  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=8968
++
++	* src/sfnt/ttcpal.c (tt_face_load_cpal): Guard CPAL version 1
++	offsets.
++
++2018-06-19  Werner Lemberg  <wl@gnu.org>
++
+ 	Doh.  Don't use CPAL or COLR data if tables are missing.
+ 
+ 	Reported by Alexei.
+diff --git a/src/sfnt/ttcpal.c b/src/sfnt/ttcpal.c
+index fc78c67..9cdcec6 100644
+--- a/src/sfnt/ttcpal.c
++++ b/src/sfnt/ttcpal.c
+@@ -128,6 +128,9 @@
+       FT_UShort*  q;
+ 
+ 
++      if ( face->palette_data.num_palettes * 2 + 3U * 4 > table_size )
++        goto InvalidTable;
++
+       p += face->palette_data.num_palettes * 2;
+ 
+       type_offset        = FT_NEXT_ULONG( p );
+-- 
+2.7.4
+

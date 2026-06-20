@@ -1,0 +1,24 @@
+From 9a72869043e0377ec549a325a074e592f82ef5ed Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 27 May 2021 08:13:49 +0900
+Subject: [PATCH] array.c: check for negative shift size.
+
+---
+ src/array.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/array.c b/src/array.c
+index 739b2b3e1..a49c2399c 100644
+--- a/src/array.c
++++ b/src/array.c
+@@ -591,6 +591,7 @@ mrb_ary_shift_m(mrb_state *mrb, mrb_value self)
+   };
+   ary_modify_check(mrb, a);
+   if (len == 0 || n == 0) return mrb_ary_new(mrb);
++  if (n < 0) mrb_raise(mrb, E_ARGUMENT_ERROR, "negative array shift");
+   if (n > len) n = len;
+   val = mrb_ary_new_from_values(mrb, n, ARY_PTR(a));
+   if (ARY_SHARED_P(a)) {
+-- 
+2.43.2
+

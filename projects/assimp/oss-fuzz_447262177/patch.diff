@@ -1,0 +1,68 @@
+From 1ce99b9cf7b6e65fabbcbe9646b4dc9f7b0fee89 Mon Sep 17 00:00:00 2001
+From: tyler92 <mkhachaiants@gmail.com>
+Date: Mon, 12 Jan 2026 16:08:31 +0200
+Subject: [PATCH] MD5: Fix uninitialized pointer dereference for file with
+ invalid vertex index (#6439)
+
+A segmentation fault occurred while parsing an MD5 file that contains an invalid vertex index.
+The issue was caused by mScene->mMaterials not being kept in sync with mScene->mNumMaterials.
+As a result, the aiScene destructor could call delete on uninitialized pointers. This patch
+ensures that mScene->mNumMaterials always matches the actual contents of the mScene->mMaterials
+array. That way, if an exception is thrown during file import, delete is only called for
+properly allocated aiMaterial objects.
+---
+ code/AssetLib/MD5/MD5Loader.cpp | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/code/AssetLib/MD5/MD5Loader.cpp b/code/AssetLib/MD5/MD5Loader.cpp
+index 6df27f6b4..5feae3069 100644
+--- a/code/AssetLib/MD5/MD5Loader.cpp
++++ b/code/AssetLib/MD5/MD5Loader.cpp
+@@ -361,19 +361,19 @@ void MD5Importer::LoadMD5MeshFile() {
+ #else
+ 
+     // FIX: MD5 files exported from Blender can have empty meshes
++    unsigned int numMaterials = 0;
+     for (std::vector<MD5::MeshDesc>::const_iterator it = meshParser.mMeshes.begin(), end = meshParser.mMeshes.end(); it != end; ++it) {
+         if (!(*it).mFaces.empty() && !(*it).mVertices.empty()) {
+-            ++mScene->mNumMaterials;
++            ++numMaterials;
+         }
+     }
+ 
+     // generate all meshes
+-    mScene->mNumMeshes = mScene->mNumMaterials;
+-    mScene->mMeshes = new aiMesh *[mScene->mNumMeshes];
+-    mScene->mMaterials = new aiMaterial *[mScene->mNumMeshes];
++    mScene->mMeshes = new aiMesh *[numMaterials];
++    mScene->mMaterials = new aiMaterial *[numMaterials];
+ 
+     //  storage for node mesh indices
+-    pcNode->mNumMeshes = mScene->mNumMeshes;
++    pcNode->mNumMeshes = numMaterials;
+     pcNode->mMeshes = new unsigned int[pcNode->mNumMeshes];
+     for (unsigned int m = 0; m < pcNode->mNumMeshes; ++m) {
+         pcNode->mMeshes[m] = m;
+@@ -386,7 +386,10 @@ void MD5Importer::LoadMD5MeshFile() {
+             continue;
+         }
+ 
+-        aiMesh *mesh = mScene->mMeshes[n] = new aiMesh();
++        aiMesh* mesh = new aiMesh();
++        mScene->mMeshes[n] = mesh;
++        ++mScene->mNumMeshes;
++
+         mesh->mPrimitiveTypes = aiPrimitiveType_TRIANGLE;
+ 
+         // generate unique vertices in our internal verbose format
+@@ -508,6 +511,7 @@ void MD5Importer::LoadMD5MeshFile() {
+         // generate a material for the mesh
+         aiMaterial *mat = new aiMaterial();
+         mScene->mMaterials[n] = mat;
++        ++mScene->mNumMaterials;
+ 
+         // insert the typical doom3 textures:
+         // nnn_local.tga  - normal map
+-- 
+2.25.1
+

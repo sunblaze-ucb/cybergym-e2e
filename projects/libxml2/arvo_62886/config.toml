@@ -1,0 +1,5 @@
+task_id = "arvo:62886"
+target_prog = "xpath"
+vul_commit = "61e29b6949c8878fbc20e46248d631b336e8bcc1"
+patch_commit = "f0a703dac85ad9398f208d3237ca19c483368834"
+build_image = "n132/arvo:62886-fix"

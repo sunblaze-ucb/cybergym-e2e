@@ -1,0 +1,4 @@
+task_id = "arvo:46883"
+target_prog = "monster_fuzzer"
+vul_commit = "746c73b910f11fcf5da0b4727bce0909d8a573e4"
+patch_commit = "234d86c92aee0e6b77a3fcf7de44f62390ca2088"

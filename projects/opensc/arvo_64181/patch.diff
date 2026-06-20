@@ -1,0 +1,34 @@
+From 4013a807492568bf9907cfb3df41f130ac83c7b9 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Wed, 15 Nov 2023 10:53:46 +0100
+Subject: [PATCH] setcos: Avoid writing behind the path buffer end
+
+The path->value buffer is fixed to 16 bytes so it is not always possible
+to append 2 more bytes. Doing so overruns the buffer, writing into the
+ACL block, crashing during the cleanup.
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64181
+---
+ src/pkcs15init/pkcs15-setcos.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/pkcs15init/pkcs15-setcos.c b/src/pkcs15init/pkcs15-setcos.c
+index 70a28048..1eeeda06 100644
+--- a/src/pkcs15init/pkcs15-setcos.c
++++ b/src/pkcs15init/pkcs15-setcos.c
+@@ -287,6 +287,10 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
+ 	file->id += num;
+ 	p = &file->path;
+ 	*p = profile->df_info->file->path;
++	if (p->len + 2 > SC_MAX_PATH_SIZE) {
++		sc_file_free(file);
++		return SC_ERROR_INVALID_DATA;
++	}
+ 	p->value[p->len++] = (u8) (file->id / 256);
+ 	p->value[p->len++] = (u8) (file->id % 256);
+ 
+-- 
+2.25.1
+

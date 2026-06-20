@@ -1,0 +1,27 @@
+From 03ca9ca984a649bbb13289f2b7445a4651c39704 Mon Sep 17 00:00:00 2001
+From: Aurelien David <aurelien.david@telecom-paristech.fr>
+Date: Tue, 16 Jul 2024 13:31:26 +0200
+Subject: [PATCH] dash_client: add string len check
+
+ossfuzz issue 70342
+---
+ src/media_tools/dash_client.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/media_tools/dash_client.c b/src/media_tools/dash_client.c
+index 6b1f874df..586495792 100644
+--- a/src/media_tools/dash_client.c
++++ b/src/media_tools/dash_client.c
+@@ -10380,7 +10380,8 @@ char *gf_dash_group_get_template(GF_DashClient *dash, u32 idx, u32 *segment_time
+ 		if (!last_non_num || (last_num>=last_non_num+1)) {
+ 			u32 num;
+ 			char szVal[100];
+-			solved_template[last_num+1] = 0;
++			if (len > last_num + 1)
++				solved_template[last_num+1] = 0;
+ 			num = atoi(solved_template + (last_non_num ? (last_non_num+1) : 0));
+ 			snprintf(szVal, 100, "%u", num);
+ 			len = (u32) strlen(szVal);
+-- 
+2.25.1
+

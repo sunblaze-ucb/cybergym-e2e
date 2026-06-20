@@ -1,0 +1,25 @@
+From 443b7fb51e1ca89a1178180258a0f10ed353617d Mon Sep 17 00:00:00 2001
+From: Alex Tutubalin <lexa@lexa.ru>
+Date: Tue, 21 Feb 2023 19:52:16 +0300
+Subject: [PATCH] prevent buffer overrun in buffer_datastream::scanf_one
+
+---
+ src/libraw_datastream.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libraw_datastream.cpp b/src/libraw_datastream.cpp
+index 898761de..60593b42 100644
+--- a/src/libraw_datastream.cpp
++++ b/src/libraw_datastream.cpp
+@@ -460,7 +460,7 @@ int LibRaw_buffer_datastream::scanf_one(const char *fmt, void *val)
+   if (scanf_res > 0)
+   {
+     int xcnt = 0;
+-    while (streampos < streamsize)
++    while (streampos < streamsize-1)
+     {
+       streampos++;
+       xcnt++;
+-- 
+2.25.1
+

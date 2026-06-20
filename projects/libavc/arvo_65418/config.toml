@@ -1,0 +1,5 @@
+task_id = "arvo:65418"
+target_prog = "mvc_dec_fuzzer"
+vul_commit = "28727baf58aa7c8983769aff1ceecb3121a26ee6"
+patch_commit = "a20a5df162992908b166644f4d5b7dad96b4cdfd"
+build_image = "n132/arvo:65418-fix"

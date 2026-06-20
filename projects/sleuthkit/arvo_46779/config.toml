@@ -1,0 +1,5 @@
+task_id = "arvo:46779"
+target_prog = "sleuthkit_fls_ntfs_fuzzer"
+vul_commit = "3bb323fbd6d56ec5d78e3c512bbb12c61e767530"
+patch_commit = "803484dc3e71379d1cc3e3a2f0c56e3891b1c7bd"
+build_image = "n132/arvo:46779-fix"

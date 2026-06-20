@@ -1,0 +1,65 @@
+From 4361438987347d0f2507b7dcb3c4179b5e38d034 Mon Sep 17 00:00:00 2001
+From: Jack Lloyd <jack@randombit.net>
+Date: Thu, 1 Mar 2018 11:00:23 -0500
+Subject: [PATCH] Initialize z arrays within bigint_cnd_{sub,add}
+
+MSan requires compile time information about memory writes,
+so the inline asm writing to z is not seen. So OSS-Fuzz thinks
+the value is being used uninitialized.
+
+OSS-Fuzz 6626
+---
+ src/lib/math/mp/mp_core.cpp | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/lib/math/mp/mp_core.cpp b/src/lib/math/mp/mp_core.cpp
+index 8b7b7a8..a86bbf3 100644
+--- a/src/lib/math/mp/mp_core.cpp
++++ b/src/lib/math/mp/mp_core.cpp
+@@ -41,9 +41,9 @@ word bigint_cnd_add(word cnd, word x[], const word y[], size_t size)
+    const word mask = CT::expand_mask(cnd);
+ 
+    word carry = 0;
+-   word z[8];
+ 
+    const size_t blocks = size - (size % 8);
++   word z[8] = { 0 };
+ 
+    for(size_t i = 0; i != blocks; i += 8)
+       {
+@@ -55,8 +55,8 @@ word bigint_cnd_add(word cnd, word x[], const word y[], size_t size)
+ 
+    for(size_t i = blocks; i != size; ++i)
+       {
+-      const word z = word_add(x[i], y[i], &carry);
+-      x[i] = CT::select(mask, z, x[i]);
++      z[0] = word_add(x[i], y[i], &carry);
++      x[i] = CT::select(mask, z[0], x[i]);
+       }
+ 
+    return carry & mask;
+@@ -71,9 +71,9 @@ word bigint_cnd_sub(word cnd, word x[], const word y[], size_t size)
+    const word mask = CT::expand_mask(cnd);
+ 
+    word carry = 0;
+-   word z[8];
+ 
+    const size_t blocks = size - (size % 8);
++   word z[8] = { 0 };
+ 
+    for(size_t i = 0; i != blocks; i += 8)
+       {
+@@ -85,8 +85,8 @@ word bigint_cnd_sub(word cnd, word x[], const word y[], size_t size)
+ 
+    for(size_t i = blocks; i != size; ++i)
+       {
+-      const word z = word_sub(x[i], y[i], &carry);
+-      x[i] = CT::select(mask, z, x[i]);
++      z[0] = word_sub(x[i], y[i], &carry);
++      x[i] = CT::select(mask, z[0], x[i]);
+       }
+ 
+    return carry & mask;
+-- 
+2.7.4
+

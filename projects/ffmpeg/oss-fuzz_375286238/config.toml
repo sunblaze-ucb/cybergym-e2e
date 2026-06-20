@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:375286238"
+target_prog = "ffmpeg_AV_CODEC_ID_HYMT_fuzzer"
+vul_commit = "aec2933344b2b32fc931bdf0b46eef1bd42225ff"
+patch_commit = "ef71552cf970876085d99834abdb8e429aea9730"
+build_image = "cybergym/oss-fuzz:375286238-fix"

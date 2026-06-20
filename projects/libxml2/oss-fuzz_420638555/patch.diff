@@ -1,0 +1,56 @@
+From 77c583e0f7fb9e281caa775b6238a500e079b55a Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Tue, 27 May 2025 12:19:25 +0200
+Subject: [PATCH] valid: Readd argument check in xmlAddElementDecl
+
+Fix crashes with API fuzzer.
+---
+ fuzz/api.c | 5 ++++-
+ valid.c    | 7 ++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/fuzz/api.c b/fuzz/api.c
+index ba738db4..9e47f5eb 100644
+--- a/fuzz/api.c
++++ b/fuzz/api.c
+@@ -38,6 +38,9 @@
+ #ifndef XML_DEPRECATED
+   #define XML_DEPRECATED
+ #endif
++#ifndef XML_DEPRECATED_MEMBER
++  #define XML_DEPRECATED_MEMBER
++#endif
+ 
+ #include <libxml/catalog.h>
+ #include <libxml/HTMLtree.h>
+@@ -2649,7 +2652,7 @@ LLVMFuzzerTestOneInput(const char *data, size_t size) {
+                     oomReport = 0;
+                 /*
+                  * Don't reference XML_ELEMENT_TYPE_UNDEFINED dummy
+-                 * declarations.
++                 * declarations which can be freed by xmlAddElementDecl.
+                  */
+                 if (elem != NULL && elem->parent == NULL)
+                     elem = NULL;
+diff --git a/valid.c b/valid.c
+index 3ea9f87c..97a424f5 100644
+--- a/valid.c
++++ b/valid.c
+@@ -1101,12 +1101,9 @@ xmlAddElementDecl(xmlValidCtxt *ctxt,
+     const xmlChar *localName;
+     xmlChar *prefix = NULL;
+ 
+-    if (dtd == NULL) {
++    if ((dtd == NULL) || (name == NULL) ||
++        (type < XML_ELEMENT_TYPE_EMPTY) || (type > XML_ELEMENT_TYPE_ELEMENT))
+ 	return(NULL);
+-    }
+-    if (name == NULL) {
+-	return(NULL);
+-    }
+ 
+     /*
+      * check if name is a QName
+-- 
+2.25.1
+

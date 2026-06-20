@@ -1,0 +1,5 @@
+task_id = "arvo:61677"
+target_prog = "fuzz_disassemble"
+vul_commit = "476dd29dc60b6dc3aec0e29ce2150202cf85f7a8"
+patch_commit = "f1917fc63166d73a9d0930d96468e486a49c666d"
+build_image = "n132/arvo:61677-fix"

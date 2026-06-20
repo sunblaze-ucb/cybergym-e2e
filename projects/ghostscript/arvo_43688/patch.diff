@@ -1,0 +1,42 @@
+From 0c036b19d498afdbe07895ff605298372b3432e2 Mon Sep 17 00:00:00 2001
+From: Michael Vrhel <michael.vrhel@artifex.com>
+Date: Sat, 15 Jan 2022 22:39:50 -0800
+Subject: [PATCH] Revert part of b98c81c
+
+In http://git.ghostscript.com/?p=ghostpdl.git;a=commit;h=b98c81c443fc9ea7c6351eff306da74765d2581e
+
+I made an aggressive abort of the pdf14 device when the page rendering
+had failed. This is not the correct thing to do as the page rendering could
+have failed for a number of non-transparency issues.
+
+Overnight tests had such an issue, which caused a seg fault.  see
+https://bugs.ghostscript.com/show_bug.cgi?id=704820
+
+The pdf14 aborts need to occur further up stream.  I will do some additional
+testing to see that various group push and pop failures are handled properly
+and add the needed device abort.
+---
+ pdf/pdf_page.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/pdf/pdf_page.c b/pdf/pdf_page.c
+index 681c4aad9..aed1eeef6 100644
+--- a/pdf/pdf_page.c
++++ b/pdf/pdf_page.c
+@@ -834,12 +834,10 @@ int pdfi_page_render(pdf_context *ctx, uint64_t page_num, bool init_graphics)
+ 
+     if (ctx->page.has_transparency && page_group_known) {
+         code1 = pdfi_trans_end_group(ctx);
+-        if (code >= 0)
+-            code = code1;
+     }
+ 
+     if (need_pdf14) {
+-        if (code < 0) {
++        if (code1 < 0) {
+             (void)gs_abort_pdf14trans_device(ctx->pgs);
+             goto exit1;
+         }
+-- 
+2.43.2
+

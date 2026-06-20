@@ -1,0 +1,4 @@
+task_id = "arvo:33340"
+target_prog = "libjpeg_turbo_fuzzer"
+vul_commit = "785ec30eb4754e11c961de41047785c6ead07f7b"
+patch_commit = "4de8f6922a9be7d0a51a429e367283fd40031b26"

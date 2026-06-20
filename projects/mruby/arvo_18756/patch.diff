@@ -1,0 +1,25 @@
+From 45aa5081e418423b47a32a06e0515406f63b64d2 Mon Sep 17 00:00:00 2001
+From: KOBAYASHI Shuji <shuujii@gmail.com>
+Date: Thu, 7 Nov 2019 22:16:59 +0900
+Subject: [PATCH] Clear `MRB_STR_SHARED` flag in `mrb_str_modify_keep_ascii`;
+ close #4807
+
+---
+ src/string.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/string.c b/src/string.c
+index b69a39d..251e006 100644
+--- a/src/string.c
++++ b/src/string.c
+@@ -820,6 +820,7 @@ mrb_str_modify_keep_ascii(mrb_state *mrb, struct RString *s)
+     if (shared->refcnt == 1 && s->as.heap.ptr == shared->ptr) {
+       s->as.heap.aux.capa = shared->capa;
+       s->as.heap.ptr[s->as.heap.len] = '\0';
++      RSTR_UNSET_SHARED_FLAG(s);
+       mrb_free(mrb, shared);
+     }
+     else {
+-- 
+2.7.4
+

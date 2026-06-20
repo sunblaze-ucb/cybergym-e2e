@@ -1,0 +1,4 @@
+task_id = "arvo:16445"
+target_prog = "simple_decompress"
+vul_commit = "87e31223e8da161aee4bb459d6a04801d5265f87"
+patch_commit = "a42bbb4e058063be8b61b3e00306eb6fb886a836"

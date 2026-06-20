@@ -1,0 +1,35 @@
+From 3ff059a74bcd10ead9a92cc67e5c8c006996e940 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Wed, 30 Sep 2020 23:37:09 +0200
+Subject: [PATCH] fixed length checking in oberthur profile
+
+fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25943
+---
+ src/libopensc/pkcs15-oberthur.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/libopensc/pkcs15-oberthur.c b/src/libopensc/pkcs15-oberthur.c
+index 0cc440b9..007a6182 100644
+--- a/src/libopensc/pkcs15-oberthur.c
++++ b/src/libopensc/pkcs15-oberthur.c
+@@ -400,7 +400,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
+ 		Containers = next;
+ 	}
+ 
+-	for (offs=0; offs < len;)  {
++	for (offs=0; offs + 2 + 2+2+2 + 2+2+2 + 2+36 <= len;)  {
+ 		struct container *cont;
+ 		unsigned char *ptr =  buff + offs + 2;
+ 
+@@ -451,7 +451,7 @@ sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card,
+ 	int rv;
+ 
+ 	LOG_FUNC_CALLED(ctx);
+-	for (ii=0; ii<len; ii+=5)   {
++	for (ii=0; ii+5<=len; ii+=5)   {
+ 		unsigned int file_id, size;
+ 
+ 		if(*(buff+ii) != 0xFF)
+-- 
+2.43.2
+

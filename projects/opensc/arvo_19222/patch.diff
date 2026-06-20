@@ -1,0 +1,38 @@
+From 4c67bbf3838aba9cf7e00697403d7b860bbae30b Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Wed, 4 Dec 2019 12:33:43 +0100
+Subject: [PATCH] coolkey: Avoid addressing behind allocated buffers
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=19222
+---
+ src/libopensc/card-coolkey.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-coolkey.c b/src/libopensc/card-coolkey.c
+index c95a503..f9a1a86 100644
+--- a/src/libopensc/card-coolkey.c
++++ b/src/libopensc/card-coolkey.c
+@@ -523,6 +523,9 @@ coolkey_v0_get_attribute_data(const u8 *attr, size_t buf_len, sc_cardctl_coolkey
+ 	if (r < 0) {
+ 		return r;
+ 	}
++	if (len + sizeof(coolkey_v0_attribute_header_t) > buf_len) {
++		return SC_ERROR_CORRUPTED_DATA;
++	}
+ 	if ((attr_type == CKA_CLASS) || (attr_type == CKA_CERTIFICATE_TYPE)
+ 									 || (attr_type == CKA_KEY_TYPE)) {
+ 		if (len != 4) {
+@@ -532,7 +535,7 @@ coolkey_v0_get_attribute_data(const u8 *attr, size_t buf_len, sc_cardctl_coolkey
+ 	}
+ 	/* return the length and the data */
+ 	attr_out->attribute_length = len;
+-	attr_out->attribute_value = attr+sizeof(coolkey_v0_attribute_header_t);
++	attr_out->attribute_value = attr + sizeof(coolkey_v0_attribute_header_t);
+ 	return SC_SUCCESS;
+ }
+ 
+-- 
+2.7.4
+

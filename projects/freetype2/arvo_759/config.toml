@@ -1,0 +1,5 @@
+task_id = "arvo:759"
+target_prog = "ftfuzzer"
+vul_commit = "7d7aae1de3e2aea5bad2e92b0f9d074bd5130ecd"
+patch_commit = "7bbb91fbf47fc0775cc9705673caf0c47a81f94b"
+build_image = "n132/arvo:759-fix"

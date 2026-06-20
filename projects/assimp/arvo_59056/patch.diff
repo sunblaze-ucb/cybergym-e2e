@@ -1,0 +1,25 @@
+From 5c45cdc0adb50e3b169cada0ea5ce0126d04184a Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Wed, 16 Aug 2023 07:45:23 +0000
+Subject: [PATCH] Fix Invalid-free in Assimp::FBX::Scope::Scope
+
+---
+ code/AssetLib/FBX/FBXParser.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/code/AssetLib/FBX/FBXParser.cpp b/code/AssetLib/FBX/FBXParser.cpp
+index c7b579665..955e811cb 100644
+--- a/code/AssetLib/FBX/FBXParser.cpp
++++ b/code/AssetLib/FBX/FBXParser.cpp
+@@ -211,7 +211,7 @@ Scope::Scope(Parser& parser,bool topLevel)
+                 elements.insert(ElementMap::value_type(str, element));
+                 return;
+             }
+-            delete element;
++            delete_Element(element);
+             ParseError("unexpected end of file",parser.LastToken());
+         } else {
+             elements.insert(ElementMap::value_type(str, element));
+-- 
+2.25.1
+

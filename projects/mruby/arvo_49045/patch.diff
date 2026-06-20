@@ -1,0 +1,28 @@
+From 37c2f080f09390105956edb2565627f29281e24e Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Tue, 12 Jul 2022 14:48:36 +0900
+Subject: [PATCH] numeric.c (int_to_s): should not bypass base range check.
+
+---
+ src/numeric.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/src/numeric.c b/src/numeric.c
+index 96b0a6938..2365d7bbd 100644
+--- a/src/numeric.c
++++ b/src/numeric.c
+@@ -1805,11 +1805,6 @@ int_to_s(mrb_state *mrb, mrb_value self)
+   mrb_int base = 10;
+ 
+   mrb_get_args(mrb, "|i", &base);
+-#ifdef MRB_USE_BIGINT
+-  if (mrb_bigint_p(self)) {
+-    return mrb_bint_to_s(mrb, self, base);
+-  }
+-#endif
+   return mrb_integer_to_str(mrb, self, base);
+ }
+ 
+-- 
+2.43.2
+

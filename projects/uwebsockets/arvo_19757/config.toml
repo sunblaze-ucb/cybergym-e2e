@@ -1,0 +1,4 @@
+task_id = "arvo:19757"
+target_prog = "MockedEchoServer"
+vul_commit = "6fe5ea40aa8c7fd02ffc640d961d8d8f2afc5f37"
+patch_commit = "bbbe3bda1856d98153b7a533a691ec43e58d9c4d"

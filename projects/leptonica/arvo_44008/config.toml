@@ -1,0 +1,5 @@
+task_id = "arvo:44008"
+target_prog = "pix3_fuzzer"
+vul_commit = "748723a795e48ce0ec0ce2fa78082ef0c62aac9c"
+patch_commit = "f694a026b400a5f501f055e536eff2bfaa3c1bc1"
+build_image = "n132/arvo:44008-fix"

@@ -1,0 +1,4 @@
+task_id = "arvo:27816"
+target_prog = "decompress_frame_fuzzer"
+vul_commit = "9cba9d298624ebd2794e3a7d375c8e41912f8d29"
+patch_commit = "d482b4279323f70cc645a7651ace41d19de6b327"

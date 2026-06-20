@@ -1,0 +1,5 @@
+task_id = "arvo:61718"
+target_prog = "file_fuzzer"
+vul_commit = "4a3327b5b73c94a26b2deed91d0cae82d53db24a"
+patch_commit = "6c4016fd3d944a8903bdd3e6be8fcdd1bc73ca79"
+build_image = "n132/arvo:61718-fix"

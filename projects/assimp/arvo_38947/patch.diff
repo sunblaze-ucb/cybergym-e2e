@@ -1,0 +1,29 @@
+From b14b34d2b8954f6cc7fd25a8f7d20ad8f94faa27 Mon Sep 17 00:00:00 2001
+From: Alex Rebert <alexandre.rebert@gmail.com>
+Date: Wed, 5 Jan 2022 15:19:06 -0500
+Subject: [PATCH] LWSLoader: Fix out of bounds iterator access
+
+Fix https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=38947
+Fix #4222
+---
+ code/AssetLib/LWS/LWSLoader.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/code/AssetLib/LWS/LWSLoader.cpp b/code/AssetLib/LWS/LWSLoader.cpp
+index cf04579b0..e046b6f58 100644
+--- a/code/AssetLib/LWS/LWSLoader.cpp
++++ b/code/AssetLib/LWS/LWSLoader.cpp
+@@ -537,8 +537,8 @@ void LWSImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
+ 
+     // get file format version and print to log
+     ++it;
+-    
+-    if ((*it).tokens[0].empty()) {
++
++    if (it == root.children.end() || (*it).tokens[0].empty()) {
+         ASSIMP_LOG_ERROR("Invalid LWS file detectedm abort import.");
+         return;
+     }
+-- 
+2.43.2
+

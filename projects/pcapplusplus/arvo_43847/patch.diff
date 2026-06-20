@@ -1,0 +1,112 @@
+From 2295654a792beed3d2b2e81d346271089fa1cd02 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Tue, 19 Jul 2022 09:48:23 +0100
+Subject: [PATCH] Fixes Stack-buffer-overflow WRITE in
+ pcpp::IDnsResource::decodeName (#913)
+
+* Fixes Stack-buffer-overflow WRITE in pcpp::IDnsResource::decodeName
+
+Fixes Stack-buffer-overflow WRITE in pcpp::IDnsResource::decodeName:
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=43847
+
+When decoded name perfectly fits 256 char buffer, so that [255] == '.' the `resultPtr` points exactly past the buffer and `resultPtr[0] = 0;` results in off by one write violation.
+
+* Add regression test case-minimized-FuzzTarget-5814090897948672
+---
+ Packet++/src/DnsResource.cpp                    |   9 ++++++---
+ ...stcase-minimized-FuzzTarget-5814090897948672 | Bin 0 -> 39463 bytes
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+ create mode 100644 Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672
+
+diff --git a/Packet++/src/DnsResource.cpp b/Packet++/src/DnsResource.cpp
+index fe3a8fe7..bf821f18 100644
+--- a/Packet++/src/DnsResource.cpp
++++ b/Packet++/src/DnsResource.cpp
+@@ -138,9 +138,12 @@ size_t IDnsResource::decodeName(const char* encodedName, char* result, int itera
+ 		result[resultPtr - result - 1] = 0;
+ 	}
+ 
+-	// add the last '\0' to encodedNameLength
+-	resultPtr[0] = 0;
+-	encodedNameLength++;
++	if (resultPtr - result < 256)
++	{
++		// add the last '\0' to encodedNameLength
++		resultPtr[0] = 0;
++		encodedNameLength++;
++	}
+ 
+ 	return encodedNameLength;
+ }
+diff --git a/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672 b/Tests/Fuzzers/RegressionTests/regression_samples/clusterfuzz-testcase-minimized-FuzzTarget-5814090897948672
+new file mode 100644
+index 0000000000000000000000000000000000000000..2427f08353a9ec0d7e220853a1a5f1e82bc1aebd
+GIT binary patch
+literal 39463
+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
+E2Qa^2*#H0l
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.2
+

@@ -1,0 +1,47 @@
+From 7a5a2b6d4acbe58ed9ea4164ca0a1ee802078e8b Mon Sep 17 00:00:00 2001
+From: "Victor M. Alvarez" <vmalvarez@virustotal.com>
+Date: Fri, 9 Aug 2019 14:59:37 +0200
+Subject: [PATCH] Fix a heap overrun in the dotnet module. (#1108)
+
+A heap overrun can occur in call to set_sized_string when called with blob_offset and blob_result.length values that are not validated to be within the boundaries of the buffer containing the PE file. The validation was being done before adding blob_result.length to blob_offset.
+
+Credit to OSS-Fuzz for finding this bug.
+---
+ libyara/modules/dotnet.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/libyara/modules/dotnet.c b/libyara/modules/dotnet.c
+index 9648a36..065f9d0 100644
+--- a/libyara/modules/dotnet.c
++++ b/libyara/modules/dotnet.c
+@@ -1137,7 +1137,10 @@ void dotnet_parse_tilde_2(
+         break;
+ 
+       case BIT_ASSEMBLYREF:
+-        row_size = (2 + 2 + 2 + 2 + 4 + (index_sizes.blob * 2) + (index_sizes.string * 2));
++        row_size = (2 + 2 + 2 + 2 + 4 +
++            (index_sizes.blob * 2) +
++            (index_sizes.string * 2));
++
+         row_ptr = table_offset;
+ 
+         for (i = 0; i < num_rows; i++)
+@@ -1166,6 +1169,7 @@ void dotnet_parse_tilde_2(
+                 assemblyref_table->PublicKeyOrToken.PublicKeyOrToken_Short;
+ 
+           blob_result = dotnet_parse_blob_entry(pe, blob_offset);
++          blob_offset += blob_result.size;
+ 
+           if (blob_result.size == 0 ||
+               !fits_in_pe(pe, blob_offset, blob_result.length))
+@@ -1177,7 +1181,6 @@ void dotnet_parse_tilde_2(
+           // Avoid empty strings.
+           if (blob_result.length > 0)
+           {
+-            blob_offset += blob_result.size;
+             set_sized_string((char*) blob_offset,
+                 blob_result.length, pe->object,
+                 "assembly_refs[%i].public_key_or_token", i);
+-- 
+2.7.4
+

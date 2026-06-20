@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:404921047"
+target_prog = "wasm_mutator_fuzz_loader"
+vul_commit = "793135b41c81cec489a8acb894bf46dcaa18913c"
+patch_commit = "9aaf3599ec69469f6ab3b4373bfb0d8e6b3345b9"
+build_image = "cybergym/e2e:wamr"

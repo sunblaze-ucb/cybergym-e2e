@@ -1,0 +1,106 @@
+From 587ce1dc5fcf4172591bdfdcb8882d47507d7daa Mon Sep 17 00:00:00 2001
+From: Antoine Pitrou <antoine@python.org>
+Date: Wed, 24 Nov 2021 10:26:20 +0100
+Subject: [PATCH] ARROW-14792: [C++] Fix crash when reading DELTA_BYTE_ARRAY
+ Parquet file
+
+Should fix the following issues (found by OSS-Fuzz):
+
+* https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=41221
+* https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=41222
+
+Closes #11756 from pitrou/ARROW-14792-delta-byte-array-fuzz
+
+Authored-by: Antoine Pitrou <antoine@python.org>
+Signed-off-by: Antoine Pitrou <antoine@python.org>
+---
+ cpp/src/parquet/encoding.cc | 43 ++++++++++++++++++++-----------------
+ testing                     |  2 +-
+ 2 files changed, 24 insertions(+), 21 deletions(-)
+
+diff --git a/cpp/src/parquet/encoding.cc b/cpp/src/parquet/encoding.cc
+index 783e8680e..57a718608 100644
+--- a/cpp/src/parquet/encoding.cc
++++ b/cpp/src/parquet/encoding.cc
+@@ -2424,8 +2424,11 @@ class DeltaByteArrayDecoder : public DecoderImpl,
+         reinterpret_cast<const int32_t*>(buffered_prefix_length_->data()) +
+         prefix_len_offset_;
+     for (int i = 0; i < max_values; ++i) {
+-      if (AddWithOverflow(data_size, prefix_len_ptr[i], &data_size) ||
+-          AddWithOverflow(data_size, buffer[i].len, &data_size)) {
++      if (ARROW_PREDICT_FALSE(prefix_len_ptr[i] < 0)) {
++        throw ParquetException("negative prefix length in DELTA_BYTE_ARRAY");
++      }
++      if (ARROW_PREDICT_FALSE(AddWithOverflow(data_size, prefix_len_ptr[i], &data_size) ||
++                              AddWithOverflow(data_size, buffer[i].len, &data_size))) {
+         throw ParquetException("excess expansion in DELTA_BYTE_ARRAY");
+       }
+     }
+@@ -2435,7 +2438,7 @@ class DeltaByteArrayDecoder : public DecoderImpl,
+     uint8_t* data_ptr = buffered_data_->mutable_data();
+     for (int i = 0; i < max_values; ++i) {
+       if (ARROW_PREDICT_FALSE(static_cast<size_t>(prefix_len_ptr[i]) > prefix.length())) {
+-        throw ParquetException("prefix length too large");
++        throw ParquetException("prefix length too large in DELTA_BYTE_ARRAY");
+       }
+       memcpy(data_ptr, prefix.data(), prefix_len_ptr[i]);
+       // buffer[i] currently points to the string suffix
+@@ -2461,31 +2464,31 @@ class DeltaByteArrayDecoder : public DecoderImpl,
+                           typename EncodingTraits<ByteArrayType>::Accumulator* out,
+                           int* out_num_values) {
+     ArrowBinaryHelper helper(out);
+-    ::arrow::internal::BitmapReader bit_reader(valid_bits, valid_bits_offset, num_values);
+ 
+     std::vector<ByteArray> values(num_values);
+-    int num_valid_values = GetInternal(values.data(), num_values - null_count);
++    const int num_valid_values = GetInternal(values.data(), num_values - null_count);
+     DCHECK_EQ(num_values - null_count, num_valid_values);
+ 
+     auto values_ptr = reinterpret_cast<const ByteArray*>(values.data());
+     int value_idx = 0;
+ 
+-    for (int i = 0; i < num_values; ++i) {
+-      bool is_valid = bit_reader.IsSet();
+-      bit_reader.Next();
++    RETURN_NOT_OK(VisitNullBitmapInline(
++        valid_bits, valid_bits_offset, num_values, null_count,
++        [&]() {
++          const auto& val = values_ptr[value_idx];
++          if (ARROW_PREDICT_FALSE(!helper.CanFit(val.len))) {
++            RETURN_NOT_OK(helper.PushChunk());
++          }
++          RETURN_NOT_OK(helper.Append(val.ptr, static_cast<int32_t>(val.len)));
++          ++value_idx;
++          return Status::OK();
++        },
++        [&]() {
++          RETURN_NOT_OK(helper.AppendNull());
++          --null_count;
++          return Status::OK();
++        }));
+ 
+-      if (is_valid) {
+-        const auto& val = values_ptr[value_idx];
+-        if (ARROW_PREDICT_FALSE(!helper.CanFit(val.len))) {
+-          RETURN_NOT_OK(helper.PushChunk());
+-        }
+-        RETURN_NOT_OK(helper.Append(val.ptr, static_cast<int32_t>(val.len)));
+-        ++value_idx;
+-      } else {
+-        RETURN_NOT_OK(helper.AppendNull());
+-        --null_count;
+-      }
+-    }
+     DCHECK_EQ(null_count, 0);
+     *out_num_values = num_valid_values;
+     return Status::OK();
+diff --git a/testing b/testing
+index 93ef4a7bb..d6c7b9d67 160000
+--- a/testing
++++ b/testing
+@@ -1 +1 @@
+-Subproject commit 93ef4a7bbf8cc629fa1f82bf38bb6e89cda91d40
++Subproject commit d6c7b9d670f3cc3af4a27e043749300b9d27addf
+-- 
+2.43.2
+

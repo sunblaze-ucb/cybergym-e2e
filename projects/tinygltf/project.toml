@@ -1,0 +1,7 @@
+name = "tinygltf"
+language = "c++"
+homepage = "https://github.com/syoyo/tinygltf"
+main_repo = "https://github.com/syoyo/tinygltf.git"
+repo_to_patch = "tinygltf"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"
+immutable_files = ["tests", "test_runner.py"]

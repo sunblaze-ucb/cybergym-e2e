@@ -1,0 +1,36 @@
+From 878ef436e6cf401e5134899d70d5a8c0815cd549 Mon Sep 17 00:00:00 2001
+From: Christian Egli <christian.egli@sbs.ch>
+Date: Wed, 8 Nov 2023 13:52:13 +0100
+Subject: [PATCH] Fail if the size param to memcpy is negative
+
+Make sure the size param for memcpy is not negative.
+
+This should fix https://oss-fuzz.com/testcase-detail/6608976274653184
+also mentioned in https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=60723
+
+For inspiration I looked at
+https://github.com/inikep/lizard/commit/02491c71c2e6fd5c10997404df2f18d0fc7afadb
+---
+ liblouis/lou_translateString.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/liblouis/lou_translateString.c b/liblouis/lou_translateString.c
+index 53c5e711..4f38a1a7 100644
+--- a/liblouis/lou_translateString.c
++++ b/liblouis/lou_translateString.c
+@@ -478,8 +478,10 @@ swapReplace(int start, int end, const TranslationTableHeader *table,
+ 			int d = output->length + l;
+ 			if (d > output->maxlength) return 0;
+ 			while (--d >= output->length) posMapping[d] = p;
+-			memcpy(&output->chars[output->length], &replacements[k + 1],
+-					l * sizeof(*output->chars));
++			// if length is negative fail
++			int length = l * sizeof(*output->chars);
++			if (length < 0) return 0;
++			memcpy(&output->chars[output->length], &replacements[k + 1], length);
+ 			output->length += l;
+ 		}
+ 	}
+-- 
+2.25.1
+

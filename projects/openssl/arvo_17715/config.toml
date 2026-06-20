@@ -1,0 +1,4 @@
+task_id = "arvo:17715"
+target_prog = "x509"
+vul_commit = "45b244620a74248b46ebe1c85e86437b9641447a"
+patch_commit = "aec9667bd19a8ca9bdd519db3a231a95b9e92674"

@@ -1,0 +1,29 @@
+From a40c0dede301c1c0db9458b6a401fba6c199ebd4 Mon Sep 17 00:00:00 2001
+From: Aurelien David <aurelien.david@telecom-paristech.fr>
+Date: Mon, 14 Oct 2024 12:28:29 +0200
+Subject: [PATCH] prevent UAF on gf_m2ts_es_del
+
+ossfuzz issue 372994344
+---
+ src/media_tools/mpegts.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/media_tools/mpegts.c b/src/media_tools/mpegts.c
+index b34a8b2ac..fb6513eed 100644
+--- a/src/media_tools/mpegts.c
++++ b/src/media_tools/mpegts.c
+@@ -301,6 +301,11 @@ static void gf_m2ts_es_del(GF_M2TS_ES *es, GF_M2TS_Demuxer *ts)
+ 
+ 	}
+ 	if (es->slcfg) gf_free(es->slcfg);
++	for (u32 i=0; i<GF_M2TS_MAX_STREAMS; i++) {
++		if (ts->ess[i]==es) {
++			ts->ess[i] = NULL;
++		}
++	}
+ 	gf_free(es);
+ }
+ 
+-- 
+2.25.1
+

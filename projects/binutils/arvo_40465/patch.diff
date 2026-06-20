@@ -1,0 +1,91 @@
+From 6ef4fa071e2c25b71e81a91646b43378cf957388 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 3 Nov 2021 16:21:42 +1030
+Subject: [PATCH] asan: dlltool buffer overflow: embedded NUL in string
+
+yyleng gives the pattern length, xstrdup just copies up to the NUL.
+So it is quite possible writing at an index of yyleng-2 overflows
+the xstrdup allocated string buffer.  xmemdup quite handily avoids
+this problem, even writing the terminating NUL over the trailing
+quote.  Use it in ldlex.l too where we'd already had a report of this
+problem and fixed it by hand, and to implement xmemdup0 in gas.
+
+binutils/
+	* deflex.l (single and double quote strings): Use xmemdup.
+gas/
+	* as.h (xmemdup0): Use xmemdup.
+ld/
+	PR 20906
+	* ldlex.l (double quote string): Use xmemdup.
+---
+ binutils/deflex.l |  6 ++----
+ gas/as.h          |  4 +---
+ ld/ldlex.l        | 16 ++++------------
+ 3 files changed, 7 insertions(+), 19 deletions(-)
+
+diff --git a/binutils/deflex.l b/binutils/deflex.l
+index 1f3ba6532d4..def908c1139 100644
+--- a/binutils/deflex.l
++++ b/binutils/deflex.l
+@@ -69,14 +69,12 @@ int linenumber;
+ 		}
+ 
+ "\""[^\"]*"\"" {
+-		yylval.id = xstrdup (yytext+1);
+-		yylval.id[yyleng-2] = 0;
++		yylval.id = xmemdup (yytext + 1, yyleng - 2, yyleng - 1);
+ 		return ID;
+ 		}
+ 
+ "\'"[^\']*"\'" {
+-		yylval.id = xstrdup (yytext+1);
+-		yylval.id[yyleng-2] = 0;
++		yylval.id = xmemdup (yytext + 1, yyleng - 2, yyleng - 1);
+ 		return ID;
+ 		}
+ "*".* 		{ }
+diff --git a/gas/as.h b/gas/as.h
+index 14a768f8889..f3f12fbd2f8 100644
+--- a/gas/as.h
++++ b/gas/as.h
+@@ -484,9 +484,7 @@ void add_debug_prefix_map (const char *);
+ static inline char *
+ xmemdup0 (const char *in, size_t len)
+ {
+-  char *out = (char *) xmalloc (len + 1);
+-  out[len] = 0;
+-  return (char *) memcpy (out, in, len);
++  return xmemdup (in, len, len + 1);
+ }
+ 
+ struct expressionS;
+diff --git a/ld/ldlex.l b/ld/ldlex.l
+index 6aeba6de656..5db1e731b74 100644
+--- a/ld/ldlex.l
++++ b/ld/ldlex.l
+@@ -431,18 +431,10 @@ V_IDENTIFIER [*?.$_a-zA-Z\[\]\-\!\^\\]([*?.$_a-zA-Z0-9\[\]\-\!\^\\]|::)*
+ 	}
+ 
+ <SCRIPT,EXPRESSION,WILD,VERS_NODE,INPUTLIST>"\""[^\"]*"\"" {
+-					/* No matter the state, quotes
+-					   give what's inside.  */
+-					bfd_size_type len;
+-					yylval.name = xstrdup (yytext + 1);
+-					/* PR ld/20906.  A corrupt input file
+-					   can contain bogus strings.  */
+-					len = strlen (yylval.name);
+-					if (len > (bfd_size_type) yyleng - 2)
+-					  len = yyleng - 2;
+-					yylval.name[len] = 0;
+-					return NAME;
+-				}
++		/* No matter the state, quotes give what's inside.  */
++		yylval.name = xmemdup (yytext + 1, yyleng - 2, yyleng - 1);
++		return NAME;
++	}
+ 
+ <SCRIPT,EXPRESSION,WILD,VERS_START,VERS_NODE,VERS_SCRIPT,INPUTLIST>"\n" {
+ 				lineno++; }
+-- 
+2.43.2
+

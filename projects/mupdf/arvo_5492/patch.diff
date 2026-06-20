@@ -1,0 +1,26 @@
+From f597300439e62f5e921f0d7b1e880b5c1a1f1607 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Tue, 23 Jan 2018 23:02:16 +0100
+Subject: [PATCH] Bug 698883: Reset cmap splay tree pointer, handling resized
+ tree.
+
+Without this change a resized cmap splay tree leads to using stale pointers.
+---
+ source/pdf/pdf-cmap.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/source/pdf/pdf-cmap.c b/source/pdf/pdf-cmap.c
+index 29d9c50..00e2afb 100644
+--- a/source/pdf/pdf-cmap.c
++++ b/source/pdf/pdf-cmap.c
+@@ -525,6 +525,7 @@ add_range(fz_context *ctx, pdf_cmap *cmap, unsigned int low, unsigned int high,
+ 					int new_high = tree[current].high;
+ 					tree[current].high = low-1;
+ 					add_range(ctx, cmap, high+1, new_high, tree[current].out + high + 1 - tree[current].low, 0, tree[current].many);
++					tree = cmap->tree;
+ 				}
+ 				/* Now look for where to move to next (left for case 0, right for case 5) */
+ 				if (tree[current].low > high) {
+-- 
+2.7.4
+

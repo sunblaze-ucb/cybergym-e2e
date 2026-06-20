@@ -1,0 +1,34 @@
+From 2b19bc239f3cedd1b2461e4265d90633277ce704 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Tue, 28 Mar 2023 11:06:23 -0700
+Subject: [PATCH] Fixing a mistake in this test source, which was doing a
+ free() that is documented as inappropriate.. 	modified:  
+ fuzz/fuzz_die_cu_attrs.c
+
+---
+ fuzz/fuzz_die_cu_attrs.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/fuzz/fuzz_die_cu_attrs.c b/fuzz/fuzz_die_cu_attrs.c
+index bb92e1f7..a19b0404 100644
+--- a/fuzz/fuzz_die_cu_attrs.c
++++ b/fuzz/fuzz_die_cu_attrs.c
+@@ -138,7 +138,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+           const char *formname = "form-name-unavailable";
+ 
+           if (res == DW_DLV_ERROR || res == DW_DLV_NO_ENTRY) {
+-            free(name);
+             dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+             dwarf_finish(dbg);
+             close(fuzz_fd);
+@@ -182,7 +181,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+                                        next_cu_header_offset, formnum);
+           }
+           res = dwarf_set_tied_dbg(dbg, NULL, errp);
+-          free(name);
+         }
+         dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
+       }
+-- 
+2.25.1
+

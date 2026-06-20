@@ -1,0 +1,5 @@
+task_id = "arvo:59814"
+target_prog = "color_conversion_fuzzer"
+vul_commit = "a26bcb0b219cca182e7aedded4fdc1001eb36f5f"
+patch_commit = "94e5a84d1f05fe905e91a41e8a17e29437c3c15e"
+build_image = "n132/arvo:59814-fix"

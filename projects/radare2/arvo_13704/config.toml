@@ -1,0 +1,4 @@
+task_id = "arvo:13704"
+target_prog = "ia_fuzz"
+vul_commit = "d9a15aa661c367b45cdbd6dd57035a19fc35780a"
+patch_commit = "5d65cbe1f7d677a22c0fca593dcae1aebf8cf35b"

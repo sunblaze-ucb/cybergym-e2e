@@ -1,0 +1,4 @@
+task_id = "arvo:23499"
+target_prog = "clamav_scanfile_fuzzer"
+vul_commit = "8081a6b06cc9f3ceeb06e9a8664db8ae1cca6c16"
+patch_commit = "20490786224f4a8256fb395deb9c05084db91708"

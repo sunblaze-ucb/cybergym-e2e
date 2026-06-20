@@ -1,0 +1,45 @@
+From 79ab2f6ae21059e394883f6c8e3b2a0bb97e7e48 Mon Sep 17 00:00:00 2001
+From: Kevin Backhouse <kevinbackhouse@github.com>
+Date: Wed, 7 Feb 2024 21:37:59 +0000
+Subject: [PATCH] Credit to OSS-Fuzz:
+ https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64151 nul-terminate buf
+ to avoid out-of-bounds read
+
+---
+ src/quicktimevideo.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/quicktimevideo.cpp b/src/quicktimevideo.cpp
+index 5c3a25bdf..fccc08dc9 100644
+--- a/src/quicktimevideo.cpp
++++ b/src/quicktimevideo.cpp
+@@ -906,7 +906,7 @@ void QuickTimeVideo::userDataDecoder(size_t size_external) {
+ 
+ void QuickTimeVideo::NikonTagsDecoder(size_t size_external) {
+   size_t cur_pos = io_->tell();
+-  DataBuf buf(200);
++  DataBuf buf(201);
+   DataBuf buf2(4 + 1);
+   uint32_t TagID = 0;
+   uint16_t dataLength = 0;
+@@ -1027,14 +1027,16 @@ void QuickTimeVideo::NikonTagsDecoder(size_t size_external) {
+       std::memset(buf.data(), 0x0, buf.size());
+ 
+       // Sanity check with an "unreasonably" large number
+-      if (dataLength > 200) {
++      if (dataLength >= buf.size()) {
+ #ifndef SUPPRESS_WARNINGS
+         EXV_ERROR << "Xmp.video Nikon Tags, dataLength was found to be larger than 200."
+                   << " Entries considered invalid. Not Processed.\n";
+ #endif
+         io_->seek(io_->tell() + dataLength, BasicIo::beg);
++        buf.data()[0] = '\0';
+       } else {
+         io_->readOrThrow(buf.data(), dataLength);
++        buf.data()[dataLength] = '\0';
+       }
+ 
+       if (td) {
+-- 
+2.25.1
+

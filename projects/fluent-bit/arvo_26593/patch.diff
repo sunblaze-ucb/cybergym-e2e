@@ -1,0 +1,28 @@
+From c2e33ae40af02fabe59b51637501a5be73583a15 Mon Sep 17 00:00:00 2001
+From: davkor <david@adalogics.com>
+Date: Sat, 31 Oct 2020 14:23:00 +0000
+Subject: [PATCH] utils: fix case of empty string in time to sec conversion
+ (oss-fuzz 26593)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_utils.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/flb_utils.c b/src/flb_utils.c
+index 8f46f025c..ab0bcc737 100644
+--- a/src/flb_utils.c
++++ b/src/flb_utils.c
+@@ -471,6 +471,9 @@ int flb_utils_time_to_seconds(const char *time)
+     size_t val;
+ 
+     len = strlen(time);
++    if (len == 0) {
++        return 0;
++    }
+     val = atoi(time);
+ 
+     /* String time to seconds */
+-- 
+2.43.2
+

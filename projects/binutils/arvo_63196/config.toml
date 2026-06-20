@@ -1,0 +1,5 @@
+task_id = "arvo:63196"
+target_prog = "fuzz_objdump_safe"
+vul_commit = "f46ff02f1812a157c6eb26a4b2edac2c2fbfb271"
+patch_commit = "84f24adc5ba65e7850d7a83e8839e305ef23c8d4"
+build_image = "n132/arvo:63196-fix"

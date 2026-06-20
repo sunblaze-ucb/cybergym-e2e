@@ -1,0 +1,80 @@
+From 8ae3ef28ac34fddb1cc8b03b2479f499e4af5f8a Mon Sep 17 00:00:00 2001
+From: m-holger <m-holger@kubitscheck.org>
+Date: Wed, 26 Jun 2024 12:20:46 +0100
+Subject: [PATCH] Fix #1170
+
+In QPDF::read_xrefEntry add buffer overflow test for first eol character.
+Overlong f1 or f2 entries consisting only of zeros could cause a buffer
+overflow.
+
+Add fuzz testcase 69913.
+---
+ fuzz/CMakeLists.txt        |   1 +
+ fuzz/qpdf_extra/69913.fuzz | Bin 0 -> 918 bytes
+ fuzz/qtest/fuzz.test       |   2 +-
+ libqpdf/QPDF.cc            |   5 ++---
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+ create mode 100644 fuzz/qpdf_extra/69913.fuzz
+
+diff --git a/fuzz/CMakeLists.txt b/fuzz/CMakeLists.txt
+index 75f0db5a..8f3008d5 100644
+--- a/fuzz/CMakeLists.txt
++++ b/fuzz/CMakeLists.txt
+@@ -119,6 +119,7 @@ set(CORPUS_OTHER
+   68668.fuzz
+   68915.fuzz
+   69857.fuzz
++  69913.fuzz
+ )
+ 
+ set(CORPUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/qpdf_corpus)
+diff --git a/fuzz/qpdf_extra/69913.fuzz b/fuzz/qpdf_extra/69913.fuzz
+new file mode 100644
+index 0000000000000000000000000000000000000000..978ade90aa66133b60a33ce145673c8c44c8275e
+GIT binary patch
+literal 918
+zcmaJ=O;5r=5cS+&F&7d%=uT-VC25*yfP@5<6cZ1GLxojp%C2b_BmNx!h(F7#Gu!g1
+zag$DW-|m}v^R{h_dxH!2(sLSL-=BysAn3;zCyGEI5AX;{K-}}9f@l)Qj#LXi*g7R3
+zHYa)|wUW@!OL<Ot3Yi*RK=bMnZnfILjb4|8j|;t6&ncTFm}RD(Ysx-7S3lOnDl*bF
+zMc*o$9chC-mA8+mh$XZwXWPd+WkEtngMBF1nCAPg6T9L-hJY<tIRk-B6vvfK6QXo>
+z$lj|1Ib3-wXC&3LS%M#e7-YGT1-<js$ex_*g=A7`$h4KSEC27L!@Fl3=u&ECeLXC5
+zTb26fGi;#D-=xXrDTuzJlI*;A$kdgpPaqO-o311Yb3shjk7n~qi+hT+<`?Z~WeytT
+z{<+k&vc!4}v+Z~CUdSg0Av|b_Ehpayu7^t=@c^}h0`mMAa@*ZgsO5&IxxB#MC{rC(
+zZTg*G#CAyj)agx;W;xwN6p5jF(!d{fA`-0)@K2G5N%kQj6vG}&BM*J_yN5%JuJvNW
+kxdQYs#1?ijj%@OljemxCMh2E9EsXUia092&=-&-~0Iz%9PXGV_
+
+literal 0
+HcmV?d00001
+
+diff --git a/fuzz/qtest/fuzz.test b/fuzz/qtest/fuzz.test
+index 34169669..6bcbbde4 100644
+--- a/fuzz/qtest/fuzz.test
++++ b/fuzz/qtest/fuzz.test
+@@ -21,7 +21,7 @@ my @fuzzers = (
+     ['pngpredictor' => 1],
+     ['runlength' => 6],
+     ['tiffpredictor' => 2],
+-    ['qpdf' => 61],             # increment when adding new files
++    ['qpdf' => 62],             # increment when adding new files
+     );
+ 
+ my $n_tests = 0;
+diff --git a/libqpdf/QPDF.cc b/libqpdf/QPDF.cc
+index ada49f3e..f46885a1 100644
+--- a/libqpdf/QPDF.cc
++++ b/libqpdf/QPDF.cc
+@@ -905,9 +905,8 @@ QPDF::read_xrefEntry(qpdf_offset_t& f1, int& f2, char& type)
+     if (QUtil::is_space(*p++) && (*p == 'f' || *p == 'n')) {
+         // C++20: [[likely]]
+         type = *p;
+-        ++p;
+-        ++p; // No test for valid line[19].
+-        if ((*p == '\n' || *p == '\r') && f1_len == 10 && f2_len == 5) {
++        // No test for valid line[19].
++        if (*(++p) && *(++p) && (*p == '\n' || *p == '\r') && f1_len == 10 && f2_len == 5) {
+             // C++20: [[likely]]
+             return true;
+         }
+-- 
+2.25.1
+

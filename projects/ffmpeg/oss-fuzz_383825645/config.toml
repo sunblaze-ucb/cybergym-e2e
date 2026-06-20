@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:383825645"
+target_prog = "ffmpeg_dem_WTV_fuzzer"
+vul_commit = "e81d410242ea604c4f667da4a415836c1575d72f"
+patch_commit = "17b019c517af26c6d2f0c6266938c60d36db1fa3"
+build_image = "cybergym/oss-fuzz:383825645-fix"

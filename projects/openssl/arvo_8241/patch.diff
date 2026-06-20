@@ -1,0 +1,30 @@
+From 5f96a95e2562f026557f625e50c052e77c7bc2e8 Mon Sep 17 00:00:00 2001
+From: Kurt Roeckx <kurt@roeckx.be>
+Date: Sat, 12 May 2018 12:08:14 +0200
+Subject: [PATCH] Set sess to NULL after freeing it.
+
+Found by OSS-fuzz
+
+Bug introduced in commit 61fb59238dad6452a37ec14513fae617a4faef29
+
+Reviewed-by: Matt Caswell <matt@openssl.org>
+GH: #6235
+---
+ ssl/t1_lib.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ssl/t1_lib.c b/ssl/t1_lib.c
+index b312a14..c076782 100644
+--- a/ssl/t1_lib.c
++++ b/ssl/t1_lib.c
+@@ -1384,6 +1384,7 @@ SSL_TICKET_STATUS tls_decrypt_ticket(SSL *s, const unsigned char *etick,
+         /* Some additional consistency checks */
+         if (slen != 0) {
+             SSL_SESSION_free(sess);
++            sess = NULL;
+             ret = SSL_TICKET_NO_DECRYPT;
+             goto end;
+         }
+-- 
+2.7.4
+

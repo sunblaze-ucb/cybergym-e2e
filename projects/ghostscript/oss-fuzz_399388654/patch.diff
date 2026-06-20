@@ -1,0 +1,62 @@
+From 4c4dcc85ce4f3c7fe53f72dd0098cd7906312dbd Mon Sep 17 00:00:00 2001
+From: Ken Sharp <Ken.Sharp@artifex.com>
+Date: Thu, 27 Feb 2025 09:58:15 +0000
+Subject: [PATCH] PDF interpreter - fix CFF font XUID parsing with an empty
+ XUID
+
+OSS-fuzz #399388654
+
+The fuzzed file has a font with an XUID, but the XUID has no bytes. This
+caused us to allocate a byte array with nothing in it and, for reasons
+I haven't tracked down, causes memory corruption.
+
+On OSS-fuzz this resulted in a heap-us-after-free but for me on both
+Windows and Linux it causes a signal 11 crash.
+
+This commit simply sets the XUID to invalid id the length is 0.
+---
+ pdf/pdf_font1C.c | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index b874dac74..b334d53c9 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -920,18 +920,23 @@ pdfi_read_cff_dict(byte *p, byte *e, pdfi_gs_cff_font_priv *ptpriv, cff_font_off
+ 
+                 case 14: /* XUID */
+                 {
+-                    long *xvalues = (long *)gs_alloc_byte_array(font->pfont->memory, n, sizeof(long), "pdfi_read_cff_dict");
+-                    if (xvalues == NULL) {
+-                        uid_set_invalid(&ptpriv->UID);
+-                    }
+-                    else {
+-                        for (i = 1; i <= n; i++) {
+-                            xvalues[n - i] = args[i - 1].ival;
++                    long *xvalues = NULL;
++
++                    if (n > 0) {
++                        xvalues = (long *)gs_alloc_byte_array(font->pfont->memory, n, sizeof(long), "pdfi_read_cff_dict");
++                        if (xvalues == NULL) {
++                            uid_set_invalid(&ptpriv->UID);
+                         }
+-                        if (uid_is_XUID(&ptpriv->UID))
+-                            uid_free(&ptpriv->UID, font->pfont->memory, "pdfi_read_cff_dict");
+-                        uid_set_XUID(&ptpriv->UID, xvalues, n);
+-                    }
++                        else {
++                            for (i = 1; i <= n; i++) {
++                                xvalues[n - i] = args[i - 1].ival;
++                            }
++                            if (uid_is_XUID(&ptpriv->UID))
++                                uid_free(&ptpriv->UID, font->pfont->memory, "pdfi_read_cff_dict");
++                            uid_set_XUID(&ptpriv->UID, xvalues, n);
++                        }
++                    } else
++                        uid_set_invalid(&ptpriv->UID);
+                     break;
+                 }
+ 
+-- 
+2.25.1
+

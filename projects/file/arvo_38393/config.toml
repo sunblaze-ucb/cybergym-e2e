@@ -1,0 +1,5 @@
+task_id = "arvo:38393"
+target_prog = "magic_fuzzer"
+vul_commit = "1ee3a7f9860517e28f4dba303d9a65ea983cdf9d"
+patch_commit = "a9c8d2a9493c4e0cd201db57801f3502e65c686c"
+build_image = "n132/arvo:38393-fix"

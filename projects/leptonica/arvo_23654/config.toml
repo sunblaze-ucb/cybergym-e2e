@@ -1,0 +1,4 @@
+task_id = "arvo:23654"
+target_prog = "pix_rotate_shear_fuzzer"
+vul_commit = "ab66d051d8fd57584c350d687a8cc2424565c33c"
+patch_commit = "5ba34b1fe741d69d43a6c8cf767756997eadd87c"

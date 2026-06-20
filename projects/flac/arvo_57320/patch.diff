@@ -1,0 +1,33 @@
+From af6df3b9532ec88ef6e2a8cfa4b84f5ae7cdb06e Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Thu, 4 May 2023 14:58:48 +0200
+Subject: [PATCH] Fix cuesheet parsing code skipping a digit
+
+The code parsing cuepoints of the form MM:SS.SS, which is only
+allowed for non-CDDA, had a bug where the first S of the above
+template was skipped. That meant that 00:12.34 was parsed as
+00:02.34. This is not covered in the test suite, but fuzzing
+stumbled on it as 00: as input made the parser skip the string-
+terminating nul.
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=57320
+---
+ src/share/grabbag/cuesheet.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/share/grabbag/cuesheet.c b/src/share/grabbag/cuesheet.c
+index 40e5f930..f6300c67 100644
+--- a/src/share/grabbag/cuesheet.c
++++ b/src/share/grabbag/cuesheet.c
+@@ -188,7 +188,6 @@ static FLAC__int64 local__parse_ms_(const char *s, uint32_t sample_rate)
+ 
+ 	ret = field * 60 * sample_rate;
+ 
+-	s++; /* skip the ':' */
+ 	if(strspn(s, "0123456789.") != strlen(s))
+ 		return -1;
+ 	x = strtod(s, &end);
+-- 
+2.25.1
+

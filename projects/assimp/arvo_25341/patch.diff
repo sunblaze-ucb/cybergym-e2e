@@ -1,0 +1,41 @@
+From 932dfe05627c139013b9ea5d5e0e0e296b467e7e Mon Sep 17 00:00:00 2001
+From: Alex Rebert <alexandre.rebert@gmail.com>
+Date: Thu, 28 Oct 2021 22:27:19 -0400
+Subject: [PATCH] Fix overflowing allocations in MDLMaterialLoader
+
+Some allocations might underallocate due to integer overflows. This
+commit ensures that we are throwing an exception if the allocation size
+does not fit in an unsigned int.
+
+Fix https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25341
+---
+ code/AssetLib/MDL/MDLMaterialLoader.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/code/AssetLib/MDL/MDLMaterialLoader.cpp b/code/AssetLib/MDL/MDLMaterialLoader.cpp
+index f44896819..62320814a 100644
+--- a/code/AssetLib/MDL/MDLMaterialLoader.cpp
++++ b/code/AssetLib/MDL/MDLMaterialLoader.cpp
+@@ -132,6 +132,9 @@ void MDLImporter::CreateTextureARGB8_3DGS_MDL3(const unsigned char *szData) {
+     pcNew->mWidth = pcHeader->skinwidth;
+     pcNew->mHeight = pcHeader->skinheight;
+ 
++    if(pcNew->mWidth != 0 && pcNew->mHeight > UINT_MAX/pcNew->mWidth) {
++        throw DeadlyImportError("Invalid MDL file. A texture is too big.");
++    }
+     pcNew->pcData = new aiTexel[pcNew->mWidth * pcNew->mHeight];
+ 
+     const unsigned char *szColorMap;
+@@ -217,6 +220,9 @@ void MDLImporter::ParseTextureColorData(const unsigned char *szData,
+ 
+     // allocate storage for the texture image
+     if (do_read) {
++        if(pcNew->mWidth != 0 && pcNew->mHeight > UINT_MAX/pcNew->mWidth) {
++            throw DeadlyImportError("Invalid MDL file. A texture is too big.");
++        }
+         pcNew->pcData = new aiTexel[pcNew->mWidth * pcNew->mHeight];
+     }
+ 
+-- 
+2.43.2
+

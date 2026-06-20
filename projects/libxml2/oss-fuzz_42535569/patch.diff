@@ -1,0 +1,42 @@
+From 51b5d1e378619533443e7fad364c83a474761995 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Wed, 15 May 2024 16:09:05 +0200
+Subject: [PATCH] fuzz: Don't enable zlib and liblzma with MSan
+
+We'd need our own instrumented builds of these libraries.
+---
+ fuzz/oss-fuzz-build.sh | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/fuzz/oss-fuzz-build.sh b/fuzz/oss-fuzz-build.sh
+index 93a46f60..151255bf 100755
+--- a/fuzz/oss-fuzz-build.sh
++++ b/fuzz/oss-fuzz-build.sh
+@@ -11,15 +11,21 @@ if [ "$SANITIZER" = undefined ]; then
+     export CXXFLAGS="$CXXFLAGS $extra_cflags"
+ fi
+ 
++# Don't enable zlib and liblzma with MSan
++if [ "$SANITIZER" = memory ]; then
++    CONFIG=''
++else
++    CONFIG='--with-zlib --with-lzma'
++fi
++
+ export V=1
+ 
+ ./autogen.sh \
+     --disable-shared \
+-    --with-zlib \
+-    --with-lzma \
+     --without-debug \
+     --without-http \
+-    --without-python
++    --without-python \
++    $CONFIG
+ make -j$(nproc)
+ 
+ cd fuzz
+-- 
+2.25.1
+

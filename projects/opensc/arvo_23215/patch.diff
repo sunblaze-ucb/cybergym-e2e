@@ -1,0 +1,28 @@
+From 7ae74c524f1cc2912e8de1ecbf616b602424a830 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Tue, 9 Jun 2020 10:11:29 +0200
+Subject: [PATCH] piv: Avoid accessing memory after zero-length tags
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=23215
+---
+ src/libopensc/card-piv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-piv.c b/src/libopensc/card-piv.c
+index 2fcaceb2..c5cf352a 100644
+--- a/src/libopensc/card-piv.c
++++ b/src/libopensc/card-piv.c
+@@ -1021,7 +1021,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
+ 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
+ 		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
+ 		/* 800-73-3 says it is 01, keep dual test so old cards still work */
+-		if (tag && (((*tag) & 0x80) || ((*tag) & 0x01)))
++		if (tag && taglen > 0 && (((*tag) & 0x80) || ((*tag) & 0x01)))
+ 			compressed = 1;
+ 
+ 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x70, &taglen);
+-- 
+2.43.2
+

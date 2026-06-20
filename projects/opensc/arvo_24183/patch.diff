@@ -1,0 +1,44 @@
+From 978c912c7089fa4573add7140170feb9fcbe7f87 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Thu, 30 Jul 2020 02:26:25 +0200
+Subject: [PATCH] fixed Heap-buffer-overflow READ
+
+7cf8087351c821aa1e617282db93ecb33d53d918 seemed to be incomplete. Change
+the length of the buffer right before it's accessed.
+
+fixes https://oss-fuzz.com/testcase-detail/5734055866531840
+---
+ src/libopensc/card-asepcos.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/libopensc/card-asepcos.c b/src/libopensc/card-asepcos.c
+index 734984a5..6d45acd0 100644
+--- a/src/libopensc/card-asepcos.c
++++ b/src/libopensc/card-asepcos.c
+@@ -184,13 +184,21 @@ static int asepcos_parse_sec_attr(sc_card_t *card, sc_file_t *file, const u8 *bu
+ 			if (r != SC_SUCCESS) 
+ 				return r;
+ 			tlen += 2;
+-		} else if (p[3] == 0xA0 && p[4] > 0 && len >= 4U + p[4]) {
++		} else if (p[3] == 0xA0 && len >= 4U + p[4]) {
++			if (len < 6) {
++				sc_log(card->ctx,  "invalid access mode encoding");
++				return SC_ERROR_INTERNAL;
++			}
+ 			/* TODO: support OR expressions */
+ 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
+ 			if (r != SC_SUCCESS)
+ 				return r;
+ 			tlen += 2 + p[4]; /* FIXME */
+-		} else if (p[3] == 0xAF && p[4] > 0 && len >= 4U + p[4]) {
++		} else if (p[3] == 0xAF && len >= 4U + p[4]) {
++			if (len < 6) {
++				sc_log(card->ctx,  "invalid access mode encoding");
++				return SC_ERROR_INTERNAL;
++			}
+ 			/* TODO: support AND expressions */
+ 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
+ 			if (r != SC_SUCCESS)
+-- 
+2.43.2
+

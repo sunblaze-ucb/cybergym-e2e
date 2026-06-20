@@ -1,0 +1,5 @@
+task_id = "arvo:65519"
+target_prog = "test_packed_file_fuzzer"
+vul_commit = "553fc9b1fb397ccb635bead3961c525d75c9660c"
+patch_commit = "f310ce376ea1c8deb542b0746344f27251f7eadc"
+build_image = "n132/arvo:65519-fix"

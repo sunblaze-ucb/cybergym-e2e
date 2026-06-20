@@ -1,0 +1,33 @@
+From 15c63688e3f1a3c6067e6af70e3e9bf999d91389 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Tue, 26 May 2020 23:53:16 +0900
+Subject: [PATCH] Integer format can be bigger than `32` on 64bit platforms.
+
+We made it `64` which should be big enough:
+- Format modifier: 4 characters max
+- Maximum width: 19 digits max
+- Period between width and precision: 1 character
+- Maximum precision: 19 digits max
+- Format specifier: 1 character
+- NUL terminator: 1 byte
+- Total: 45 < 64
+---
+ mrbgems/mruby-sprintf/src/sprintf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-sprintf/src/sprintf.c b/mrbgems/mruby-sprintf/src/sprintf.c
+index 37f446711..4ad3a34a5 100644
+--- a/mrbgems/mruby-sprintf/src/sprintf.c
++++ b/mrbgems/mruby-sprintf/src/sprintf.c
+@@ -1041,7 +1041,7 @@ retry:
+         mrb_value val = GETARG();
+         double fval;
+         mrb_int need = 6;
+-        char fbuf[32];
++        char fbuf[64];
+ 
+         fval = mrb_float(mrb_Float(mrb, val));
+         if (!isfinite(fval)) {
+-- 
+2.43.2
+

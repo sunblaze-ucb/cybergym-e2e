@@ -1,0 +1,135 @@
+From cd741379bd0203a0875b413542d5f982606ae637 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Sat, 23 Sep 2023 09:39:12 -0700
+Subject: [PATCH] Fixing DW202309-001 ossfuzz 62547, a bug which has been in
+ the code for many years.
+
+The symptom was use-after-free in calling
+dwarf_finish(), but provoked by code
+in dwarf_get_fde_for_die().
+    modified:   src/lib/libdwarf/dwarf_alloc.c
+	modified:   src/lib/libdwarf/dwarf_frame.c
+	modified:   src/lib/libdwarf/dwarf_frame2.c
+	modified:   src/lib/libdwarf/dwarf_opaque.h
+---
+ src/lib/libdwarf/dwarf_alloc.c  |  2 ++
+ src/lib/libdwarf/dwarf_frame.c  | 17 +++++++++++++----
+ src/lib/libdwarf/dwarf_frame2.c | 21 ++++++++++++++++-----
+ src/lib/libdwarf/dwarf_opaque.h |  1 +
+ 4 files changed, 32 insertions(+), 9 deletions(-)
+
+diff --git a/src/lib/libdwarf/dwarf_alloc.c b/src/lib/libdwarf/dwarf_alloc.c
+index 6bb4c1e7..cb5642f2 100644
+--- a/src/lib/libdwarf/dwarf_alloc.c
++++ b/src/lib/libdwarf/dwarf_alloc.c
+@@ -1140,7 +1140,9 @@ _dwarf_free_all_of_one_debug(Dwarf_Debug dbg)
+     /*  de_alloc_tree might be NULL if
+         global_de_alloc_tree_on is zero. */
+     if (dbg->de_alloc_tree) {
++        dbg->de_in_tdestroy = TRUE;
+         dwarf_tdestroy(dbg->de_alloc_tree,tdestroy_free_node);
++        dbg->de_in_tdestroy = FALSE;
+         dbg->de_alloc_tree = 0;
+     }
+     _dwarf_free_static_errlist();
+diff --git a/src/lib/libdwarf/dwarf_frame.c b/src/lib/libdwarf/dwarf_frame.c
+index 0cf00cd6..5d5311cc 100644
+--- a/src/lib/libdwarf/dwarf_frame.c
++++ b/src/lib/libdwarf/dwarf_frame.c
+@@ -2160,7 +2160,9 @@ dwarf_get_fde_for_die(Dwarf_Debug dbg,
+     }
+     /* DW_DLV_OK */
+ 
+-    /*  This is the only situation this is set. */
++    /*  This is the only situation this is set. 
++        and is really dangerous. as fde and cie
++        are set for dealloc by dwarf_finish(). */
+     new_fde->fd_fde_owns_cie = TRUE;
+     /*  Now read the cie corresponding to the fde,
+         _dwarf_read_cie_fde_prefix checks
+@@ -3416,14 +3418,21 @@ _dwarf_frame_destructor(void *frame)
+     struct Dwarf_Frame_s *fp = frame;
+     _dwarf_free_fde_table(fp);
+ }
++
+ void
+ _dwarf_fde_destructor(void *f)
+ {
+     struct Dwarf_Fde_s *fde = f;
++
+     if (fde->fd_fde_owns_cie) {
+-        /*  This is just for dwarf_get_fde_for_die() */
+-        dwarf_dealloc(fde->fd_dbg,fde->fd_cie,DW_DLA_CIE);
+-        fde->fd_cie = 0;
++        Dwarf_Debug dbg = fde->fd_dbg;
++
++        if (!dbg->de_in_tdestroy) {
++            /*  This is just for dwarf_get_fde_for_die() and
++                must not be applied in alloc tree destruction. */
++            dwarf_dealloc(fde->fd_dbg,fde->fd_cie,DW_DLA_CIE);
++            fde->fd_cie = 0;
++        }
+     }
+     if (fde->fd_have_fde_tab) {
+         _dwarf_free_fde_table(&fde->fd_fde_table);
+diff --git a/src/lib/libdwarf/dwarf_frame2.c b/src/lib/libdwarf/dwarf_frame2.c
+index 97cc9556..83342ec0 100644
+--- a/src/lib/libdwarf/dwarf_frame2.c
++++ b/src/lib/libdwarf/dwarf_frame2.c
+@@ -975,10 +975,12 @@ _dwarf_create_cie_from_after_start(Dwarf_Debug dbg,
+             &gnu_personality_handler_addr,
+             error);
+         if (resz != DW_DLV_OK) {
+-            _dwarf_error_string(dbg, error,
+-                DW_DLE_FRAME_AUGMENTATION_UNKNOWN,
+-                "DW_DLE_FRAME_AUGMENTATION_UNKNOWN "
+-                " Reading gnu aug encodings failed");
++            if (resz == DW_DLV_ERROR) {
++                _dwarf_error_string(dbg, error,
++                    DW_DLE_FRAME_AUGMENTATION_UNKNOWN,
++                    "DW_DLE_FRAME_AUGMENTATION_UNKNOWN "
++                    " Reading gnu aug encodings failed");
++            } /* DW_DLV_NO_ENTRY seems impossible. */
+             return resz;
+         }
+         frame_ptr += adlen;
+@@ -1119,7 +1121,7 @@ _dwarf_create_fde_from_after_start(Dwarf_Debug dbg,
+             address_range in the FDE are read according to the CIE
+             augmentation string instructions.  */
+ 
+-        {
++        if (cieptr) {
+             Dwarf_Small *fp_updated = 0;
+             int res = _dwarf_read_encoded_ptr(dbg,
+                 section_pointer,
+@@ -1150,6 +1152,15 @@ _dwarf_create_fde_from_after_start(Dwarf_Debug dbg,
+                 return res;
+             }
+             frame_ptr = fp_updated;
++        } else {
++            _dwarf_error_string(dbg, error,
++                    DW_DLE_AUG_DATA_LENGTH_BAD,
++                    "DW_DLE_AUG_DATA_LENGTH_BAD: The "
++                    "gcc augmentation cannot be read, "
++                    "as no cie pointer is available "
++                    "to get critical data, "
++                    "Corrupt DWARF");
++            return DW_DLV_ERROR;
+         }
+         {
+             Dwarf_Unsigned adlen = 0;
+diff --git a/src/lib/libdwarf/dwarf_opaque.h b/src/lib/libdwarf/dwarf_opaque.h
+index 9e6dc062..721cb982 100644
+--- a/src/lib/libdwarf/dwarf_opaque.h
++++ b/src/lib/libdwarf/dwarf_opaque.h
+@@ -594,6 +594,7 @@ struct Dwarf_Debug_s {
+         under de_obj_file. */
+     int  de_fd;
+     char de_owns_fd;
++    char de_in_tdestroy; /* for de_alloc_tree  DW202309-001 */
+     /* DW_PATHSOURCE_BASIC or MACOS or DEBUGLINK */
+     unsigned char de_path_source;
+     /*  de_path is only set automatically if dwarf_init_path()
+-- 
+2.25.1
+

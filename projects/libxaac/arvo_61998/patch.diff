@@ -1,0 +1,120 @@
+From 62c8372f6b2506bf96f962f09497f88491d0d96e Mon Sep 17 00:00:00 2001
+From: Akshay Ragir <akshay.ragir@ittiam.com>
+Date: Fri, 8 Sep 2023 16:16:18 +0530
+Subject: [PATCH] Fix for the Global-buffer-overflow READ 4 in
+ iusace_estimate_scfs_chan
+
+These changes handle the runtime error reported when the
+value of scalefactor band form factor becomes zero. This
+is resolved by adding bound checks for the gain value.
+The issue is reported with USAC and the changes are
+extended to AAC.
+
+Bug: ossFuzz:61998
+Test: poc in bug
+---
+ encoder/iusace_fd_qc_adjthr.h    |  5 +++++
+ encoder/ixheaace_fd_qc_adjthr.c  | 10 ++++++----
+ encoder/ixheaace_qc_data.h       |  4 ++++
+ encoder/ixheaace_sf_estimation.c |  5 +++--
+ 4 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/encoder/iusace_fd_qc_adjthr.h b/encoder/iusace_fd_qc_adjthr.h
+index dd90b72..b7310dc 100644
+--- a/encoder/iusace_fd_qc_adjthr.h
++++ b/encoder/iusace_fd_qc_adjthr.h
+@@ -46,6 +46,11 @@
+ #define BITS_SPEND_RATIO_LONG (MIN_TO_MAX_SPEND_BITS_LONG / CLIP_SPEND_LO_TO_HI_LONG)
+ #define BITS_SPEND_RATIO_SHORT (MIN_TO_MAX_SPEND_BITS_SHORT / CLIP_SPEND_LO_TO_HI_SHORT)
+ 
++#define MAX_GAIN_INDEX (128)
++#define MIN_GAIN_INDEX (-128)
++#define SCF_COUNT_LIMIT_ONE (1)
++#define SCF_COUNT_LIMIT_THREE (3)
++
+ typedef struct {
+   FLOAT32 *sfb_ld_energy;
+   FLOAT32 *sfb_lines;
+diff --git a/encoder/ixheaace_fd_qc_adjthr.c b/encoder/ixheaace_fd_qc_adjthr.c
+index 320c32a..d66a765 100644
+--- a/encoder/ixheaace_fd_qc_adjthr.c
++++ b/encoder/ixheaace_fd_qc_adjthr.c
+@@ -1174,7 +1174,7 @@ static WORD16 iusace_improve_scf(FLOAT32 *ptr_spec, FLOAT32 *ptr_exp_spec, WORD1
+ 
+     count = 0;
+ 
+-    while ((sfb_dist > (1.25 * threshold)) && (count++ < 3)) {
++    while ((sfb_dist > (1.25 * threshold)) && (count++ < SCF_COUNT_LIMIT_THREE)) {
+       scf++;
+ 
+       sfb_dist =
+@@ -1192,7 +1192,8 @@ static WORD16 iusace_improve_scf(FLOAT32 *ptr_spec, FLOAT32 *ptr_exp_spec, WORD1
+     scf = estimated_scf;
+     sfb_dist = best_sfb_dist;
+ 
+-    while ((sfb_dist > (1.25 * threshold)) && (count++ < 1) && (scf > min_scf)) {
++    while ((sfb_dist > (1.25 * threshold)) && (count++ < SCF_COUNT_LIMIT_ONE) &&
++      (scf > min_scf)) {
+       scf--;
+ 
+       sfb_dist =
+@@ -1212,7 +1213,7 @@ static WORD16 iusace_improve_scf(FLOAT32 *ptr_spec, FLOAT32 *ptr_exp_spec, WORD1
+     FLOAT32 allowed_sfb_dist = MIN(sfb_dist * 1.25f, threshold);
+     WORD32 count;
+ 
+-    for (count = 0; count < 3; count++) {
++    for (count = 0; count < SCF_COUNT_LIMIT_THREE; count++) {
+       scf++;
+ 
+       sfb_dist =
+@@ -1614,7 +1615,8 @@ VOID iusace_estimate_scfs_chan(ia_psy_mod_out_data_struct *pstr_psy_out,
+         scf_int = (WORD16)floor(scf_float);
+         min_sf_max_quant[i] = (WORD16)ceil(C1_SF + C2_SF * log(max_spec));
+         scf_int = MAX(scf_int, min_sf_max_quant[i]);
+-
++        scf_int = MAX(scf_int, MIN_GAIN_INDEX);
++        scf_int = MIN(scf_int, (MAX_GAIN_INDEX - SCF_COUNT_LIMIT_THREE));
+         for (j = 0; j < ptr_psy_out->sfb_offsets[i + 1] - ptr_psy_out->sfb_offsets[i]; j++) {
+           ptr_exp_spec[ptr_psy_out->sfb_offsets[i] + j] =
+               (FLOAT32)(ptr_psy_out->ptr_spec_coeffs[ptr_psy_out->sfb_offsets[i] + j]);
+diff --git a/encoder/ixheaace_qc_data.h b/encoder/ixheaace_qc_data.h
+index 02979c4..4f099a3 100644
+--- a/encoder/ixheaace_qc_data.h
++++ b/encoder/ixheaace_qc_data.h
+@@ -83,6 +83,10 @@ typedef struct {
+ 
+ #define TRANSPORT_BITS (208)
+ 
++#define MAX_GAIN_INDEX_AAC (128)
++#define MIN_GAIN_INDEX_AAC (-128)
++#define SCF_COUNT_LIMIT_AAC (1)
++
+ typedef struct {
+   WORD16 *quant_spec;
+   UWORD16 *max_val_in_sfb;
+diff --git a/encoder/ixheaace_sf_estimation.c b/encoder/ixheaace_sf_estimation.c
+index 89435d5..cbd67d0 100644
+--- a/encoder/ixheaace_sf_estimation.c
++++ b/encoder/ixheaace_sf_estimation.c
+@@ -284,7 +284,7 @@ static WORD16 iaace_improve_scf(FLOAT32 *ptr_spec, FLOAT32 *ptr_exp_spec, WORD16
+     FLOAT32 allowed_sfb_dist = MIN(sfb_dist * 1.25f, threshold);
+     WORD32 count;
+ 
+-    for (count = 1; count >= 0; count--) {
++    for (count = SCF_COUNT_LIMIT_AAC; count >= 0; count--) {
+       scf++;
+ 
+       sfb_dist = iaace_calc_sfb_dist(ptr_spec, ptr_exp_spec, ptr_quant_spec_temp, sfb_width, scf);
+@@ -683,7 +683,8 @@ VOID iaace_estimate_scfs_chan(
+         scf_int = (WORD16)floor(scf_float);
+         min_sf_max_quant[i] = (WORD16)floor(C1_SF + C2_SF * log(max_spec));
+         scf_int = MAX(scf_int, min_sf_max_quant[i]);
+-
++        scf_int = MAX(scf_int, MIN_GAIN_INDEX_AAC);
++        scf_int = MIN(scf_int, (MAX_GAIN_INDEX_AAC - SCF_COUNT_LIMIT_AAC));
+         for (j = 0; j < pstr_psy_out_chan->sfb_offsets[i + 1] - pstr_psy_out_chan->sfb_offsets[i];
+              j++) {
+           ptr_exp_spec[pstr_psy_out_chan->sfb_offsets[i] + j] = (FLOAT32)(
+-- 
+2.25.1
+

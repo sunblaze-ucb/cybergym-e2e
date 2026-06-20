@@ -1,0 +1,70 @@
+From 6c6c15e935091a33f83d8de4ee5b0640339b2b89 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Sat, 19 Oct 2019 15:52:35 +0200
+Subject: [PATCH] patch_parse: reject empty path names
+
+When parsing patch headers, we currently accept empty path names just
+fine, e.g. a line "--- \n" would be parsed as the empty filename. This
+is not a valid patch format and may cause `NULL` pointer accesses at a
+later place as `git_buf_detach` will return `NULL` in that case.
+
+Reject such patches as malformed with a nice error message.
+---
+ src/patch_parse.c          | 4 ++++
+ tests/patch/parse.c        | 7 +++++++
+ tests/patch/patch_common.h | 6 ++++++
+ 3 files changed, 17 insertions(+)
+
+diff --git a/src/patch_parse.c b/src/patch_parse.c
+index a718432..16f2f68 100644
+--- a/src/patch_parse.c
++++ b/src/patch_parse.c
+@@ -69,6 +69,10 @@ static int parse_header_path_buf(git_buf *path, git_patch_parse_ctx *ctx, size_t
+ {
+ 	int error;
+ 
++	if (!path_len)
++		return git_parse_err("patch contains empty path at line %"PRIuZ,
++				     ctx->parse_ctx.line_num);
++
+ 	if ((error = git_buf_put(path, ctx->parse_ctx.line, path_len)) < 0)
+ 		goto done;
+ 
+diff --git a/tests/patch/parse.c b/tests/patch/parse.c
+index fb185eb..ede5a96 100644
+--- a/tests/patch/parse.c
++++ b/tests/patch/parse.c
+@@ -149,6 +149,13 @@ void test_patch_parse__lifetime_of_patch_does_not_depend_on_buffer(void)
+ 	git_patch_free(patch);
+ }
+ 
++void test_patch_parse__binary_file_with_missing_paths(void)
++{
++	git_patch *patch;
++	cl_git_fail(git_patch_from_buffer(&patch, PATCH_BINARY_FILE_WITH_MISSING_PATHS,
++					  strlen(PATCH_BINARY_FILE_WITH_MISSING_PATHS), NULL));
++}
++
+ void test_patch_parse__memory_leak_on_multiple_paths(void)
+ {
+ 	git_patch *patch;
+diff --git a/tests/patch/patch_common.h b/tests/patch/patch_common.h
+index 68b183d..4c053cb 100644
+--- a/tests/patch/patch_common.h
++++ b/tests/patch/patch_common.h
+@@ -906,6 +906,12 @@
+ 	"+bb\n" \
+ 	" c\n"
+ 
++#define PATCH_BINARY_FILE_WITH_MISSING_PATHS \
++	"diff --git  \n" \
++	"--- \n" \
++	"+++ \n" \
++	"Binary files "
++
+ #define PATCH_MULTIPLE_OLD_PATHS \
+ 	"diff --git  \n" \
+ 	"---  \n" \
+-- 
+2.7.4
+

@@ -1,0 +1,4 @@
+task_id = "arvo:59950"
+target_prog = "fuzz_set_frame_all"
+vul_commit = "72f3333e2646f350f0c9ee2e342bb4809aab051d"
+patch_commit = "b7437c9e4923906e9b3f3860a0c8a8289cff0a91"

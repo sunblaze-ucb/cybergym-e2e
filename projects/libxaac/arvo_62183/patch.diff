@@ -1,0 +1,295 @@
+From ccdced7d6a30828a9988616f199cea014150175d Mon Sep 17 00:00:00 2001
+From: Akshay Ragir <akshay.ragir@ittiam.com>
+Date: Fri, 8 Sep 2023 17:01:00 +0530
+Subject: [PATCH] Fix for Divide-by-zero in impd_drc_stft_drc_gain_calc_init
+
+These changes handle the Divide-by-zero runtime error reported
+when the drc gain coordinates are identical or slope is
+perpendicular to the gain value.
+
+Bug: ossFuzz:61683
+Test: poc in bug
+---
+ encoder/drc_src/impd_drc_api.c             |  5 +-
+ encoder/drc_src/impd_drc_enc.c             |  2 +-
+ encoder/drc_src/impd_drc_gain_calculator.c | 73 +++++++++++++++-------
+ encoder/iusace_enc_main.c                  | 21 ++++---
+ encoder/ixheaace_api.c                     | 12 +++-
+ encoder/ixheaace_error_codes.h             |  2 +
+ fuzzer/xaac_enc_fuzzer.cpp                 |  7 ++-
+ test/encoder/ixheaace_error.c              |  5 ++
+ 8 files changed, 90 insertions(+), 37 deletions(-)
+
+diff --git a/encoder/drc_src/impd_drc_api.c b/encoder/drc_src/impd_drc_api.c
+index 84e97d5..6525dbb 100644
+--- a/encoder/drc_src/impd_drc_api.c
++++ b/encoder/drc_src/impd_drc_api.c
+@@ -274,10 +274,9 @@ IA_ERRORCODE impd_drc_enc_init(VOID *pstr_drc_state, VOID *ptr_drc_scratch,
+       &pstr_inp_config->str_enc_loudness_info_set, pstr_inp_config->str_enc_params.frame_size,
+       pstr_inp_config->str_enc_params.sample_rate, pstr_inp_config->str_enc_params.delay_mode,
+       pstr_inp_config->str_enc_params.domain);
+-  if (err_code & IA_FATAL_ERROR) {
+-    return IA_EXHEAACE_CONFIG_FATAL_DRC_INVALID_CONFIG;
++  if (err_code) {
++    return err_code;
+   }
+-
+   pstr_drc_state_local->str_enc_params = pstr_inp_config->str_enc_params;
+   pstr_drc_state_local->str_uni_drc_config = pstr_inp_config->str_uni_drc_config;
+   pstr_drc_state_local->str_enc_gain_extension = pstr_inp_config->str_enc_gain_extension;
+diff --git a/encoder/drc_src/impd_drc_enc.c b/encoder/drc_src/impd_drc_enc.c
+index 823b9b6..1b92856 100644
+--- a/encoder/drc_src/impd_drc_enc.c
++++ b/encoder/drc_src/impd_drc_enc.c
+@@ -192,7 +192,7 @@ IA_ERRORCODE impd_drc_gain_enc_init(ia_drc_gain_enc_struct *pstr_gain_enc,
+ 
+         for (l = 0; l < pstr_gain_set_params->band_count; l++) {
+           err_code = impd_drc_stft_drc_gain_calc_init(pstr_gain_enc, 0, j, l);
+-          if (err_code & IA_FATAL_ERROR) {
++          if (err_code) {
+             return err_code;
+           }
+           pstr_gain_enc->str_drc_stft_gain_handle[0][j][l].ch_idx = ch_idx;
+diff --git a/encoder/drc_src/impd_drc_gain_calculator.c b/encoder/drc_src/impd_drc_gain_calculator.c
+index 24514c3..2a3400e 100644
+--- a/encoder/drc_src/impd_drc_gain_calculator.c
++++ b/encoder/drc_src/impd_drc_gain_calculator.c
+@@ -18,6 +18,7 @@
+  * Originally developed and contributed by Ittiam Systems Pvt. Ltd, Bangalore
+  */
+ #include <math.h>
++#include <float.h>
+ #include "ixheaac_type_def.h"
+ #include "ixheaac_error_standards.h"
+ #include "ixheaace_error_codes.h"
+@@ -392,29 +393,58 @@ IA_ERRORCODE impd_drc_stft_drc_gain_calc_init(ia_drc_gain_enc_struct *pstr_drc_g
+   }
+ 
+   for (i = 4; i < pstr_drc_stft_gain_handle->nb_segments; i += 2) {
++    FLOAT64 denominator;
++    FLOAT64 numerator;
++
++    denominator = pstr_drc_stft_gain_handle->str_segment[i - 2].x -
++                  pstr_drc_stft_gain_handle->str_segment[i - 4].x;
++    numerator = pstr_drc_stft_gain_handle->str_segment[i - 2].y -
++                pstr_drc_stft_gain_handle->str_segment[i - 4].y;
++    len = hypot(denominator , numerator);
++    if (len == 0) {
++      return IA_EXHEAACE_EXE_NONFATAL_USAC_INVALID_GAIN_POINTS;
++    }
++    if (fabs(denominator) < FLT_EPSILON) {
++      if (denominator < 0)
++        denominator = -FLT_EPSILON;
++      else
++        denominator = FLT_EPSILON;
++    }
+     pstr_drc_stft_gain_handle->str_segment[i - 4].a = 0;
+-    pstr_drc_stft_gain_handle->str_segment[i - 4].b =
+-        (pstr_drc_stft_gain_handle->str_segment[i - 2].y -
+-         pstr_drc_stft_gain_handle->str_segment[i - 4].y) /
+-        (pstr_drc_stft_gain_handle->str_segment[i - 2].x -
+-         pstr_drc_stft_gain_handle->str_segment[i - 4].x);
+-
++    pstr_drc_stft_gain_handle->str_segment[i - 4].b = numerator / denominator;
++
++    denominator = pstr_drc_stft_gain_handle->str_segment[i].x -
++                  pstr_drc_stft_gain_handle->str_segment[i - 2].x;
++    numerator = pstr_drc_stft_gain_handle->str_segment[i].y -
++                pstr_drc_stft_gain_handle->str_segment[i - 2].y;
++    len = hypot(denominator, numerator);
++    if (len == 0) {
++      return IA_EXHEAACE_EXE_NONFATAL_USAC_INVALID_GAIN_POINTS;
++    }
++    if (fabs(denominator) < FLT_EPSILON) {
++      if (denominator < 0)
++        denominator = -FLT_EPSILON;
++      else
++        denominator = FLT_EPSILON;
++    }
+     pstr_drc_stft_gain_handle->str_segment[i - 2].a = 0;
+-    pstr_drc_stft_gain_handle->str_segment[i - 2].b =
+-        (pstr_drc_stft_gain_handle->str_segment[i].y -
+-         pstr_drc_stft_gain_handle->str_segment[i - 2].y) /
+-        (pstr_drc_stft_gain_handle->str_segment[i].x -
+-         pstr_drc_stft_gain_handle->str_segment[i - 2].x);
+-
+-    theta = atan2(pstr_drc_stft_gain_handle->str_segment[i - 2].y -
+-                      pstr_drc_stft_gain_handle->str_segment[i - 4].y,
+-                  pstr_drc_stft_gain_handle->str_segment[i - 2].x -
+-                      pstr_drc_stft_gain_handle->str_segment[i - 4].x);
+-    len = hypot(pstr_drc_stft_gain_handle->str_segment[i - 2].x -
+-                    pstr_drc_stft_gain_handle->str_segment[i - 4].x,
+-                pstr_drc_stft_gain_handle->str_segment[i - 2].y -
+-                    pstr_drc_stft_gain_handle->str_segment[i - 4].y);
+-    r = MIN(width_e / (2.0f * cos(theta)), len);
++    pstr_drc_stft_gain_handle->str_segment[i - 2].b = numerator / denominator;
++
++
++    denominator = pstr_drc_stft_gain_handle->str_segment[i - 2].x -
++                  pstr_drc_stft_gain_handle->str_segment[i - 4].x;
++    numerator = pstr_drc_stft_gain_handle->str_segment[i - 2].y -
++                pstr_drc_stft_gain_handle->str_segment[i - 4].y;
++    if (fabs(denominator) < FLT_EPSILON) {
++      if (denominator < 0)
++        denominator = -FLT_EPSILON;
++      else
++        denominator = FLT_EPSILON;
++    }
++    theta = atan2(numerator, denominator);
++    len = hypot(denominator, numerator);
++    r = MIN(width_e / (2.0f * cos(theta)), len / 2);
++
+     pstr_drc_stft_gain_handle->str_segment[i - 3].x =
+         pstr_drc_stft_gain_handle->str_segment[i - 2].x - r * cos(theta);
+     pstr_drc_stft_gain_handle->str_segment[i - 3].y =
+@@ -428,6 +458,7 @@ IA_ERRORCODE impd_drc_stft_drc_gain_calc_init(ia_drc_gain_enc_struct *pstr_drc_g
+                     pstr_drc_stft_gain_handle->str_segment[i - 2].x,
+                 pstr_drc_stft_gain_handle->str_segment[i].y -
+                     pstr_drc_stft_gain_handle->str_segment[i - 2].y);
++
+     r = MIN(width_e / (2.0f * cos(theta)), len / 2);
+     x = pstr_drc_stft_gain_handle->str_segment[i - 2].x + r * cos(theta);
+     y = pstr_drc_stft_gain_handle->str_segment[i - 2].y + r * sin(theta);
+diff --git a/encoder/iusace_enc_main.c b/encoder/iusace_enc_main.c
+index 492d300..503f9c9 100644
+--- a/encoder/iusace_enc_main.c
++++ b/encoder/iusace_enc_main.c
+@@ -557,20 +557,25 @@ IA_ERRORCODE iusace_enc_init(ia_usac_encoder_config_struct *ptr_usac_config,
+ 
+     err_code = impd_drc_enc_init(&usac_data->str_drc_state, pstr_state->str_scratch.drc_scratch,
+                                  &ptr_usac_config->str_drc_cfg);
++    if (err_code == IA_EXHEAACE_EXE_NONFATAL_USAC_INVALID_GAIN_POINTS) {
++      ptr_usac_config->use_drc_element = 0;
++    }
+     if (err_code & IA_FATAL_ERROR) {
+       return err_code;
+     }
+ 
+-    ia_usac_enc_element_config_struct *pstr_usac_elem_config =
++    if (ptr_usac_config->use_drc_element) {
++      ia_usac_enc_element_config_struct *pstr_usac_elem_config =
+         &(pstr_asc_usac_config->str_usac_element_config[pstr_asc_usac_config->num_elements]);
+-    pstr_asc_usac_config->usac_element_type[pstr_asc_usac_config->num_elements] = ID_USAC_EXT;
+-    pstr_usac_elem_config->usac_ext_ele_type = ID_EXT_ELE_UNI_DRC;
+-    pstr_usac_elem_config->usac_ext_ele_dflt_len_present = 0;
+-    pstr_usac_elem_config->usac_ext_ele_payload_present = 0;
+-    pstr_usac_elem_config->drc_config_data = usac_data->str_drc_state.bit_buf_base_cfg;
+-    pstr_usac_elem_config->usac_ext_ele_cfg_len =
++      pstr_asc_usac_config->usac_element_type[pstr_asc_usac_config->num_elements] = ID_USAC_EXT;
++      pstr_usac_elem_config->usac_ext_ele_type = ID_EXT_ELE_UNI_DRC;
++      pstr_usac_elem_config->usac_ext_ele_dflt_len_present = 0;
++      pstr_usac_elem_config->usac_ext_ele_payload_present = 0;
++      pstr_usac_elem_config->drc_config_data = usac_data->str_drc_state.bit_buf_base_cfg;
++      pstr_usac_elem_config->usac_ext_ele_cfg_len =
+         (usac_data->str_drc_state.drc_config_data_size_bit + 7) >> 3;
+-    pstr_asc_usac_config->num_elements++;
++      pstr_asc_usac_config->num_elements++;
++    }
+   }
+   if (ptr_usac_config->use_drc_element)  // For Loudness
+   {
+diff --git a/encoder/ixheaace_api.c b/encoder/ixheaace_api.c
+index 18d19ff..2845511 100644
+--- a/encoder/ixheaace_api.c
++++ b/encoder/ixheaace_api.c
+@@ -1917,7 +1917,7 @@ static IA_ERRORCODE ia_usac_enc_init(ixheaace_api_struct *pstr_api_struct, WORD3
+ 
+   error = iusace_enc_init(pstr_usac_config, &pstr_api_struct->pstr_state->audio_specific_config,
+                           &pstr_api_struct->pstr_state->str_usac_enc_data);
+-  if (error) {
++  if (error & IA_FATAL_ERROR) {
+     return error;
+   }
+ 
+@@ -3515,10 +3515,11 @@ IA_ERRORCODE ixheaace_init(pVOID pstr_obj_ixheaace, pVOID pv_input, pVOID pv_out
+     if (error) {
+       return error;
+     }
++
+     pstr_output_config->input_size =
+         frame_length * channels * (pstr_api_struct->config[0].usac_config.ui_pcm_wd_sz >> 3);
+ 
+-    if (pstr_input_config->use_drc_element) {
++    if (pstr_api_struct->config[0].usac_config.use_drc_element) {
+       ia_drc_input_config *pstr_drc_cfg = (ia_drc_input_config *)(pstr_input_config->pv_drc_cfg);
+       memcpy(pstr_drc_cfg, &pstr_api_struct->config[0].usac_config.str_drc_cfg,
+              sizeof(ia_drc_input_config));
+@@ -3548,6 +3549,11 @@ IA_ERRORCODE ixheaace_init(pVOID pstr_obj_ixheaace, pVOID pv_input, pVOID pv_out
+     pstr_output_config->header_samp_freq =
+         pstr_api_struct->config[0].usac_config.native_sample_rate;
+     pstr_output_config->audio_profile = AUDIO_PROFILE_USAC_L2;
++    if (pstr_input_config->use_drc_element !=
++        pstr_api_struct->config[0].usac_config.use_drc_element) {
++      error = IA_EXHEAACE_EXE_NONFATAL_USAC_INVALID_GAIN_POINTS;
++    }
++    pstr_input_config->use_drc_element = pstr_api_struct->config[0].usac_config.use_drc_element;
+   }
+ 
+   pstr_api_struct->pstr_state->ui_init_done = 1;
+@@ -3563,7 +3569,7 @@ IA_ERRORCODE ixheaace_create(pVOID pv_input, pVOID pv_output) {
+   if (!err_code) {
+     err_code = ixheaace_init(pstr_out_cfg->pv_ia_process_api_obj, pv_input, pv_output);
+   }
+-  if (err_code) {
++  if (err_code & IA_FATAL_ERROR) {
+     IXHEAACE_MEM_FREE(pv_output);
+   }
+   return err_code;
+diff --git a/encoder/ixheaace_error_codes.h b/encoder/ixheaace_error_codes.h
+index 99e7992..28e0846 100644
+--- a/encoder/ixheaace_error_codes.h
++++ b/encoder/ixheaace_error_codes.h
+@@ -99,6 +99,8 @@ typedef enum {
+   /*****************************************************************************/
+   /* Non Fatal Errors */
+ 
++  //DRC
++  IA_EXHEAACE_EXE_NONFATAL_USAC_INVALID_GAIN_POINTS = 0x00001300,
+   /* Fatal Errors */
+ 
+   // AAC Profiles
+diff --git a/fuzzer/xaac_enc_fuzzer.cpp b/fuzzer/xaac_enc_fuzzer.cpp
+index 62d49d2..a04f48c 100644
+--- a/fuzzer/xaac_enc_fuzzer.cpp
++++ b/fuzzer/xaac_enc_fuzzer.cpp
+@@ -382,8 +382,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+   if (err_code) {
+     if (pstr_drc_cfg) {
+       free(pstr_drc_cfg);
++      pstr_drc_cfg = NULL;
++    }
++    /* Fatal error code */
++    if (err_code & 0x80000000) {
++      ixheaace_delete((pVOID)pstr_out_cfg);
++      return 0;
+     }
+-    return 0;
+   }
+ 
+   pv_ia_process_api_obj = pstr_out_cfg->pv_ia_process_api_obj;
+diff --git a/test/encoder/ixheaace_error.c b/test/encoder/ixheaace_error.c
+index 63204fe..b149c25 100644
+--- a/test/encoder/ixheaace_error.c
++++ b/test/encoder/ixheaace_error.c
+@@ -82,6 +82,9 @@ pWORD8 ppb_ia_enhaacplus_enc_drc_config_fatal[IA_MAX_ERROR_SUB_CODE] = {
+ 
+ pWORD8 ppb_ia_enhaacplus_enc_mps_init_non_fatal[IA_MAX_ERROR_SUB_CODE] = {NULL};
+ 
++pWORD8 ppb_ia_enhaacplus_enc_drc_init_non_fatal[IA_MAX_ERROR_SUB_CODE] = {
++    (pWORD8) "Invalid DRC gain points" };
++
+ /* Fatal Errors */
+ 
+ pWORD8 ppb_ia_enhaacplus_enc_init_fatal[IA_MAX_ERROR_SUB_CODE] = {
+@@ -260,6 +263,8 @@ VOID ia_enhaacplus_enc_error_handler_init() {
+     ppb_ia_enhaacplus_enc_aac_exe_non_fatal;
+   ia_enhaacplus_enc_error_info.ppppb_error_msg_pointers[0][3][2] =
+     ppb_ia_enhaacplus_enc_usac_exe_non_fatal;
++  ia_enhaacplus_enc_error_info.ppppb_error_msg_pointers[0][2][3] =
++    ppb_ia_enhaacplus_enc_drc_init_non_fatal;
+ }
+ 
+ IA_ERRORCODE ia_error_handler(ia_error_info_struct *p_mod_err_info, WORD8 *pb_context,
+-- 
+2.25.1
+

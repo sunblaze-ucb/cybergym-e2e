@@ -1,0 +1,55 @@
+From e3fdc001d359d6bcd033c1276c772e72d3f49078 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 9 Jul 2020 13:18:37 +0930
+Subject: [PATCH] asan: readelf: heap buffer overflow in
+ slurp_hppa_unwind_table
+
+This one isn't just a weird corner case requiring multiple
+.PARISC.unwind sections in an object file to trigger the buffer
+overflow, it's also a simple bug that would prevent relocations being
+applied in the normal case of a single .PARISC.unwind section.
+
+	* readelf (slurp_hppa_unwind_table): Set table_len before use
+	in relocation sanity checks.
+---
+ binutils/ChangeLog | 5 +++++
+ binutils/readelf.c | 3 +--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/binutils/ChangeLog b/binutils/ChangeLog
+index 55a75afab5f..a5d6fad92cb 100644
+--- a/binutils/ChangeLog
++++ b/binutils/ChangeLog
+@@ -1,3 +1,8 @@
++2020-07-09  Alan Modra  <amodra@gmail.com>
++
++	* readelf (slurp_hppa_unwind_table): Set table_len before use
++	in relocation sanity checks.
++
+ 2020-07-07  Alan Modra  <amodra@gmail.com>
+ 
+ 	* testsuite/binutils-all/ar.exp: Use is_xcoff_format.
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 41547a2594b..0feeed9831d 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -8253,6 +8253,7 @@ slurp_hppa_unwind_table (Filedata *                  filedata,
+   nentries = size / unw_ent_size;
+   size = unw_ent_size * nentries;
+ 
++  aux->table_len = nentries;
+   tep = aux->table = (struct hppa_unw_table_entry *)
+       xcmalloc (nentries, sizeof (aux->table[0]));
+ 
+@@ -8372,8 +8373,6 @@ slurp_hppa_unwind_table (Filedata *                  filedata,
+       free (rela);
+     }
+ 
+-  aux->table_len = nentries;
+-
+   return TRUE;
+ }
+ 
+-- 
+2.43.2
+

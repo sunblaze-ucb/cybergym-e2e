@@ -1,0 +1,5 @@
+task_id = "arvo:61691"
+target_prog = "xaac_dec_fuzzer"
+vul_commit = "cd91e1af765486ea6aad21e258b3a23294fa291d"
+patch_commit = "e3f38372d0e16b33369e0b56e116fedaf055936a"
+build_image = "n132/arvo:61691-fix"

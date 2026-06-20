@@ -1,0 +1,7 @@
+name = "gdbm"
+language = "c"
+homepage = "https://www.gnu.org.ua/software/gdbm"
+main_repo = "https://git.gnu.org.ua/gdbm.git"
+repo_to_patch = "gdbm"
+build_image = "n132/arvo:38943-fix"
+immutable_files = ['tests', 'fuzz']

@@ -1,0 +1,5 @@
+task_id = "arvo:58283"
+target_prog = "fuzz_objcopy"
+vul_commit = "a2276a6d67195b27b91edf14081303616b2bb76e"
+patch_commit = "45fec14c029491329d769eae29021b4cb0cdd2c3"
+build_image = "n132/arvo:58283-fix"

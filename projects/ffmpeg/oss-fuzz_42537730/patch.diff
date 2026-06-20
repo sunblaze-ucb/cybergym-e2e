@@ -1,0 +1,30 @@
+From 9578c135d00dd9cc01491b8559d7fad5a387e90d Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Fri, 16 Aug 2024 14:47:42 +0200
+Subject: [PATCH] avformat/rmdec: check that buf if completely filled
+
+Fixes: use of uninitialized value
+Fixes: 70988/clusterfuzz-testcase-minimized-ffmpeg_dem_IVR_fuzzer-5298245077630976
+
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/rmdec.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/rmdec.c b/libavformat/rmdec.c
+index b07f3c7705..793b29bd18 100644
+--- a/libavformat/rmdec.c
++++ b/libavformat/rmdec.c
+@@ -188,7 +188,8 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
+         st->codecpar->ch_layout.nb_channels = avio_rb16(pb);
+         if (version == 5) {
+             ast->deint_id = avio_rl32(pb);
+-            avio_read(pb, buf, 4);
++            if (avio_read(pb, buf, 4) != 4)
++                return AVERROR_INVALIDDATA;
+             buf[4] = 0;
+         } else {
+             AV_WL32(buf, 0);
+-- 
+2.25.1
+

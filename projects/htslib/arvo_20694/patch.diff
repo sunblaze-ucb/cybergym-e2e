@@ -1,0 +1,35 @@
+From d6f15361ee63ff13dfb57f3eac119e3d50e65c56 Mon Sep 17 00:00:00 2001
+From: James Bonfield <jkb@sanger.ac.uk>
+Date: Fri, 14 Feb 2020 10:04:30 +0000
+Subject: [PATCH] Protect against CRAM compression headers having negative
+ ref_seq_start.
+
+This could trigger buffer read overruns in the MD5 calculation code
+(and perhaps more).
+
+Credit to OSS-Fuzz
+Fixes oss-fuzz 20694
+---
+ cram/cram_decode.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/cram/cram_decode.c b/cram/cram_decode.c
+index 4638fac..8cf3403 100644
+--- a/cram/cram_decode.c
++++ b/cram/cram_decode.c
+@@ -987,6 +987,12 @@ cram_block_slice_hdr *cram_decode_slice_header(cram_fd *fd, cram_block *b) {
+         cp += safe_itf8_get((char *)cp,  (char *)cp_end, &i32);
+         hdr->ref_seq_span = i32;
+ #endif
++        if (hdr->ref_seq_start < 0 || hdr->ref_seq_span < 0) {
++            free(hdr);
++            hts_log_error("Negative values not permitted for header "
++                          "sequence start or span fields");
++            return NULL;
++        }
+     }
+     cp += safe_itf8_get((char *)cp,  (char *)cp_end, &hdr->num_records);
+     hdr->record_counter = 0;
+-- 
+2.7.4
+

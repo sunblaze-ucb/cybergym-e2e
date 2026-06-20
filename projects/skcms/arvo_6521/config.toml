@@ -1,0 +1,4 @@
+task_id = "arvo:6521"
+target_prog = "iccprofile_transform"
+vul_commit = "c5472f44e1a2c15eb60bc2fd4255c67b9004f11f"
+patch_commit = "569770ec9110579036c29b2e82aa52df0aa59dc8"

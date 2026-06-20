@@ -1,0 +1,7 @@
+name = "net-snmp"
+language = "c++"
+homepage = "http://www.net-snmp.org/"
+main_repo = "https://github.com/net-snmp/net-snmp"
+repo_to_patch = "net-snmp"
+build_image = "n132/arvo:36908-fix"
+immutable_files = ["testing"]

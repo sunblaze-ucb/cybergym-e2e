@@ -1,0 +1,30 @@
+From 956d0c51271d453f2d66cbe8fc5626f00035d151 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 6 Apr 2023 16:47:43 +0900
+Subject: [PATCH] fmt_fp.c (mrb_format_float): set minimum precision 1 for "%e"
+
+---
+ src/fmt_fp.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/fmt_fp.c b/src/fmt_fp.c
+index 7c5b01a99..e00b65b37 100644
+--- a/src/fmt_fp.c
++++ b/src/fmt_fp.c
+@@ -267,10 +267,9 @@ mrb_format_float(mrb_float f, char *buf, size_t buf_size, char fmt, int prec, ch
+ 
+   if (fmt == 'e') {
+     num_digits = prec + 1;
+-  } else if (fmt == 'g') {
+-    if (prec == 0) {
+-      prec = 1;
+-    }
++    if (prec == 0) prec = 1;
++  }
++  else if (fmt == 'g') {
+     num_digits = prec;
+   }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:57333"
+target_prog = "avc_enc_fuzzer"
+vul_commit = "9783b509ac174fb51e510548ba1953e3997f07ab"
+patch_commit = "ba34616a119952074bf32bbb8ae2b93e1d8500c2"
+build_image = "n132/arvo:57333-fix"

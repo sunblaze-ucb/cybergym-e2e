@@ -1,0 +1,4 @@
+task_id = "arvo:55556"
+target_prog = "conf"
+vul_commit = "a7fbc543c9b2305befee733d689fdf8b821ab880"
+patch_commit = "507ac830036d7531489490831814cf03e0d7c4d6"

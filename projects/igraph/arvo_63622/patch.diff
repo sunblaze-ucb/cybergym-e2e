@@ -1,0 +1,42 @@
+From dc6dcf6227dadfc6670bf911bb6e0640b5df7a35 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Szabolcs=20Horva=CC=81t?= <szhorvat@gmail.com>
+Date: Thu, 26 Oct 2023 20:44:34 +0000
+Subject: [PATCH] fix: Pajek reader: include "type" in specially handled
+ attribute names to prevent a crash
+
+---
+ src/io/pajek-parser.y | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/io/pajek-parser.y b/src/io/pajek-parser.y
+index 42580d13b..085f34404 100644
+--- a/src/io/pajek-parser.y
++++ b/src/io/pajek-parser.y
+@@ -768,8 +768,12 @@ static igraph_error_t check_bipartite(igraph_i_pajek_parsedata_t *context) {
+ /* Check if attrname is a standard Pajek vertex attribute. */
+ static igraph_bool_t is_standard_vattr(const char *attrname) {
+   const char *names[] = {
+-    "id", // TODO remove for 0.11
+-    "name", "x", "y", "z", "shape", "xfact", "yfact",
++    /* vertex names: */
++    "id", /* TODO: remove for 0.11 */ "name",
++    /* other vertex attributes: */
++    "type", "x", "y", "z",
++    /* vertex parameters: */
++    "xfact", "yfact",
+     "labeldist", "labeldegree2", "framewidth",
+     "fontsize", "rotation", "radius",
+     "diamondratio", "labeldegree",
+@@ -787,7 +791,9 @@ static igraph_bool_t is_standard_vattr(const char *attrname) {
+ /* Check if attrname is a standard Pajek edge attribute. */
+ static igraph_bool_t is_standard_eattr(const char *attrname) {
+   const char *names[] = {
++    /* other edge attributes: */
+     "weight",
++    /* edge parameters: */
+     "arrowsize", "edgewidth", "hook1", "hook2",
+     "angle1", "angle2", "velocity1", "velocity2",
+     "arrowpos", "labelpos", "labelangle",
+-- 
+2.25.1
+

@@ -1,0 +1,37 @@
+From 963446e229c96cbeed59265bb9fde624b2e3e99c Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Sun, 24 Jul 2022 15:08:56 +0100
+Subject: [PATCH] Fixes Use-of-uninitialized-value in LibRaw::init_fuji_block
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46244
+
+The root cause is up in the stack. The `unsigned *block_sizes` in the `LibRaw::fuji_compressed_load_raw` is allocated with memory for one `unsigned` integer.
+Then it is initialized from the stream `libraw_internal_data.internal_data.input->read(block_sizes, 1, sizeof(unsigned) * libraw_internal_data.unpacker_data.fuji_total_blocks);`
+However if the stream position is close to the end and there is no enough data to fill all buffer, some bytes are left uninitialized.
+---
+ src/decoders/fuji_compressed.cpp | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/decoders/fuji_compressed.cpp b/src/decoders/fuji_compressed.cpp
+index 5f1dc022..3241cc24 100644
+--- a/src/decoders/fuji_compressed.cpp
++++ b/src/decoders/fuji_compressed.cpp
+@@ -1101,8 +1101,13 @@ void LibRaw::fuji_compressed_load_raw()
+   raw_block_offsets = (INT64 *)malloc(sizeof(INT64) * libraw_internal_data.unpacker_data.fuji_total_blocks);
+ 
+   libraw_internal_data.internal_data.input->seek(libraw_internal_data.unpacker_data.data_offset, SEEK_SET);
+-  libraw_internal_data.internal_data.input->read(
+-      block_sizes, 1, sizeof(unsigned) * libraw_internal_data.unpacker_data.fuji_total_blocks);
++  int sizesToRead = sizeof(unsigned) * libraw_internal_data.unpacker_data.fuji_total_blocks;
++  if (libraw_internal_data.internal_data.input->read(block_sizes, 1, sizesToRead) != sizesToRead)
++  {
++    free(block_sizes);
++    free(raw_block_offsets);
++    throw LIBRAW_EXCEPTION_IO_EOF;
++  }
+ 
+   raw_offset = ((sizeof(unsigned) * libraw_internal_data.unpacker_data.fuji_total_blocks) + 0xF) & ~0xF;
+ 
+-- 
+2.43.2
+

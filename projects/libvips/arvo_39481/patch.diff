@@ -1,0 +1,25 @@
+From b98366fcb1bf24491b0033eb21b3f6f5c33e453f Mon Sep 17 00:00:00 2001
+From: Lovell Fuller <lovell@users.noreply.github.com>
+Date: Tue, 12 Oct 2021 17:24:40 +0100
+Subject: [PATCH] Switch to memmove as input buffer can overlap (#2476)
+
+---
+ libvips/foreign/jxlload.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libvips/foreign/jxlload.c b/libvips/foreign/jxlload.c
+index ebe3a0528..bfd667d7d 100644
+--- a/libvips/foreign/jxlload.c
++++ b/libvips/foreign/jxlload.c
+@@ -208,7 +208,7 @@ vips_foreign_load_jxl_fill_input( VipsForeignLoadJxl *jxl,
+ 		INPUT_BUFFER_SIZE - bytes_remaining );
+ #endif /*DEBUG_VERBOSE*/
+ 
+-	memcpy( jxl->input_buffer, 
++	memmove( jxl->input_buffer,
+ 		jxl->input_buffer + jxl->bytes_in_buffer - bytes_remaining,
+ 		bytes_remaining );
+ 	bytes_read = vips_source_read( jxl->source,
+-- 
+2.43.2
+

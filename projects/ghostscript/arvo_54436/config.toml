@@ -1,0 +1,5 @@
+task_id = "arvo:54436"
+target_prog = "gs_device_bmpmono_fuzzer"
+vul_commit = "edd17616f1a0467b109b16cc2ee8407ae4c87af7"
+patch_commit = "1b5facd696e036ce738b93505ffd5ad03f0cb63c"
+build_image = "n132/arvo:54436-fix"

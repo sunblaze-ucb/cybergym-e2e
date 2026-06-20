@@ -1,0 +1,104 @@
+From 8f5ccada05ddd4a1ff8e399ad39fc7cd4bd33325 Mon Sep 17 00:00:00 2001
+From: David Kilzer <ddkilzer@apple.com>
+Date: Wed, 7 Jul 2021 19:24:36 -0700
+Subject: [PATCH] xmlAddChild() and xmlAddNextSibling() may not attach their
+ second argument
+
+Use the return value of xmlAddChild() and xmlAddNextSibling()
+instead of the second argument directly.
+
+Found by OSS-Fuzz.
+
+Fixes #316
+---
+ xinclude.c | 14 ++++++--------
+ xpointer.c | 13 ++++++-------
+ 2 files changed, 12 insertions(+), 15 deletions(-)
+
+diff --git a/xinclude.c b/xinclude.c
+index b2e6ea13..2a0614d7 100644
+--- a/xinclude.c
++++ b/xinclude.c
+@@ -1014,15 +1014,15 @@ xmlXIncludeCopyRange(xmlXIncludeCtxtPtr ctxt, xmlDocPtr target,
+ 		if (list == NULL) {
+ 		    list = tmp;
+ 		    listParent = cur->parent;
++		    last = tmp;
+ 		} else {
+ 		    if (level == lastLevel)
+-			xmlAddNextSibling(last, tmp);
++			last = xmlAddNextSibling(last, tmp);
+ 		    else {
+-			xmlAddChild(last, tmp);
++			last = xmlAddChild(last, tmp);
+ 			lastLevel = level;
+ 		    }
+ 		}
+-		last = tmp;
+ 
+ 		if (index2 > 1) {
+ 		    end = xmlXIncludeGetNthChild(cur, index2 - 1);
+@@ -1103,12 +1103,11 @@ xmlXIncludeCopyRange(xmlXIncludeCtxtPtr ctxt, xmlDocPtr target,
+ 	    }
+ 	    if (tmp != NULL) {
+ 		if (level == lastLevel)
+-		    xmlAddNextSibling(last, tmp);
++		    last = xmlAddNextSibling(last, tmp);
+ 		else {
+-		    xmlAddChild(last, tmp);
++		    last = xmlAddChild(last, tmp);
+ 		    lastLevel = level;
+ 		}
+-		last = tmp;
+ 	    }
+ 	}
+ 	/*
+@@ -1186,8 +1185,7 @@ xmlXIncludeCopyXPointer(xmlXIncludeCtxtPtr ctxt, xmlDocPtr target,
+ 				    if (last == NULL) {
+ 					list = last = tmp;
+ 				    } else {
+-					xmlAddNextSibling(last, tmp);
+-					last = tmp;
++					last = xmlAddNextSibling(last, tmp);
+ 				    }
+ 				    cur = cur->next;
+ 				    continue;
+diff --git a/xpointer.c b/xpointer.c
+index 27a6a8ce..fe2fca5a 100644
+--- a/xpointer.c
++++ b/xpointer.c
+@@ -1483,16 +1483,16 @@ xmlXPtrBuildRangeNodeList(xmlXPathObjectPtr range) {
+ 		return(list);
+ 	    } else {
+ 		tmp = xmlCopyNode(cur, 0);
+-		if (list == NULL)
++		if (list == NULL) {
+ 		    list = tmp;
+-		else {
++		    parent = tmp;
++		} else {
+ 		    if (last != NULL)
+-			xmlAddNextSibling(last, tmp);
++			parent = xmlAddNextSibling(last, tmp);
+ 		    else
+-			xmlAddChild(parent, tmp);
++			parent = xmlAddChild(parent, tmp);
+ 		}
+ 		last = NULL;
+-		parent = tmp;
+ 
+ 		if (index2 > 1) {
+ 		    end = xmlXPtrGetNthChild(cur, index2 - 1);
+@@ -1574,8 +1574,7 @@ xmlXPtrBuildRangeNodeList(xmlXPathObjectPtr range) {
+ 		if (last != NULL)
+ 		    xmlAddNextSibling(last, tmp);
+ 		else {
+-		    xmlAddChild(parent, tmp);
+-		    last = tmp;
++		    last = xmlAddChild(parent, tmp);
+ 		}
+ 	    }
+ 	}
+-- 
+2.43.2
+

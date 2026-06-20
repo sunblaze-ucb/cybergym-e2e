@@ -1,0 +1,4 @@
+task_id = "arvo:26442"
+target_prog = "compress_fuzzer"
+vul_commit = "bb42656cb982f60ce8f1b87f3185bdcd94eb9d0a"
+patch_commit = "c4c6470e88210afc95262c8b9fcc27e30ca043ee"

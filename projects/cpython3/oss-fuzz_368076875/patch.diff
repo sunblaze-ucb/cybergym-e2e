@@ -1,0 +1,56 @@
+From a1be83dae311e4a1a6e66ed5e128b1ad8794f72f Mon Sep 17 00:00:00 2001
+From: "Tomas R." <tomas.roun8@gmail.com>
+Date: Sun, 6 Oct 2024 21:46:03 +0200
+Subject: [PATCH] gh-125010: Fix `use-after-free` in AST `repr()` (#125015)
+
+---
+ Lib/test/test_ast/test_ast.py | 7 +++++++
+ Parser/asdl_c.py              | 1 -
+ Python/Python-ast.c           | 1 -
+ 3 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/Lib/test/test_ast/test_ast.py b/Lib/test/test_ast/test_ast.py
+index f052822cb45..01d2e392302 100644
+--- a/Lib/test/test_ast/test_ast.py
++++ b/Lib/test/test_ast/test_ast.py
+@@ -789,6 +789,13 @@ def test_repr(self) -> None:
+             with self.subTest(test_input=test):
+                 self.assertEqual(repr(ast.parse(test)), snapshot)
+ 
++    def test_repr_large_input_crash(self):
++        # gh-125010: Fix use-after-free in ast repr()
++        source = "0x0" + "e" * 10_000
++        with self.assertRaisesRegex(ValueError,
++                                    r"Exceeds the limit \(\d+ digits\)"):
++            repr(ast.Constant(value=eval(source)))
++
+ 
+ class CopyTests(unittest.TestCase):
+     """Test copying and pickling AST nodes."""
+diff --git a/Parser/asdl_c.py b/Parser/asdl_c.py
+index ab5fd229cc4..f50c28afcfe 100755
+--- a/Parser/asdl_c.py
++++ b/Parser/asdl_c.py
+@@ -1608,7 +1608,6 @@ def visitModule(self, mod):
+ 
+         if (!value_repr) {
+             Py_DECREF(name);
+-            Py_DECREF(value);
+             goto error;
+         }
+ 
+diff --git a/Python/Python-ast.c b/Python/Python-ast.c
+index 4a58c0973d1..89c52b9dc73 100644
+--- a/Python/Python-ast.c
++++ b/Python/Python-ast.c
+@@ -5809,7 +5809,6 @@ ast_repr_max_depth(AST_object *self, int depth)
+ 
+         if (!value_repr) {
+             Py_DECREF(name);
+-            Py_DECREF(value);
+             goto error;
+         }
+ 
+-- 
+2.25.1
+

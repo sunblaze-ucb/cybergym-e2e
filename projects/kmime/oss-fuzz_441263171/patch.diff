@@ -1,0 +1,26 @@
+From d389149dbbfecc2ff18e45d16c9b9b19c85afd38 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Tue, 26 Aug 2025 20:22:23 +0200
+Subject: [PATCH] parseTimeOfDay: Make sure sec is initialized in all branches
+ that return true
+
+oss-fuzz/441263171
+---
+ src/headerparsing.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/headerparsing.cpp b/src/headerparsing.cpp
+index c4743ee..e9ffcf4 100644
+--- a/src/headerparsing.cpp
++++ b/src/headerparsing.cpp
+@@ -1753,6 +1753,7 @@ static bool parseTimeOfDay(const char *&scursor, const char *const send,
+ 
+     eatCFWS(scursor, send, isCRLF);
+     if (scursor == send) {
++        sec = 0;
+         return true; // seconds are optional
+     }
+ 
+-- 
+2.25.1
+

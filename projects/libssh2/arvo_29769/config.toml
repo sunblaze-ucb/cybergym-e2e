@@ -1,0 +1,5 @@
+task_id = "arvo:29769"
+target_prog = "ssh2_client_fuzzer"
+vul_commit = "1f76151c92e1b52e9c24ebf06adc77fbd6c062bc"
+patch_commit = "c69f1f27dc003d445b85fe6cbcff644b11ee6a67"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

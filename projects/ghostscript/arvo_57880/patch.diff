@@ -1,0 +1,37 @@
+From acaa21f68ede3ae8fca48136fa95ee32de6533b2 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 11 Apr 2023 09:49:52 +0100
+Subject: [PATCH] GhostPDF - avoid 32-bit overflow checking size of table
+
+OSS-fuzz #57880
+
+toffs was fuzzed to be very nearly 2^32-1 and when the (valid) tlen was
+added to it, the result overflowed a 32-bit value, evading the existing
+check to ensure the table was entirely contained in the buffer of data.
+
+Simply promote the 32-bit variables to 64-bit before performing the
+arithmetic and the check. fbuflen is already a 64-bit value.
+---
+ pdf/pdf_font1C.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/pdf/pdf_font1C.c b/pdf/pdf_font1C.c
+index 0974905d9..e688de4ba 100644
+--- a/pdf/pdf_font1C.c
++++ b/pdf/pdf_font1C.c
+@@ -2263,7 +2263,11 @@ pdfi_read_cff_font(pdf_context *ctx, pdf_dict *font_dict, pdf_dict *stream_dict,
+                 break;
+             }
+         }
+-        if (toffs == 0 || tlen == 0 || toffs + tlen > fbuflen) {
++        /* Sanity check the offset and size of the CFF table and make sure the declared
++         * size and position fits inside the data we have. Promote the 32-bit variables to
++         * 64-bit to avoid overflow calculating the end of the table.
++         */
++        if (toffs == 0 || tlen == 0 || (uint64_t)toffs + (uint64_t)tlen > fbuflen) {
+             gs_free_object(ctx->memory, pfbuf, "pdfi_read_cff_font(fbuf)");
+             return_error(gs_error_invalidfont);
+         }
+-- 
+2.25.1
+

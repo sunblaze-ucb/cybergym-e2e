@@ -1,0 +1,73 @@
+From 666221ce04a8403bdd12b14287a3c17d6ed81955 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Sun, 6 Apr 2025 13:21:21 +0930
+Subject: [PATCH] buffer overflow in nds32_elf_do_9_pcrel_reloc
+
+	* elf32-nds32.c (nds32_elf_do_9_pcrel_reloc): Properly bounds
+	check relocation field.
+	(nds32_elf_hi20_reloc, nds32_elf_generic_reloc): Likewise.
+	(nds32_elf_final_link_relocate): Likewise.
+---
+ bfd/elf32-nds32.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/bfd/elf32-nds32.c b/bfd/elf32-nds32.c
+index 1aff60a2505..3627b30af9c 100644
+--- a/bfd/elf32-nds32.c
++++ b/bfd/elf32-nds32.c
+@@ -2697,7 +2697,8 @@ nds32_elf_do_9_pcrel_reloc (bfd *               abfd,
+   bfd_reloc_status_type status;
+ 
+   /* Sanity check the address (offset in section).  */
+-  if (offset > bfd_get_section_limit (abfd, input_section))
++  bfd_vma octet = offset * bfd_octets_per_byte (abfd, input_section);
++  if (!bfd_reloc_offset_in_range (howto, abfd, input_section, octet))
+     return bfd_reloc_outofrange;
+ 
+   relocation = symbol_value + addend;
+@@ -2751,7 +2752,7 @@ struct nds32_hi20
+ static struct nds32_hi20 *nds32_hi20_list;
+ 
+ static bfd_reloc_status_type
+-nds32_elf_hi20_reloc (bfd *abfd ATTRIBUTE_UNUSED,
++nds32_elf_hi20_reloc (bfd *abfd,
+ 		      arelent *reloc_entry,
+ 		      asymbol *symbol,
+ 		      void *data,
+@@ -2774,7 +2775,10 @@ nds32_elf_hi20_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+     }
+ 
+   /* Sanity check the address (offset in section).  */
+-  if (reloc_entry->address > bfd_get_section_limit (abfd, input_section))
++  bfd_vma octet = (reloc_entry->address
++		   * bfd_octets_per_byte (abfd, input_section));
++  if (!bfd_reloc_offset_in_range (reloc_entry->howto,
++				  abfd, input_section, octet))
+     return bfd_reloc_outofrange;
+ 
+   ret = bfd_reloc_ok;
+@@ -2938,7 +2942,10 @@ nds32_elf_generic_reloc (bfd *input_bfd, arelent *reloc_entry,
+      a section relative addend which is wrong.  */
+ 
+   /* Sanity check the address (offset in section).  */
+-  if (reloc_entry->address > bfd_get_section_limit (input_bfd, input_section))
++  bfd_vma octet = (reloc_entry->address
++		   * bfd_octets_per_byte (input_bfd, input_section));
++  if (!bfd_reloc_offset_in_range (reloc_entry->howto, input_bfd, input_section,
++				  octet))
+     return bfd_reloc_outofrange;
+ 
+   ret = bfd_reloc_ok;
+@@ -4698,7 +4705,8 @@ nds32_elf_final_link_relocate (reloc_howto_type *howto, bfd *input_bfd,
+   bfd_vma relocation;
+ 
+   /* Sanity check the address.  */
+-  if (address > bfd_get_section_limit (input_bfd, input_section))
++  bfd_vma octet = address * bfd_octets_per_byte (input_bfd, input_section);
++  if (!bfd_reloc_offset_in_range (howto, input_bfd, input_section, octet))
+     return bfd_reloc_outofrange;
+ 
+   /* This function assumes that we are dealing with a basic relocation
+-- 
+2.25.1
+

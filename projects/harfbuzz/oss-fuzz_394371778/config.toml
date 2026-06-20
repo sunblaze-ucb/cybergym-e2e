@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:394371778"
+target_prog = "hb-subset-fuzzer"
+vul_commit = "c05002afb8ff7ecb5d862278db32890aaf423c65"
+patch_commit = "601dd1a7483cae70c0007c6a3ae90c5fb516c61e"
+build_image = "cybergym/e2e:harfbuzz"

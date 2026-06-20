@@ -1,0 +1,4 @@
+task_id = "arvo:9808"
+target_prog = "ssl_ctx_api"
+vul_commit = "17dc94e87466ac8928096c4f45954989d585cfe5"
+patch_commit = "ddedf6d455e33d6a0b3bc40581700f3d252029d7"

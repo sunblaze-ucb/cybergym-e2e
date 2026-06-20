@@ -1,0 +1,49 @@
+From db714553712debbc447383f735e022031dc13127 Mon Sep 17 00:00:00 2001
+From: Martin Matuska <martin@matuska.org>
+Date: Sun, 3 Apr 2022 12:06:24 +0200
+Subject: [PATCH] RAR reader: fix heap-use-after-free in run_filters()
+
+OSS-Fuzz issue 46279
+Fixes #1715
+---
+ libarchive/archive_read_support_format_rar.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/libarchive/archive_read_support_format_rar.c b/libarchive/archive_read_support_format_rar.c
+index 7a731852..f9cbe2a8 100644
+--- a/libarchive/archive_read_support_format_rar.c
++++ b/libarchive/archive_read_support_format_rar.c
+@@ -3328,6 +3328,7 @@ run_filters(struct archive_read *a)
+   struct rar *rar = (struct rar *)(a->format->data);
+   struct rar_filters *filters = &rar->filters;
+   struct rar_filter *filter = filters->stack;
++  struct rar_filter *f;
+   size_t start, end;
+   int64_t tend;
+   uint32_t lastfilteraddress;
+@@ -3345,6 +3346,22 @@ run_filters(struct archive_read *a)
+   ret = expand(a, &tend);
+   if (ret != ARCHIVE_OK)
+     return 0;
++
++  /* Check if filter stack was modified in expand() */
++  ret = ARCHIVE_FATAL;
++  f = filters->stack;
++  while (f)
++  {
++    if (f == filter)
++    {
++      ret = ARCHIVE_OK;
++      break;
++    }
++    f = f->next;
++  }
++  if (ret != ARCHIVE_OK)
++    return 0;
++
+   if (tend < 0)
+     return 0;
+   end = (size_t)tend;
+-- 
+2.43.2
+

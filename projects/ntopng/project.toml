@@ -1,0 +1,7 @@
+name = "ntopng"
+language = "c++"
+homepage = "https://github.com/ntop/ntopng/"
+main_repo = "https://github.com/ntop/ntopng.git"
+repo_to_patch = "ntopng"
+build_image = "n132/arvo:60037-fix"
+immutable_files = ["fuzz", "tests"]

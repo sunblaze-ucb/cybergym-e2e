@@ -1,0 +1,4 @@
+task_id = "arvo:18979"
+target_prog = "opj_decompress_fuzzer"
+vul_commit = "9701b3305db58d35e4446946309f88937e2f5342"
+patch_commit = "ac3737372a00b8778b528094dd5bd58a74f67d42"

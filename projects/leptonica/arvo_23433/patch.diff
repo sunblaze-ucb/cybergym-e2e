@@ -1,0 +1,26 @@
+From 8d6e1755518cfb98536d6c3daf0601f226d16842 Mon Sep 17 00:00:00 2001
+From: Dan Bloomberg <dan.bloomberg@gmail.com>
+Date: Sun, 14 Jun 2020 22:52:40 -0700
+Subject: [PATCH] Issue 23433 in oss-fuzz: Heap-buffer-overflow in
+ findNextBorderPixel() * Check pix boundary when looking for the next pixel.
+
+---
+ src/ccbord.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/ccbord.c b/src/ccbord.c
+index c623702..4e6363e 100644
+--- a/src/ccbord.c
++++ b/src/ccbord.c
+@@ -1080,6 +1080,8 @@ l_uint32  *line;
+         pos = (qpos + i) % 8;
+         npx = px + xpostab[pos];
+         npy = py + ypostab[pos];
++        if (npx < 0 || npx >= w || npy < 0 || npy >= h)
++            continue;
+         line = data + npy * wpl;
+         val = GET_DATA_BIT(line, npx);
+         if (val) {
+-- 
+2.43.2
+

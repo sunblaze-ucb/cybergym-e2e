@@ -1,0 +1,83 @@
+From 590abc168fb25908cde1df89f4905b575c14e55d Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Sun, 31 Oct 2021 10:08:15 +1030
+Subject: [PATCH] Don't include coff/pe.h in coff-x86_64.c
+
+This (and other) code from coffcode.h is broken for x86_64_coff_vec,
+and has been ever since support was added in 2006 commit 99ad839030c1
+Here, bfd_coff_aoutsz must match coff_swap_aouthdr_out otherwise we
+end up writing garbage.
+
+      /* Note that peicode.h fills in a PEAOUTHDR, not an AOUTHDR.
+	 include/coff/pe.h sets AOUTSZ == sizeof (PEAOUTHDR)).  */
+      char * buff;
+      bfd_size_type amount = bfd_coff_aoutsz (abfd);
+
+      buff = (char *) bfd_malloc (amount);
+      if (buff == NULL)
+	return false;
+
+      coff_swap_aouthdr_out (abfd, & internal_a, buff);
+      amount = bfd_bwrite (buff, amount, abfd);
+
+We have removed support for --target=x86_64-coff, likely because it
+never worked properly, but still produce coff-x86_64.o with
+--enable-targets=all.  This means objcopy can recognize x86_64 COFF
+files but will write garbage to the output file, a fact found by
+fuzzers.  I suspect x86_64 COFF is still broken after this fix, and
+mention of coff-x86_64.* should be removed from bfd/Makefile.am.
+
+	* coff-x86_64.c: Don't include coff/pe.h.
+	(COFF_WITH_pex64): Don't define here.
+	* pe-x86_64.c: Include coff/pe.h and other headers.
+	(PEI_HEADERS): Define.
+---
+ bfd/coff-x86_64.c | 5 -----
+ bfd/pe-x86_64.c   | 5 +++++
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/bfd/coff-x86_64.c b/bfd/coff-x86_64.c
+index 67f2ee5e07a..9bd1c573834 100644
+--- a/bfd/coff-x86_64.c
++++ b/bfd/coff-x86_64.c
+@@ -20,10 +20,6 @@
+ 
+    Written by Kai Tietz, OneVision Software GmbH&CoKg.  */
+ 
+-#ifndef COFF_WITH_pex64
+-#define COFF_WITH_pex64
+-#endif
+-
+ /* Note we have to make sure not to include headers twice.
+    Not all headers are wrapped in #ifdef guards, so we define
+    PEI_HEADERS to prevent double including here.  */
+@@ -33,7 +29,6 @@
+ #include "libbfd.h"
+ #include "coff/x86_64.h"
+ #include "coff/internal.h"
+-#include "coff/pe.h"
+ #include "libcoff.h"
+ #include "libiberty.h"
+ #endif
+diff --git a/bfd/pe-x86_64.c b/bfd/pe-x86_64.c
+index 5a777bbf4c8..1c1b23fb8c5 100644
+--- a/bfd/pe-x86_64.c
++++ b/bfd/pe-x86_64.c
+@@ -20,9 +20,14 @@
+ 
+    Written by Kai Tietz, OneVision Software GmbH&CoKg.  */
+ 
++#define PEI_HEADERS
+ #include "sysdep.h"
+ #include "bfd.h"
++#include "libbfd.h"
++#include "libiberty.h"
++#include "coff/x86_64.h"
+ #include "coff/internal.h"
++#include "coff/pe.h"
+ #include "libcoff.h"
+ 
+ #define TARGET_SYM		x86_64_pe_vec
+-- 
+2.43.2
+

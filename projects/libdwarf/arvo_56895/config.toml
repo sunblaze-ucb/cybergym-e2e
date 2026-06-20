@@ -1,0 +1,4 @@
+task_id = "arvo:56895"
+target_prog = "fuzz_macro_dwarf5"
+vul_commit = "81ee0849b77554d93805b79a59d3e0370b1fbe16"
+patch_commit = "771cfcca1ef6a4a7eb9595d700fc72020d0ed72e"

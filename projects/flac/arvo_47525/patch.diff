@@ -1,0 +1,35 @@
+From 69cf76c58e797d093cea73b1f8ad1ff55ec2786d Mon Sep 17 00:00:00 2001
+From: Martijn van Beurden <mvanb1@gmail.com>
+Date: Fri, 20 May 2022 14:55:43 +0200
+Subject: [PATCH] Fix use of undefined value
+
+The mechanism to improve metadata reading added in 0077d3b overrides
+a FLAC__STREAM_DECODER_ABORTED with
+FLAC__STREAM_DECODER_SEARCH_FOR_FRAME_SYNC causing the decoder to
+overread a buffer into an uninitialized part. A check is added that
+ensures searching for frame sync is only set when the decoder is
+still in a valid state
+
+Credit: Oss-Fuzz
+Issue: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=47525
+---
+ src/libFLAC/stream_decoder.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/libFLAC/stream_decoder.c b/src/libFLAC/stream_decoder.c
+index afc3923a..f085e3be 100644
+--- a/src/libFLAC/stream_decoder.c
++++ b/src/libFLAC/stream_decoder.c
+@@ -1525,7 +1525,8 @@ FLAC__bool read_metadata_(FLAC__StreamDecoder *decoder)
+ 				 * We cannot know whether the length or the content was
+ 				 * corrupt, so stop parsing metadata */
+ 				send_error_to_client_(decoder, FLAC__STREAM_DECODER_ERROR_STATUS_BAD_METADATA);
+-				decoder->protected_->state = FLAC__STREAM_DECODER_SEARCH_FOR_FRAME_SYNC;
++				if(decoder->protected_->state == FLAC__STREAM_DECODER_READ_METADATA)
++					decoder->protected_->state = FLAC__STREAM_DECODER_SEARCH_FOR_FRAME_SYNC;
+ 				ok = false;
+ 			}
+ 			FLAC__bitreader_remove_limit(decoder->private_->input);
+-- 
+2.43.2
+

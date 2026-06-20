@@ -1,0 +1,4 @@
+task_id = "arvo:22140"
+target_prog = "colorquant_fuzzer"
+vul_commit = "25861d32f3807946f6411f85ee2a6ff1cef25e0f"
+patch_commit = "b1e3c5970dbf6ef329b5b146ae03158824e201fb"

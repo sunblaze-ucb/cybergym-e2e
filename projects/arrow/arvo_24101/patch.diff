@@ -1,0 +1,584 @@
+From 389b1535bbb40da80f441c02ff93335eb5407316 Mon Sep 17 00:00:00 2001
+From: Antoine Pitrou <antoine@python.org>
+Date: Mon, 13 Jul 2020 16:19:54 -0500
+Subject: [PATCH] ARROW-9439: [C++] Fix crash on invalid IPC input
+
+Also add argument-checking variants of SliceBuffer, SliceMutableBuffer, Array::Slice and ArrayData::Slice.
+
+Should fix the following issue:
+* https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=24101
+
+Closes #7733 from pitrou/ARROW-9439-oss-fuzz-ipc
+
+Lead-authored-by: Antoine Pitrou <antoine@python.org>
+Co-authored-by: Wes McKinney <wesm@apache.org>
+Signed-off-by: Wes McKinney <wesm@apache.org>
+---
+ cpp/src/arrow/array/array_base.cc  | 13 +++++
+ cpp/src/arrow/array/array_base.h   |  5 ++
+ cpp/src/arrow/array/array_test.cc  | 49 +++++++++++++++++
+ cpp/src/arrow/array/concatenate.cc | 86 +++++++++++++++++++-----------
+ cpp/src/arrow/array/data.cc        |  6 +++
+ cpp/src/arrow/array/data.h         |  8 ++-
+ cpp/src/arrow/buffer.cc            | 41 ++++++++++++++
+ cpp/src/arrow/buffer.h             | 28 ++++++++++
+ cpp/src/arrow/buffer_test.cc       | 37 ++++++++++++-
+ cpp/src/arrow/ipc/reader.cc        |  6 +++
+ cpp/src/arrow/util/int_util.h      | 17 ++++++
+ testing                            |  2 +-
+ 12 files changed, 263 insertions(+), 35 deletions(-)
+
+diff --git a/cpp/src/arrow/array/array_base.cc b/cpp/src/arrow/array/array_base.cc
+index 96f00c1d5..0781dd4a2 100644
+--- a/cpp/src/arrow/array/array_base.cc
++++ b/cpp/src/arrow/array/array_base.cc
+@@ -246,6 +246,19 @@ std::shared_ptr<Array> Array::Slice(int64_t offset) const {
+   return Slice(offset, slice_length);
+ }
+ 
++Result<std::shared_ptr<Array>> Array::SliceSafe(int64_t offset, int64_t length) const {
++  ARROW_ASSIGN_OR_RAISE(auto sliced_data, data_->SliceSafe(offset, length));
++  return MakeArray(std::move(sliced_data));
++}
++
++Result<std::shared_ptr<Array>> Array::SliceSafe(int64_t offset) const {
++  if (offset < 0) {
++    // Avoid UBSAN in subtraction below
++    return Status::Invalid("Negative buffer slice offset");
++  }
++  return SliceSafe(offset, data_->length - offset);
++}
++
+ std::string Array::ToString() const {
+   std::stringstream ss;
+   ARROW_CHECK_OK(PrettyPrint(*this, 0, &ss));
+diff --git a/cpp/src/arrow/array/array_base.h b/cpp/src/arrow/array/array_base.h
+index 7aba6c99f..808889be7 100644
+--- a/cpp/src/arrow/array/array_base.h
++++ b/cpp/src/arrow/array/array_base.h
+@@ -151,6 +151,11 @@ class ARROW_EXPORT Array {
+   /// Slice from offset until end of the array
+   std::shared_ptr<Array> Slice(int64_t offset) const;
+ 
++  /// Input-checking variant of Array::Slice
++  Result<std::shared_ptr<Array>> SliceSafe(int64_t offset, int64_t length) const;
++  /// Input-checking variant of Array::Slice
++  Result<std::shared_ptr<Array>> SliceSafe(int64_t offset) const;
++
+   std::shared_ptr<ArrayData> data() const { return data_; }
+ 
+   int num_fields() const { return static_cast<int>(data_->child_data.size()); }
+diff --git a/cpp/src/arrow/array/array_test.cc b/cpp/src/arrow/array/array_test.cc
+index 42e25d052..a0a4eb242 100644
+--- a/cpp/src/arrow/array/array_test.cc
++++ b/cpp/src/arrow/array/array_test.cc
+@@ -113,6 +113,55 @@ TEST_F(TestArray, TestLength) {
+   ASSERT_EQ(arr->length(), 100);
+ }
+ 
++TEST_F(TestArray, TestSliceSafe) {
++  std::vector<int32_t> original_data{1, 2, 3, 4, 5, 6, 7};
++  auto arr = std::make_shared<Int32Array>(7, Buffer::Wrap(original_data));
++
++  auto check_data = [](const Array& arr, const std::vector<int32_t>& expected) {
++    ASSERT_EQ(arr.length(), static_cast<int64_t>(expected.size()));
++    const int32_t* data = arr.data()->GetValues<int32_t>(1);
++    for (int64_t i = 0; i < arr.length(); ++i) {
++      ASSERT_EQ(data[i], expected[i]);
++    }
++  };
++
++  check_data(*arr, {1, 2, 3, 4, 5, 6, 7});
++
++  ASSERT_OK_AND_ASSIGN(auto sliced, arr->SliceSafe(0, 0));
++  check_data(*sliced, {});
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(0, 7));
++  check_data(*sliced, original_data);
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(3, 4));
++  check_data(*sliced, {4, 5, 6, 7});
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(0, 7));
++  check_data(*sliced, {1, 2, 3, 4, 5, 6, 7});
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(7, 0));
++  check_data(*sliced, {});
++
++  ASSERT_RAISES(Invalid, arr->SliceSafe(8, 0));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(0, 8));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(-1, 0));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(0, -1));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(6, 2));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(6, std::numeric_limits<int64_t>::max() - 5));
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(0));
++  check_data(*sliced, original_data);
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(3));
++  check_data(*sliced, {4, 5, 6, 7});
++
++  ASSERT_OK_AND_ASSIGN(sliced, arr->SliceSafe(7));
++  check_data(*sliced, {});
++
++  ASSERT_RAISES(Invalid, arr->SliceSafe(8));
++  ASSERT_RAISES(Invalid, arr->SliceSafe(-1));
++}
++
+ Status MakeArrayFromValidBytes(const std::vector<uint8_t>& v, MemoryPool* pool,
+                                std::shared_ptr<Array>* out) {
+   int64_t null_count = v.size() - std::accumulate(v.begin(), v.end(), 0);
+diff --git a/cpp/src/arrow/array/concatenate.cc b/cpp/src/arrow/array/concatenate.cc
+index 95c2c78d8..923bf308b 100644
+--- a/cpp/src/arrow/array/concatenate.cc
++++ b/cpp/src/arrow/array/concatenate.cc
+@@ -202,47 +202,55 @@ class ConcatenateImpl {
+ 
+   Status Visit(const FixedWidthType& fixed) {
+     // Handles numbers, decimal128, fixed_size_binary
+-    return ConcatenateBuffers(Buffers(1, fixed), pool_).Value(&out_->buffers[1]);
++    ARROW_ASSIGN_OR_RAISE(auto buffers, Buffers(1, fixed));
++    return ConcatenateBuffers(buffers, pool_).Value(&out_->buffers[1]);
+   }
+ 
+   Status Visit(const BinaryType&) {
+     std::vector<Range> value_ranges;
+-    RETURN_NOT_OK(ConcatenateOffsets<int32_t>(Buffers(1, sizeof(int32_t)), pool_,
+-                                              &out_->buffers[1], &value_ranges));
+-    return ConcatenateBuffers(Buffers(2, value_ranges), pool_).Value(&out_->buffers[2]);
++    ARROW_ASSIGN_OR_RAISE(auto index_buffers, Buffers(1, sizeof(int32_t)));
++    RETURN_NOT_OK(ConcatenateOffsets<int32_t>(index_buffers, pool_, &out_->buffers[1],
++                                              &value_ranges));
++    ARROW_ASSIGN_OR_RAISE(auto value_buffers, Buffers(2, value_ranges));
++    return ConcatenateBuffers(value_buffers, pool_).Value(&out_->buffers[2]);
+   }
+ 
+   Status Visit(const LargeBinaryType&) {
+     std::vector<Range> value_ranges;
+-    RETURN_NOT_OK(ConcatenateOffsets<int64_t>(Buffers(1, sizeof(int64_t)), pool_,
+-                                              &out_->buffers[1], &value_ranges));
+-    return ConcatenateBuffers(Buffers(2, value_ranges), pool_).Value(&out_->buffers[2]);
++    ARROW_ASSIGN_OR_RAISE(auto index_buffers, Buffers(1, sizeof(int64_t)));
++    RETURN_NOT_OK(ConcatenateOffsets<int64_t>(index_buffers, pool_, &out_->buffers[1],
++                                              &value_ranges));
++    ARROW_ASSIGN_OR_RAISE(auto value_buffers, Buffers(2, value_ranges));
++    return ConcatenateBuffers(value_buffers, pool_).Value(&out_->buffers[2]);
+   }
+ 
+   Status Visit(const ListType&) {
+     std::vector<Range> value_ranges;
+-    RETURN_NOT_OK(ConcatenateOffsets<int32_t>(Buffers(1, sizeof(int32_t)), pool_,
+-                                              &out_->buffers[1], &value_ranges));
+-    return ConcatenateImpl(ChildData(0, value_ranges), pool_)
+-        .Concatenate(&out_->child_data[0]);
++    ARROW_ASSIGN_OR_RAISE(auto index_buffers, Buffers(1, sizeof(int32_t)));
++    RETURN_NOT_OK(ConcatenateOffsets<int32_t>(index_buffers, pool_, &out_->buffers[1],
++                                              &value_ranges));
++    ARROW_ASSIGN_OR_RAISE(auto child_data, ChildData(0, value_ranges));
++    return ConcatenateImpl(child_data, pool_).Concatenate(&out_->child_data[0]);
+   }
+ 
+   Status Visit(const LargeListType&) {
+     std::vector<Range> value_ranges;
+-    RETURN_NOT_OK(ConcatenateOffsets<int64_t>(Buffers(1, sizeof(int64_t)), pool_,
+-                                              &out_->buffers[1], &value_ranges));
+-    return ConcatenateImpl(ChildData(0, value_ranges), pool_)
+-        .Concatenate(&out_->child_data[0]);
++    ARROW_ASSIGN_OR_RAISE(auto index_buffers, Buffers(1, sizeof(int64_t)));
++    RETURN_NOT_OK(ConcatenateOffsets<int64_t>(index_buffers, pool_, &out_->buffers[1],
++                                              &value_ranges));
++    ARROW_ASSIGN_OR_RAISE(auto child_data, ChildData(0, value_ranges));
++    return ConcatenateImpl(child_data, pool_).Concatenate(&out_->child_data[0]);
+   }
+ 
+   Status Visit(const FixedSizeListType&) {
+-    return ConcatenateImpl(ChildData(0), pool_).Concatenate(&out_->child_data[0]);
++    ARROW_ASSIGN_OR_RAISE(auto child_data, ChildData(0));
++    return ConcatenateImpl(child_data, pool_).Concatenate(&out_->child_data[0]);
+   }
+ 
+   Status Visit(const StructType& s) {
+     for (int i = 0; i < s.num_fields(); ++i) {
+-      RETURN_NOT_OK(
+-          ConcatenateImpl(ChildData(i), pool_).Concatenate(&out_->child_data[i]));
++      ARROW_ASSIGN_OR_RAISE(auto child_data, ChildData(i));
++      RETURN_NOT_OK(ConcatenateImpl(child_data, pool_).Concatenate(&out_->child_data[i]));
+     }
+     return Status::OK();
+   }
+@@ -263,7 +271,8 @@ class ConcatenateImpl {
+ 
+     if (dictionaries_same) {
+       out_->dictionary = in_[0]->dictionary;
+-      return ConcatenateBuffers(Buffers(1, *fixed), pool_).Value(&out_->buffers[1]);
++      ARROW_ASSIGN_OR_RAISE(auto index_buffers, Buffers(1, *fixed));
++      return ConcatenateBuffers(index_buffers, pool_).Value(&out_->buffers[1]);
+     } else {
+       return Status::NotImplemented("Concat with dictionary unification NYI");
+     }
+@@ -279,17 +288,24 @@ class ConcatenateImpl {
+   }
+ 
+  private:
++  // NOTE: Concatenate() can be called during IPC reads to append delta dictionaries
++  // on non-validated input.  Therefore, the input-checking SliceBufferSafe and
++  // ArrayData::SliceSafe are used below.
++
+   // Gather the index-th buffer of each input into a vector.
+   // Bytes are sliced with that input's offset and length.
+   // Note that BufferVector will not contain the buffer of in_[i] if it's
+   // nullptr.
+-  BufferVector Buffers(size_t index) {
++  Result<BufferVector> Buffers(size_t index) {
+     BufferVector buffers;
+     buffers.reserve(in_.size());
+     for (const std::shared_ptr<const ArrayData>& array_data : in_) {
+       const auto& buffer = array_data->buffers[index];
+       if (buffer != nullptr) {
+-        buffers.push_back(SliceBuffer(buffer, array_data->offset, array_data->length));
++        ARROW_ASSIGN_OR_RAISE(
++            auto sliced_buffer,
++            SliceBufferSafe(buffer, array_data->offset, array_data->length));
++        buffers.push_back(std::move(sliced_buffer));
+       }
+     }
+     return buffers;
+@@ -299,14 +315,17 @@ class ConcatenateImpl {
+   // Bytes are sliced with the explicitly passed ranges.
+   // Note that BufferVector will not contain the buffer of in_[i] if it's
+   // nullptr.
+-  BufferVector Buffers(size_t index, const std::vector<Range>& ranges) {
++  Result<BufferVector> Buffers(size_t index, const std::vector<Range>& ranges) {
+     DCHECK_EQ(in_.size(), ranges.size());
+     BufferVector buffers;
+     buffers.reserve(in_.size());
+     for (size_t i = 0; i < in_.size(); ++i) {
+       const auto& buffer = in_[i]->buffers[index];
+       if (buffer != nullptr) {
+-        buffers.push_back(SliceBuffer(buffer, ranges[i].offset, ranges[i].length));
++        ARROW_ASSIGN_OR_RAISE(
++            auto sliced_buffer,
++            SliceBufferSafe(buffer, ranges[i].offset, ranges[i].length));
++        buffers.push_back(std::move(sliced_buffer));
+       } else {
+         DCHECK_EQ(ranges[i].length, 0);
+       }
+@@ -319,14 +338,16 @@ class ConcatenateImpl {
+   // those elements are sliced with that input's offset and length.
+   // Note that BufferVector will not contain the buffer of in_[i] if it's
+   // nullptr.
+-  BufferVector Buffers(size_t index, int byte_width) {
++  Result<BufferVector> Buffers(size_t index, int byte_width) {
+     BufferVector buffers;
+     buffers.reserve(in_.size());
+     for (const std::shared_ptr<const ArrayData>& array_data : in_) {
+       const auto& buffer = array_data->buffers[index];
+       if (buffer != nullptr) {
+-        buffers.push_back(SliceBuffer(buffer, array_data->offset * byte_width,
+-                                      array_data->length * byte_width));
++        ARROW_ASSIGN_OR_RAISE(auto sliced_buffer,
++                              SliceBufferSafe(buffer, array_data->offset * byte_width,
++                                              array_data->length * byte_width));
++        buffers.push_back(std::move(sliced_buffer));
+       }
+     }
+     return buffers;
+@@ -337,7 +358,7 @@ class ConcatenateImpl {
+   // those elements are sliced with that input's offset and length.
+   // Note that BufferVector will not contain the buffer of in_[i] if it's
+   // nullptr.
+-  BufferVector Buffers(size_t index, const FixedWidthType& fixed) {
++  Result<BufferVector> Buffers(size_t index, const FixedWidthType& fixed) {
+     DCHECK_EQ(fixed.bit_width() % 8, 0);
+     return Buffers(index, fixed.bit_width() / 8);
+   }
+@@ -355,23 +376,24 @@ class ConcatenateImpl {
+ 
+   // Gather the index-th child_data of each input into a vector.
+   // Elements are sliced with that input's offset and length.
+-  std::vector<std::shared_ptr<const ArrayData>> ChildData(size_t index) {
++  Result<std::vector<std::shared_ptr<const ArrayData>>> ChildData(size_t index) {
+     std::vector<std::shared_ptr<const ArrayData>> child_data(in_.size());
+     for (size_t i = 0; i < in_.size(); ++i) {
+-      child_data[i] = in_[i]->child_data[index]->Slice(in_[i]->offset, in_[i]->length);
++      ARROW_ASSIGN_OR_RAISE(child_data[i], in_[i]->child_data[index]->SliceSafe(
++                                               in_[i]->offset, in_[i]->length));
+     }
+     return child_data;
+   }
+ 
+   // Gather the index-th child_data of each input into a vector.
+   // Elements are sliced with the explicitly passed ranges.
+-  std::vector<std::shared_ptr<const ArrayData>> ChildData(
++  Result<std::vector<std::shared_ptr<const ArrayData>>> ChildData(
+       size_t index, const std::vector<Range>& ranges) {
+     DCHECK_EQ(in_.size(), ranges.size());
+     std::vector<std::shared_ptr<const ArrayData>> child_data(in_.size());
+     for (size_t i = 0; i < in_.size(); ++i) {
+-      child_data[i] =
+-          in_[i]->child_data[index]->Slice(ranges[i].offset, ranges[i].length);
++      ARROW_ASSIGN_OR_RAISE(child_data[i], in_[i]->child_data[index]->SliceSafe(
++                                               ranges[i].offset, ranges[i].length));
+     }
+     return child_data;
+   }
+diff --git a/cpp/src/arrow/array/data.cc b/cpp/src/arrow/array/data.cc
+index c20096b3a..6af1c443a 100644
+--- a/cpp/src/arrow/array/data.cc
++++ b/cpp/src/arrow/array/data.cc
+@@ -29,6 +29,7 @@
+ #include "arrow/status.h"
+ #include "arrow/type.h"
+ #include "arrow/util/bitmap_ops.h"
++#include "arrow/util/int_util.h"
+ #include "arrow/util/logging.h"
+ #include "arrow/util/macros.h"
+ 
+@@ -105,6 +106,11 @@ std::shared_ptr<ArrayData> ArrayData::Slice(int64_t off, int64_t len) const {
+   return copy;
+ }
+ 
++Result<std::shared_ptr<ArrayData>> ArrayData::SliceSafe(int64_t off, int64_t len) const {
++  RETURN_NOT_OK(internal::CheckSliceParams(length, off, len, "array"));
++  return Slice(off, len);
++}
++
+ int64_t ArrayData::GetNullCount() const {
+   int64_t precomputed = this->null_count.load();
+   if (ARROW_PREDICT_FALSE(precomputed == kUnknownNullCount)) {
+diff --git a/cpp/src/arrow/array/data.h b/cpp/src/arrow/array/data.h
+index 3f5068f38..536a6c2a5 100644
+--- a/cpp/src/arrow/array/data.h
++++ b/cpp/src/arrow/array/data.h
+@@ -195,9 +195,15 @@ struct ARROW_EXPORT ArrayData {
+     return GetMutableValues<T>(i, offset);
+   }
+ 
+-  // Construct a zero-copy slice of the data with the indicated offset and length
++  /// \brief Construct a zero-copy slice of the data with the given offset and length
+   std::shared_ptr<ArrayData> Slice(int64_t offset, int64_t length) const;
+ 
++  /// \brief Input-checking variant of Slice
++  ///
++  /// An Invalid Status is returned if the requested slice falls out of bounds.
++  /// Note that unlike Slice, `length` isn't clamped to the available buffer size.
++  Result<std::shared_ptr<ArrayData>> SliceSafe(int64_t offset, int64_t length) const;
++
+   void SetNullCount(int64_t v) { null_count.store(v); }
+ 
+   /// \brief Return null count, or compute and set it if it's not known
+diff --git a/cpp/src/arrow/buffer.cc b/cpp/src/arrow/buffer.cc
+index 6dbbac314..2614cd17f 100644
+--- a/cpp/src/arrow/buffer.cc
++++ b/cpp/src/arrow/buffer.cc
+@@ -25,6 +25,7 @@
+ #include "arrow/result.h"
+ #include "arrow/status.h"
+ #include "arrow/util/bit_util.h"
++#include "arrow/util/int_util.h"
+ #include "arrow/util/logging.h"
+ #include "arrow/util/string.h"
+ 
+@@ -43,6 +44,46 @@ Result<std::shared_ptr<Buffer>> Buffer::CopySlice(const int64_t start,
+   return std::move(new_buffer);
+ }
+ 
++namespace {
++
++Status CheckBufferSlice(const Buffer& buffer, int64_t offset, int64_t length) {
++  return internal::CheckSliceParams(buffer.size(), offset, length, "buffer");
++}
++
++Status CheckBufferSlice(const Buffer& buffer, int64_t offset) {
++  if (ARROW_PREDICT_FALSE(offset < 0)) {
++    // Avoid UBSAN in subtraction below
++    return Status::Invalid("Negative buffer slice offset");
++  }
++  return CheckBufferSlice(buffer, offset, buffer.size() - offset);
++}
++
++}  // namespace
++
++Result<std::shared_ptr<Buffer>> SliceBufferSafe(const std::shared_ptr<Buffer>& buffer,
++                                                int64_t offset) {
++  RETURN_NOT_OK(CheckBufferSlice(*buffer, offset));
++  return SliceBuffer(buffer, offset);
++}
++
++Result<std::shared_ptr<Buffer>> SliceBufferSafe(const std::shared_ptr<Buffer>& buffer,
++                                                int64_t offset, int64_t length) {
++  RETURN_NOT_OK(CheckBufferSlice(*buffer, offset, length));
++  return SliceBuffer(buffer, offset, length);
++}
++
++Result<std::shared_ptr<Buffer>> SliceMutableBufferSafe(
++    const std::shared_ptr<Buffer>& buffer, int64_t offset) {
++  RETURN_NOT_OK(CheckBufferSlice(*buffer, offset));
++  return SliceMutableBuffer(buffer, offset);
++}
++
++Result<std::shared_ptr<Buffer>> SliceMutableBufferSafe(
++    const std::shared_ptr<Buffer>& buffer, int64_t offset, int64_t length) {
++  RETURN_NOT_OK(CheckBufferSlice(*buffer, offset, length));
++  return SliceMutableBuffer(buffer, offset, length);
++}
++
+ std::string Buffer::ToHexString() {
+   return HexEncode(data(), static_cast<size_t>(size()));
+ }
+diff --git a/cpp/src/arrow/buffer.h b/cpp/src/arrow/buffer.h
+index 68a8b05af..1a3bb29e4 100644
+--- a/cpp/src/arrow/buffer.h
++++ b/cpp/src/arrow/buffer.h
+@@ -336,6 +336,20 @@ static inline std::shared_ptr<Buffer> SliceBuffer(const std::shared_ptr<Buffer>&
+   return SliceBuffer(buffer, offset, length);
+ }
+ 
++/// \brief Input-checking version of SliceBuffer
++///
++/// An Invalid Status is returned if the requested slice falls out of bounds.
++ARROW_EXPORT
++Result<std::shared_ptr<Buffer>> SliceBufferSafe(const std::shared_ptr<Buffer>& buffer,
++                                                int64_t offset);
++/// \brief Input-checking version of SliceBuffer
++///
++/// An Invalid Status is returned if the requested slice falls out of bounds.
++/// Note that unlike SliceBuffer, `length` isn't clamped to the available buffer size.
++ARROW_EXPORT
++Result<std::shared_ptr<Buffer>> SliceBufferSafe(const std::shared_ptr<Buffer>& buffer,
++                                                int64_t offset, int64_t length);
++
+ /// \brief Like SliceBuffer, but construct a mutable buffer slice.
+ ///
+ /// If the parent buffer is not mutable, behavior is undefined (it may abort
+@@ -354,6 +368,20 @@ static inline std::shared_ptr<Buffer> SliceMutableBuffer(
+   return SliceMutableBuffer(buffer, offset, length);
+ }
+ 
++/// \brief Input-checking version of SliceMutableBuffer
++///
++/// An Invalid Status is returned if the requested slice falls out of bounds.
++ARROW_EXPORT
++Result<std::shared_ptr<Buffer>> SliceMutableBufferSafe(
++    const std::shared_ptr<Buffer>& buffer, int64_t offset);
++/// \brief Input-checking version of SliceMutableBuffer
++///
++/// An Invalid Status is returned if the requested slice falls out of bounds.
++/// Note that unlike SliceBuffer, `length` isn't clamped to the available buffer size.
++ARROW_EXPORT
++Result<std::shared_ptr<Buffer>> SliceMutableBufferSafe(
++    const std::shared_ptr<Buffer>& buffer, int64_t offset, int64_t length);
++
+ /// @}
+ 
+ /// \class MutableBuffer
+diff --git a/cpp/src/arrow/buffer_test.cc b/cpp/src/arrow/buffer_test.cc
+index ff694ded9..02b96c3b4 100644
+--- a/cpp/src/arrow/buffer_test.cc
++++ b/cpp/src/arrow/buffer_test.cc
+@@ -463,7 +463,6 @@ TEST(TestBuffer, ToHexString) {
+ 
+ TEST(TestBuffer, SliceBuffer) {
+   std::string data_str = "some data to slice";
+-
+   auto data = reinterpret_cast<const uint8_t*>(data_str.c_str());
+ 
+   auto buf = std::make_shared<Buffer>(data, data_str.size());
+@@ -476,6 +475,42 @@ TEST(TestBuffer, SliceBuffer) {
+   ASSERT_EQ(2, buf.use_count());
+ }
+ 
++TEST(TestBuffer, SliceBufferSafe) {
++  std::string data_str = "some data to slice";
++  auto data = reinterpret_cast<const uint8_t*>(data_str.c_str());
++
++  auto buf = std::make_shared<Buffer>(data, data_str.size());
++
++  ASSERT_OK_AND_ASSIGN(auto sliced, SliceBufferSafe(buf, 5, 4));
++  AssertBufferEqual(*sliced, "data");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, 0, 4));
++  AssertBufferEqual(*sliced, "some");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, 0, 0));
++  AssertBufferEqual(*sliced, "");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, 4, 0));
++  AssertBufferEqual(*sliced, "");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, buf->size(), 0));
++  AssertBufferEqual(*sliced, "");
++
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, -1, 0));
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, 0, -1));
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, 0, buf->size() + 1));
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, 2, buf->size() - 1));
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, buf->size() + 1, 0));
++  ASSERT_RAISES(Invalid,
++                SliceBufferSafe(buf, 3, std::numeric_limits<int64_t>::max() - 2));
++
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, 0));
++  AssertBufferEqual(*sliced, "some data to slice");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, 5));
++  AssertBufferEqual(*sliced, "data to slice");
++  ASSERT_OK_AND_ASSIGN(sliced, SliceBufferSafe(buf, buf->size()));
++  AssertBufferEqual(*sliced, "");
++
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, -1));
++  ASSERT_RAISES(Invalid, SliceBufferSafe(buf, buf->size() + 1));
++}
++
+ TEST(TestMutableBuffer, Wrap) {
+   std::vector<int32_t> values = {1, 2, 3};
+ 
+diff --git a/cpp/src/arrow/ipc/reader.cc b/cpp/src/arrow/ipc/reader.cc
+index fc7bd916a..a7fb9f75e 100644
+--- a/cpp/src/arrow/ipc/reader.cc
++++ b/cpp/src/arrow/ipc/reader.cc
+@@ -123,6 +123,12 @@ class ArrayLoader {
+     if (skip_io_) {
+       return Status::OK();
+     }
++    if (offset < 0) {
++      return Status::Invalid("Negative offset for reading buffer ", buffer_index_);
++    }
++    if (length < 0) {
++      return Status::Invalid("Negative length for reading buffer ", buffer_index_);
++    }
+     // This construct permits overriding GetBuffer at compile time
+     if (!BitUtil::IsMultipleOf8(offset)) {
+       return Status::Invalid("Buffer ", buffer_index_,
+diff --git a/cpp/src/arrow/util/int_util.h b/cpp/src/arrow/util/int_util.h
+index 59e4f9c49..5a2be727e 100644
+--- a/cpp/src/arrow/util/int_util.h
++++ b/cpp/src/arrow/util/int_util.h
+@@ -150,6 +150,23 @@ UpcastInt(Integer v) {
+   return v;
+ }
+ 
++static inline Status CheckSliceParams(int64_t object_length, int64_t slice_offset,
++                                      int64_t slice_length, const char* object_name) {
++  if (slice_offset < 0) {
++    return Status::Invalid("Negative ", object_name, " slice offset");
++  }
++  if (slice_length < 0) {
++    return Status::Invalid("Negative ", object_name, " slice length");
++  }
++  if (internal::HasPositiveAdditionOverflow(slice_offset, slice_length)) {
++    return Status::Invalid(object_name, " slice would overflow");
++  }
++  if (slice_offset + slice_length > object_length) {
++    return Status::Invalid(object_name, " slice would exceed ", object_name, " length");
++  }
++  return Status::OK();
++}
++
+ /// \brief Do vectorized boundschecking of integer-type array indices. The
+ /// indices must be non-nonnegative and strictly less than the passed upper
+ /// limit (which is usually the length of an array that is being indexed-into).
+diff --git a/testing b/testing
+index d44e0af93..fea24d573 160000
+--- a/testing
++++ b/testing
+@@ -1 +1 @@
+-Subproject commit d44e0af93c3e526d999d9f51cbd10d3279f5e674
++Subproject commit fea24d57329ff15442a9431bed54d2afd635e8a6
+-- 
+2.43.2
+

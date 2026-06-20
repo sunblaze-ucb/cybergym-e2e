@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:415850462"
+target_prog = "fuzz_cfg_parser"
+vul_commit = "fbceabbccf61c3869c71c6d6494c155718076a78"
+patch_commit = "10e6d0bd5702586a11daf8bd320713e0b501e37d"
+build_image = "cybergym/e2e:haproxy"

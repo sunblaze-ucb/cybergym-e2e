@@ -1,0 +1,99 @@
+From 322b071c45d5e5ae14d247e8fa74a4cff58e1a8a Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Tue, 10 Oct 2023 18:16:38 +1030
+Subject: [PATCH] asan: invalid free in bfd_init_section_compress_status
+
+With specially crafted compressed sections, it's possible to tickle a
+problem when decompressing:  If the compression headers says the
+uncompressed size is zero, this will be seen as an error return from
+bfd_compress_section_contents.  On errors the caller should free any
+malloc'd input buffers, but this isn't really an error and the section
+contents have been updated to a bfd_alloc'd buffer which can't be
+freed.
+
+	* compress.c (bfd_compress_section_contents): Return -1 as error
+	rather than 0.
+	(bfd_init_section_compress_status, bfd_compress_section): Adjust.
+---
+ bfd/compress.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/bfd/compress.c b/bfd/compress.c
+index 83564fea15f..7ec7b0edf38 100644
+--- a/bfd/compress.c
++++ b/bfd/compress.c
+@@ -558,7 +558,7 @@ decompress_contents (bool is_zstd, bfd_byte *compressed_buffer,
+    field was allocated using bfd_malloc() or equivalent.
+ 
+    Return the uncompressed size if the full section contents is
+-   compressed successfully.  Otherwise return 0.  */
++   compressed successfully.  Otherwise return (bfd_size_type) -1.  */
+ 
+ static bfd_size_type
+ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+@@ -610,7 +610,7 @@ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+ 	  buffer_size = uncompressed_size;
+ 	  buffer = bfd_malloc (buffer_size);
+ 	  if (buffer == NULL)
+-	    return 0;
++	    return (bfd_size_type) -1;
+ 
+ 	  if (!decompress_contents (ch_type == ch_compress_zstd,
+ 				    input_buffer + orig_header_size,
+@@ -618,7 +618,7 @@ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+ 	    {
+ 	      bfd_set_error (bfd_error_bad_value);
+ 	      free (buffer);
+-	      return 0;
++	      return (bfd_size_type) -1;
+ 	    }
+ 	  free (input_buffer);
+ 	  bfd_set_section_alignment (sec, uncompressed_alignment_pow);
+@@ -636,7 +636,7 @@ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+   buffer_size = compressed_size;
+   buffer = bfd_alloc (abfd, buffer_size);
+   if (buffer == NULL)
+-    return 0;
++    return (bfd_size_type) -1;
+ 
+   if (update)
+     {
+@@ -659,7 +659,7 @@ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+ 	    {
+ 	      bfd_release (abfd, buffer);
+ 	      bfd_set_error (bfd_error_bad_value);
+-	      return 0;
++	      return (bfd_size_type) -1;
+ 	    }
+ #endif
+ 	}
+@@ -669,7 +669,7 @@ bfd_compress_section_contents (bfd *abfd, sec_ptr sec)
+ 	{
+ 	  bfd_release (abfd, buffer);
+ 	  bfd_set_error (bfd_error_bad_value);
+-	  return 0;
++	  return (bfd_size_type) -1;
+ 	}
+ 
+       compressed_size += new_header_size;
+@@ -1087,7 +1087,7 @@ bfd_init_section_compress_status (bfd *abfd, sec_ptr sec)
+     }
+ 
+   sec->contents = uncompressed_buffer;
+-  if (bfd_compress_section_contents (abfd, sec) == 0)
++  if (bfd_compress_section_contents (abfd, sec) == (bfd_size_type) -1)
+     {
+       free (sec->contents);
+       sec->contents = NULL;
+@@ -1130,7 +1130,7 @@ bfd_compress_section (bfd *abfd, sec_ptr sec, bfd_byte *uncompressed_buffer)
+     }
+ 
+   sec->contents = uncompressed_buffer;
+-  if (bfd_compress_section_contents (abfd, sec) == 0)
++  if (bfd_compress_section_contents (abfd, sec) == (bfd_size_type) -1)
+     {
+       free (sec->contents);
+       sec->contents = NULL;
+-- 
+2.25.1
+

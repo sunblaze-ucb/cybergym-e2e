@@ -1,0 +1,45 @@
+From 30858f49ad57b9a888e6768b0ae1558e5f895176 Mon Sep 17 00:00:00 2001
+From: Ram Mohan <ram.mohan@ittiam.com>
+Date: Mon, 28 Aug 2023 16:43:04 +0530
+Subject: [PATCH] libavcenc: do not reset status before all threads are made
+ aware
+
+At the end of encoding of a frame, the entropy thread communicates
+the encoded bit stream size to rc module for update. After this
+update, if rc decides to skip the frame due to vbv overflow, the
+bitstream context is reset and frame is marked for skip.
+
+Due to an oversight, if entropy encoding sees an error, then this
+update is happening at the end of each row. Now rc has decided to
+skip the frame and the context is reset. As the bitstream context is
+reset, other threads are unaware of this problem and continue encoding.
+
+This is causing issues.
+
+Restrict the rc update to the thread that entropy code the last row.
+
+Bug: oss-fuzz:59543
+Bug: 285891354
+Test: avc_enc_fuzzer
+
+Change-Id: If45a5f34abb59ece812733af8f54f72ae5474d03
+---
+ encoder/ih264e_process.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/encoder/ih264e_process.c b/encoder/ih264e_process.c
+index cba5023..a0a04e0 100644
+--- a/encoder/ih264e_process.c
++++ b/encoder/ih264e_process.c
+@@ -2621,7 +2621,7 @@ WORKER:
+                 /* entropy code all mbs enlisted under the current job */
+                 error_status = ih264e_entropy(ps_proc);
+ 
+-                if ((s_job.i2_mb_y == ps_proc->i4_ht_mbs - 1) || error_status != IH264_SUCCESS)
++                if (s_job.i2_mb_y == ps_proc->i4_ht_mbs - 1)
+                 {
+                     error_status |= ih264e_update_rc_post_enc(ps_codec, ctxt_sel,
+                                                               (ps_codec->i4_poc == 0));
+-- 
+2.25.1
+

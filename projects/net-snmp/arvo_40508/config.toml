@@ -1,0 +1,5 @@
+task_id = "arvo:40508"
+target_prog = "snmp_mib_fuzzer"
+vul_commit = "9cbbbb5f8a9ba0d648d51f30ffd3c2316805b1f8"
+patch_commit = "c6b84c8fdb0a6847f7691201be2e36e155c6e22d"
+build_image = "n132/arvo:40508-fix"

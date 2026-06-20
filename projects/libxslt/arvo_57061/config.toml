@@ -1,0 +1,5 @@
+task_id = "arvo:57061"
+target_prog = "xslt"
+vul_commit = "f13329a622f0370bf1eb72ef99229e8faf46f732"
+patch_commit = "ac9d752240d399db1d7c09f2ef4008200a272c8c"
+build_image = "n132/arvo:57061-fix"

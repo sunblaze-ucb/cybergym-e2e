@@ -1,0 +1,5 @@
+task_id = "arvo:61993"
+target_prog = "php-fuzz-tracing-jit"
+vul_commit = "5ed58386d1079f121545fdef2346d23f064f5698"
+patch_commit = "64ebadcac5ca57c686f31695eb8076e164ce1cd1"
+build_image = "n132/arvo:61993-fix"

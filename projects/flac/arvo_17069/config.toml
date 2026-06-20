@@ -1,0 +1,4 @@
+task_id = "arvo:17069"
+target_prog = "fuzzer_decoder"
+vul_commit = "6d0e222a6e03f1258129b9939d3eb47870d5502a"
+patch_commit = "2e7931c27eb15e387da440a37f12437e35b22dd4"

@@ -1,0 +1,33 @@
+From 9af08af3d162e455c4da5df98b7305a06cef9ab6 Mon Sep 17 00:00:00 2001
+From: Eric Blankenhorn <eric@wolfssl.com>
+Date: Tue, 2 Feb 2021 14:39:48 -0600
+Subject: [PATCH] NULL username does not require extra length
+
+---
+ src/mqtt_packet.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/src/mqtt_packet.c b/src/mqtt_packet.c
+index 321518f..815bf7d 100755
+--- a/src/mqtt_packet.c
++++ b/src/mqtt_packet.c
+@@ -744,16 +744,6 @@ int MqttEncode_Connect(byte *tx_buf, int tx_buf_len, MqttConnect *mc_connect)
+     if (mc_connect->username) {
+         tx_payload += MqttEncode_String(tx_payload, mc_connect->username);
+     }
+-    else {
+-        /* A Server MAY allow a Client to supply a ClientID that has a length
+-         * of zero bytes, however if it does so the Server MUST treat this as a
+-         * special case and assign a unique ClientID to that Client
+-         * [MQTT-3.1.3-6]. It MUST then process the CONNECT packet as if the
+-         * Client had provided that unique ClientID, and MUST return the
+-         * Assigned Client Identifier in the CONNACK packet [MQTT-3.1.3-7].
+-         */
+-        tx_payload += MqttEncode_Num(tx_payload, (word16)0);
+-    }
+     if (mc_connect->password) {
+         tx_payload += MqttEncode_String(tx_payload, mc_connect->password);
+     }
+-- 
+2.43.2
+

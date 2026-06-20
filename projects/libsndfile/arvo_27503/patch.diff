@@ -1,0 +1,31 @@
+From 949c89122d1081d69260a16a56350624c4db5916 Mon Sep 17 00:00:00 2001
+From: bobsayshilol <bobsayshilol@live.co.uk>
+Date: Sun, 25 Apr 2021 19:10:07 +0100
+Subject: [PATCH] ALAC: Enable release check from original code
+
+The original code that this was copied from only disabled this check in
+debug builds as described in the comment, however doing so also allows
+`channelIndex` to increase without bounds and can lead to writing past
+the end of the output buffer.
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=27503
+---
+ src/ALAC/alac_decoder.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ALAC/alac_decoder.c b/src/ALAC/alac_decoder.c
+index 52b7a486..46d33306 100644
+--- a/src/ALAC/alac_decoder.c
++++ b/src/ALAC/alac_decoder.c
+@@ -554,7 +554,7 @@ alac_decode (ALAC_DECODER *p, struct BitBuffer * bits, int32_t * sampleBuffer, u
+ 			}
+ 		}
+ 
+-#if 0 // ! DEBUG
++#if 1 // ! DEBUG
+ 		// if we've decoded all of our channels, bail (but not in debug b/c we want to know if we're seeing bad bits)
+ 		// - this also protects us if the config does not match the bitstream or crap data bits follow the audio bits
+ 		if (channelIndex >= numChannels)
+-- 
+2.43.2
+

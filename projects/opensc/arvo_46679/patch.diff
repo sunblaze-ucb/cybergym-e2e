@@ -1,0 +1,28 @@
+From fdf343bfcd80d8041f6d199492cf5508dec7b2f8 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Sat, 30 Apr 2022 01:14:06 +0200
+Subject: [PATCH] sc-hsm: fixed buffer length check in listing files
+
+---
+ src/libopensc/card-sc-hsm.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/libopensc/card-sc-hsm.c b/src/libopensc/card-sc-hsm.c
+index ee3073db..b39e88b6 100644
+--- a/src/libopensc/card-sc-hsm.c
++++ b/src/libopensc/card-sc-hsm.c
+@@ -924,7 +924,10 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
+ 	}
+ 	LOG_TEST_RET(card->ctx, r, "ENUMERATE OBJECTS APDU transmit failed");
+ 
+-	memcpy(buf, recvbuf, buflen);
++	if (buflen < apdu.resplen)
++		memcpy(buf, recvbuf, buflen);
++	else
++		memcpy(buf, recvbuf, apdu.resplen);
+ 
+ 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+ }
+-- 
+2.43.2
+

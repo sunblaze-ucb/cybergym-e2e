@@ -1,0 +1,7 @@
+name = "mosquitto"
+language = "c"
+homepage = "https://mosquitto.org/"
+main_repo = "https://github.com/eclipse/mosquitto"
+repo_to_patch = "mosquitto"
+build_image = "n132/arvo:55820-fix"
+immutable_files = ["fuzzing", "test"]

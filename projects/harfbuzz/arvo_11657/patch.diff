@@ -1,0 +1,73 @@
+From d3d2f32c6e85de1d7fbbb18afef356e09110e61c Mon Sep 17 00:00:00 2001
+From: Michiharu Ariza <ariza@adobe.com>
+Date: Tue, 4 Dec 2018 13:51:26 -0800
+Subject: [PATCH 1/2] fix oss-fuzz 11657: buffer overrun
+
+Check overrun in Charset1_2::get_glyph
+---
+ src/hb-ot-cff1-table.hh | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/hb-ot-cff1-table.hh b/src/hb-ot-cff1-table.hh
+index 01c0e43..aac66d8 100644
+--- a/src/hb-ot-cff1-table.hh
++++ b/src/hb-ot-cff1-table.hh
+@@ -392,13 +392,15 @@ struct Charset1_2 {
+     return 0;
+   }
+ 
+-  inline hb_codepoint_t get_glyph (hb_codepoint_t sid) const
++  inline hb_codepoint_t get_glyph (hb_codepoint_t sid, unsigned int num_glyphs) const
+   {
+     if (sid == 0) return 0;
+     hb_codepoint_t  glyph = 1;
+     for (unsigned int i = 0;; i++)
+     {
+-      if ((ranges[i].first <= sid) && sid <= ranges[i].first + ranges[i].nLeft)
++      if (glyph >= num_glyphs)
++      	return 0;
++      if ((ranges[i].first <= sid) && (sid <= ranges[i].first + ranges[i].nLeft))
+ 	return glyph + (sid - ranges[i].first);
+       glyph += (ranges[i].nLeft + 1);
+     }
+@@ -550,9 +552,9 @@ struct Charset {
+     if (format == 0)
+       return u.format0.get_glyph (sid, num_glyphs);
+     else if (format == 1)
+-      return u.format1.get_glyph (sid);
++      return u.format1.get_glyph (sid, num_glyphs);
+     else
+-      return u.format2.get_glyph (sid);
++      return u.format2.get_glyph (sid, num_glyphs);
+   }
+ 
+   HBUINT8       format;
+-- 
+2.7.4
+
+
+From 78f639b8bf508ccfb27224f12442f8e8a1460e08 Mon Sep 17 00:00:00 2001
+From: Michiharu Ariza <ariza@adobe.com>
+Date: Tue, 4 Dec 2018 14:17:03 -0800
+Subject: [PATCH 2/2] added minimized testcase for oss-fuzz issue 11657
+
+---
+ ...zz-testcase-minimized-hb-shape-fuzzer-5700264032468992 | Bin 0 -> 648 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5700264032468992
+
+diff --git a/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5700264032468992 b/test/fuzzing/fonts/clusterfuzz-testcase-minimized-hb-shape-fuzzer-5700264032468992
+new file mode 100644
+index 0000000000000000000000000000000000000000..82a462bc4d10f4f505229f075e60e27b716750b4
+GIT binary patch
+literal 648
+zcmeYd3Grv(Q2+yHH#acNz`$??B7#c(2Xp`bhtQ~U*m%j<1W6FfO{^#YDF?de42Z^N
+zFR~Z|LjVH<uYv-j0*e9zBclQbND~kM*^EjMCI<OkjvplUT~&|)sE^tJXd;t>0tW*x
+T<6mkUJ*3Us#fRd2W(EcTai>{%
+
+literal 0
+HcmV?d00001
+
+-- 
+2.7.4
+

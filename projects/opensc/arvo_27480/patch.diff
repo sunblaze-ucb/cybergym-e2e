@@ -1,0 +1,28 @@
+From b5b1afe401bb6a04783ca36b5253948d6cf5ee48 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Mon, 16 Nov 2020 12:18:47 +0100
+Subject: [PATCH] tcos: Avoid reading behind the end of allocated buffer
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=27480
+---
+ src/libopensc/pkcs15-tcos.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/pkcs15-tcos.c b/src/libopensc/pkcs15-tcos.c
+index 06cb1a90..03e81762 100644
+--- a/src/libopensc/pkcs15-tcos.c
++++ b/src/libopensc/pkcs15-tcos.c
+@@ -141,7 +141,7 @@ static int insert_key(
+ 			int found = 0;
+ 			if (buf[0] != 0xA0)
+ 				continue;
+-			for (i = 2; i < buf[1] + 2; i += 2 + buf[i + 1]) {
++			for (i = 2; i < buf[1] + 2 && i < r - 2; i += 2 + buf[i + 1]) {
+ 				if (buf[i] == 0x83 && buf[i + 1] == 1 && buf[i + 2] == key_reference)
+ 					++found;
+ 			}
+-- 
+2.43.2
+

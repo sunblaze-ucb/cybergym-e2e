@@ -1,0 +1,54 @@
+From c8c5073f35b1efdcc610ecf369c78f87fdd34714 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Tue, 11 Jul 2023 07:42:44 -0700
+Subject: [PATCH] Vulnerability DW202307-001 ossfuzz id: 60506 Reading a fuzzed
+ object with a corrupted experimental (non-standard) line table format could
+ result in a crash/out-of-bounds-read. Present since October 2015 when support
+ for this form of line table was added. 	modified:  
+ src/lib/libdwarf/dwarf_line_table_reader_common.h
+
+---
+ .../libdwarf/dwarf_line_table_reader_common.h | 20 ++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/libdwarf/dwarf_line_table_reader_common.h b/src/lib/libdwarf/dwarf_line_table_reader_common.h
+index bed58b33..a0f61fcd 100644
+--- a/src/lib/libdwarf/dwarf_line_table_reader_common.h
++++ b/src/lib/libdwarf/dwarf_line_table_reader_common.h
+@@ -28,6 +28,7 @@
+    Fifth Floor, Boston MA 02110-1301, USA.
+ 
+ */
++#include <stdio.h>
+ 
+ /*  This is #included twice. Once for
+     libdwarf callers and one for dwarfdump which prints
+@@ -660,7 +661,24 @@ _dwarf_read_line_table_header(Dwarf_Debug dbg,
+         line_ptr += local_length_size;
+         /* Later tests will deal with the == case as required. */
+         if (line_ptr > line_ptr_end) {
+-            _dwarf_error(dbg, err, DW_DLE_LINE_OFFSET_BAD);
++            _dwarf_error_string(dbg, err, DW_DLE_LINE_OFFSET_BAD,
++                "DW_DLE_LINE_OFFSET_BAD "
++                "The line table pointer points past end "
++                "of line table.");
++            return DW_DLV_ERROR;
++        }
++        if (actuals_table_offset > dbg->de_filesize) {
++            _dwarf_error_string(dbg, err, DW_DLE_LINE_OFFSET_BAD,
++                "DW_DLE_LINE_OFFSET_BAD "
++                "The line table actuals offset is larger than "
++                " the size of the object file. Corrupt DWARF");
++            return DW_DLV_ERROR;
++        }
++        if ((line_ptr+actuals_table_offset) > line_ptr_end) {
++            _dwarf_error_string(dbg, err, DW_DLE_LINE_OFFSET_BAD,
++                "DW_DLE_LINE_OFFSET_BAD "
++                "The line table actuals offset is too large "
++                "to be real."); 
+             return DW_DLV_ERROR;
+         }
+     }
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:28265"
+target_prog = "flb-it-fuzz-http_fuzzer_OSSFUZZ"
+vul_commit = "598745d7f7330c45df80a0bad7a8bae8d9e5cc32"
+patch_commit = "cfee54301badc5fd61422eb85ff4c1028ad6cbc7"

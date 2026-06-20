@@ -1,0 +1,70 @@
+From a49d023bd04c585ac4c342c90d214c9aef2c8b08 Mon Sep 17 00:00:00 2001
+From: John Reiser <jreiser@BitWagon.com>
+Date: Fri, 31 Jan 2025 11:34:48 -0800
+Subject: [PATCH] Detect too-short Mach_command, also be careful in recovery
+
+fuzzing from leon.weiss AT @ruhr-uni-bochum.de
+https://github.com/upx/upx/issues/875
+https://github.com/upx/upx/issues/874
+	modified:   p_mach.cpp
+---
+ src/p_mach.cpp | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/src/p_mach.cpp b/src/p_mach.cpp
+index a97d2aff..1ebbb592 100644
+--- a/src/p_mach.cpp
++++ b/src/p_mach.cpp
+@@ -1678,6 +1678,12 @@ tribool PackMachBase<T>::canUnpack()
+     Mach_command const *ptr = (Mach_command const *)rawmseg;
+     for (unsigned j= 0; j < ncmds;
+             ptr = (Mach_command const *)(ptr->cmdsize + (char const *)ptr), ++j) {
++        if (headway < (int)sizeof(Mach_command)) {
++            char buf[200]; snprintf(buf, sizeof(buf),
++                "bad Mach_command[%u]{@0x%zx,+0x%x}",
++                    j, (sizeof(mhdri) + ((char const *)ptr - (char const *)rawmseg)), headway);
++            throwCantPack(buf);
++        }
+         unsigned const cmd = ptr->cmd;
+         unsigned const cmdsize = ptr->cmdsize;
+         if (is_bad_linker_command(cmd, cmdsize, headway, lc_seg, sizeof(Addr))) {
+@@ -1769,7 +1775,8 @@ tribool PackMachBase<T>::canUnpack()
+         fi->seek(offLINK - bufsize, SEEK_SET);
+     }
+     MemBuffer buf(bufsize);
+-    MemBuffer buf3(bufsize);
++    MemBuffer buf3(upx::max(bufsize, 0x1008u));
++    buf3.clear();
+ 
+     fi->readx(buf, bufsize);
+     // Do not overwrite buf[]; For scratch space, then use buf3 instead.
+@@ -1882,9 +1889,13 @@ tribool PackMachBase<T>::canUnpack()
+             unsigned const *p;
+             for (p = (unsigned const *)&buf3[0x1000]; p > lo; ) if (*--p) {
+                 overlay_offset  = *(TE32 const *)p;
++                if ((unsigned)file_size < (overlay_offset + sizeof(PackHeader) + sizeof(overlay_offset)))
++                    throwCantUnpack("file corrupted");
+                 if ((off_t)overlay_offset < offLINK) {
+                     overlay_offset = ((char const *)p - (char const *)lo) +
+                         (offLINK - 0x1000) - overlay_offset + sizeof(l_info);
++                    if ((unsigned)file_size < (overlay_offset + sizeof(PackHeader) + sizeof(overlay_offset)))
++                        throwCantUnpack("file corrupted");
+                     fi->seek(overlay_offset, SEEK_SET);
+                     fi->readx(buf3, bufsize);
+                     if (b_ptr->sz_unc < 0x4000
+@@ -1985,6 +1996,12 @@ tribool PackMachBase<T>::canPack()
+     unsigned char const *ptr = (unsigned char const *)rawmseg;
+     for (unsigned j= 0; j < ncmds; ++j) {
+         Mach_segment_command const *segptr = (Mach_segment_command const *)ptr;
++        if (headway < sizeof(Mach_command)) {
++            char buf[200]; snprintf(buf, sizeof(buf),
++                "bad Mach_command[%u]{@0x%zx,+0x%x}",
++                    j, (sizeof(mhdri) + ((char const *)segptr - (char const *)rawmseg)), headway);
++            throwCantPack(buf);
++        }
+         unsigned const cmd     = segptr->cmd &~ LC_REQ_DYLD;
+         unsigned const cmdsize = segptr->cmdsize;
+         if (is_bad_linker_command(cmd, cmdsize, headway, lc_seg, sizeof(Addr))) {
+-- 
+2.25.1
+

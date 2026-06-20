@@ -1,0 +1,5 @@
+task_id = "arvo:53903"
+target_prog = "gs_device_xpswrite_fuzzer"
+vul_commit = "8c35f9b067918e39459a468fe49da24a11efd589"
+patch_commit = "ba9672456064ecc4166c6293bc36a1b126f3421a"
+build_image = "n132/arvo:53903-fix"

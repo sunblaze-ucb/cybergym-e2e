@@ -1,0 +1,25 @@
+From 107371657b39c8cd4bcc8d8865d9071ff17049d2 Mon Sep 17 00:00:00 2001
+From: Alex Rebert <alexandre.rebert@gmail.com>
+Date: Thu, 28 Oct 2021 23:12:54 -0400
+Subject: [PATCH] Fix out-of-bounds read in ReadFirstSkin
+
+Fix https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25401
+---
+ code/AssetLib/HMP/HMPLoader.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/code/AssetLib/HMP/HMPLoader.cpp b/code/AssetLib/HMP/HMPLoader.cpp
+index 97c1858fb..661e4d1b2 100644
+--- a/code/AssetLib/HMP/HMPLoader.cpp
++++ b/code/AssetLib/HMP/HMPLoader.cpp
+@@ -451,6 +451,7 @@ void HMPImporter::ReadFirstSkin(unsigned int iNumSkins, const unsigned char *szC
+ 
+     // now we need to skip any other skins ...
+     for (unsigned int i = 1; i < iNumSkins; ++i) {
++        SizeCheck(szCursor + 3 * sizeof(uint32_t));
+         iType = *((uint32_t *)szCursor);
+         szCursor += sizeof(uint32_t);
+         iWidth = *((uint32_t *)szCursor);
+-- 
+2.43.2
+

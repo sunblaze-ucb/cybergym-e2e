@@ -1,0 +1,24 @@
+From 93648fc954c0133acc6e89860ba49f78ca60460f Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Fri, 2 Jun 2023 11:00:13 +0900
+Subject: [PATCH] gc.c (mrb_env_unshare): fix a write barrier bug
+
+---
+ src/vm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/vm.c b/src/vm.c
+index 4fc929e2a..732cbe2a8 100644
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -395,6 +395,7 @@ mrb_env_unshare(mrb_state *mrb, struct REnv *e, mrb_bool noraise)
+     stack_copy(p, e->stack, len);
+     e->stack = p;
+     MRB_ENV_CLOSE(e);
++    mrb_write_barrier(mrb, (struct RBasic*)e);
+     return TRUE;
+   }
+   else {
+-- 
+2.25.1
+

@@ -1,0 +1,42 @@
+From 6fc018e9e593a3235dbf7026726ba4665373b741 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 5 Jun 2023 16:21:25 +0930
+Subject: [PATCH] Yet another ecoff fuzzed object fix
+
+	* ecoff.c (_bfd_ecoff_slurp_symbol_table): Sanity check fdr_ptr
+	csym against remaining space for symbols.  Error on out of bounds
+	fdr_ptr fields.
+---
+ bfd/ecoff.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/bfd/ecoff.c b/bfd/ecoff.c
+index c4c2e530be0..573f52d0299 100644
+--- a/bfd/ecoff.c
++++ b/bfd/ecoff.c
+@@ -956,13 +956,19 @@ _bfd_ecoff_slurp_symbol_table (bfd *abfd)
+       char *lraw_end;
+       HDRR *symhdr = &ecoff_data (abfd)->debug_info.symbolic_header;
+ 
++      if (fdr_ptr->csym == 0)
++	continue;
+       if (fdr_ptr->isymBase < 0
+ 	  || fdr_ptr->isymBase > symhdr->isymMax
+-	  || fdr_ptr->csym <= 0
+-	  || fdr_ptr->csym > symhdr->isymMax - fdr_ptr->isymBase
++	  || fdr_ptr->csym < 0
++	  || fdr_ptr->csym > ((long) bfd_get_symcount (abfd)
++			      - (internal_ptr - internal))
+ 	  || fdr_ptr->issBase < 0
+ 	  || fdr_ptr->issBase > symhdr->issMax)
+-	continue;
++	{
++	  bfd_set_error (bfd_error_bad_value);
++	  return false;
++	}
+       lraw_src = ((char *) ecoff_data (abfd)->debug_info.external_sym
+ 		  + fdr_ptr->isymBase * external_sym_size);
+       lraw_end = lraw_src + fdr_ptr->csym * external_sym_size;
+-- 
+2.25.1
+

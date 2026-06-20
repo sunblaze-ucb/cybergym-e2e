@@ -1,0 +1,95 @@
+From 33e6c40276dec95caa8120387622daf71265e143 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Thu, 28 Nov 2019 15:26:36 +0100
+Subject: [PATCH] patch_parse: fix out-of-bounds reads caused by integer
+ underflow
+
+The patch format for binary files is a simple Base85 encoding with a
+length byte as prefix that encodes the current line's length. For each
+line, we thus check whether the line's actual length matches its
+expected length in order to not faultily apply a truncated patch. This
+also acts as a check to verify that we're not reading outside of the
+line's string:
+
+	if (encoded_len > ctx->parse_ctx.line_len - 1) {
+		error = git_parse_err(...);
+		goto done;
+	}
+
+There is the possibility for an integer underflow, though. Given a line
+with a single prefix byte, only, `line_len` will be zero when reaching
+this check. As a result, subtracting one from that will result in an
+integer underflow, causing us to assume that there's a wealth of bytes
+available later on. Naturally, this may result in an out-of-bounds read.
+
+Fix the issue by checking both `encoded_len` and `line_len` for a
+non-zero value. The binary format doesn't make use of zero-length lines
+anyway, so we need to know that there are both encoded bytes and
+remaining characters available at all.
+
+This patch also adds a test that works based on the last error message.
+Checking error messages is usually too tightly coupled, but in fact
+parsing the patch failed even before the change. Thus the only
+possibility is to use e.g. Valgrind, but that'd result in us not
+catching issues when run without Valgrind. As a result, using the error
+message is considered a viable tradeoff as we know that we didn't start
+decoding Base85 in the first place.
+---
+ src/patch_parse.c          | 2 +-
+ tests/patch/parse.c        | 8 ++++++++
+ tests/patch/patch_common.h | 7 +++++++
+ 3 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/src/patch_parse.c b/src/patch_parse.c
+index dad1813..7e2cc63 100644
+--- a/src/patch_parse.c
++++ b/src/patch_parse.c
+@@ -808,7 +808,7 @@ static int parse_patch_binary_side(
+ 
+ 		encoded_len = ((decoded_len / 4) + !!(decoded_len % 4)) * 5;
+ 
+-		if (encoded_len > ctx->parse_ctx.line_len - 1) {
++		if (!encoded_len || !ctx->parse_ctx.line_len || encoded_len > ctx->parse_ctx.line_len - 1) {
+ 			error = git_parse_err("truncated binary data at line %"PRIuZ, ctx->parse_ctx.line_num);
+ 			goto done;
+ 		}
+diff --git a/tests/patch/parse.c b/tests/patch/parse.c
+index 0c4eccc..3f89eb5 100644
+--- a/tests/patch/parse.c
++++ b/tests/patch/parse.c
+@@ -184,6 +184,14 @@ void test_patch_parse__binary_file_path_without_body_paths(void)
+ 					  strlen(PATCH_BINARY_FILE_PATH_WITHOUT_BODY_PATHS), NULL));
+ }
+ 
++void test_patch_parse__binary_file_with_truncated_delta(void)
++{
++	git_patch *patch;
++	cl_git_fail(git_patch_from_buffer(&patch, PATCH_BINARY_FILE_WITH_TRUNCATED_DELTA,
++					  strlen(PATCH_BINARY_FILE_WITH_TRUNCATED_DELTA), NULL));
++	cl_assert_equal_s(git_error_last()->message, "truncated binary data at line 5");
++}
++
+ void test_patch_parse__memory_leak_on_multiple_paths(void)
+ {
+ 	git_patch *patch;
+diff --git a/tests/patch/patch_common.h b/tests/patch/patch_common.h
+index 6601685..7315247 100644
+--- a/tests/patch/patch_common.h
++++ b/tests/patch/patch_common.h
+@@ -974,6 +974,13 @@
+ 	"+++ \n" \
+ 	"Binary files a b c and d e f differ"
+ 
++#define PATCH_BINARY_FILE_WITH_TRUNCATED_DELTA \
++	"diff --git a/file b/file\n" \
++	"index 1420..b71f\n" \
++	"GIT binary patch\n" \
++	"delta 7\n" \
++	"d"
++
+ #define PATCH_MULTIPLE_OLD_PATHS \
+ 	"diff --git  \n" \
+ 	"---  \n" \
+-- 
+2.7.4
+

@@ -1,0 +1,5 @@
+task_id = "arvo:55430"
+target_prog = "zeek-packet-fuzzer"
+vul_commit = "9a96e3b52ad1850a1b80375f65add88e8ece4cbf"
+patch_commit = "2866bbea4d0f4ccf79f2088728d55c769efe46cc"
+build_image = "n132/arvo:55430-fix"

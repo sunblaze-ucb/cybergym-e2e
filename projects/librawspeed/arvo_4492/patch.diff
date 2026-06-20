@@ -1,0 +1,49 @@
+From b1f750c11bd75ac79fb5ca532aed468939f216f3 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Wed, 6 Dec 2017 20:29:46 +0300
+Subject: [PATCH] DngOpcodes::DeltaRowOrCol: sanitize count of 'delta'
+ elements.
+
+While the logic seems sound, apparently no RPU sample uses
+any of these opcodes, so.
+
+Also, this might be incorrect in some edge-cases, e.g. with
+some strange pitch.
+---
+ src/librawspeed/common/DngOpcodes.cpp | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/librawspeed/common/DngOpcodes.cpp b/src/librawspeed/common/DngOpcodes.cpp
+index 4632bae..e8c8c32 100644
+--- a/src/librawspeed/common/DngOpcodes.cpp
++++ b/src/librawspeed/common/DngOpcodes.cpp
+@@ -252,6 +252,8 @@ protected:
+       auto* src = reinterpret_cast<T*>(ri->getData(0, y));
+       // Add offset, so this is always first plane
+       src += firstPlane;
++      // FIXME: is op() really supposed to recieve global image coordinates,
++      // and not [0..ROI.getHeight()-1][0..ROI.getWidth()-1] ?
+       for (auto x = ROI.getLeft(); x < ROI.getRight(); x += colPitch) {
+         for (auto p = 0U; p < planes; ++p)
+           src[x * cpp + p] = op(x, y, src[x * cpp + p]);
+@@ -374,6 +376,17 @@ protected:
+     const auto deltaF_count = bs->getU32();
+     bs->check(deltaF_count, 4);
+ 
++    // See PixelOpcode::applyOP(). We will access deltaF/deltaI up to (excl.)
++    // either ROI.getRight() or ROI.getBottom() index. Thus, we need to have
++    // either ROI.getRight() or ROI.getBottom() elements in there.
++    // FIXME: i guess not strictly true with pitch != 1.
++    const auto expectedSize =
++        S::select(getRoi().getRight(), getRoi().getBottom());
++    if (expectedSize != deltaF_count) {
++      ThrowRDE("Got unexpected number of elements (%u), expected %u.",
++               expectedSize, deltaF_count);
++    }
++
+     deltaF.reserve(deltaF_count);
+     std::generate_n(std::back_inserter(deltaF), deltaF_count, [&bs]() {
+       const auto F = bs->get<float>();
+-- 
+2.7.4
+

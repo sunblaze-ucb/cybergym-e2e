@@ -1,0 +1,4 @@
+task_id = "arvo:27691"
+target_prog = "dewarp_fuzzer"
+vul_commit = "4cb5129c2a9eea3e836bbcd2439ad6077f994dd0"
+patch_commit = "989e05e68f3006d7c4356b0050f0faf64445f4bf"

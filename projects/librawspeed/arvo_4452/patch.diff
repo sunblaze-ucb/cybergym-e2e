@@ -1,0 +1,35 @@
+From 0b5389f22c17082864de100a6efedbaa4b0d894f Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Sat, 2 Dec 2017 20:04:38 +0300
+Subject: [PATCH] LJpegDecompressor: make sure that slice has enough pixels to
+ output to.
+
+---
+ src/librawspeed/decompressors/LJpegDecompressor.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/librawspeed/decompressors/LJpegDecompressor.cpp b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+index 78deff8..aa06d6f 100644
+--- a/src/librawspeed/decompressors/LJpegDecompressor.cpp
++++ b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+@@ -74,6 +74,9 @@ void LJpegDecompressor::decodeScan()
+     if (frame.compInfo[i].superH != 1 || frame.compInfo[i].superV != 1)
+       ThrowRDE("Unsupported subsampling");
+ 
++  if((mRaw->getCpp() * (mRaw->dim.x - offX)) < frame.cps)
++    ThrowRDE("Got less pixels than the components per sample");
++
+   switch (frame.cps) {
+   case 2:
+     decodeN<2>();
+@@ -100,6 +103,7 @@ void LJpegDecompressor::decodeN()
+   assert((N_COMP / mRaw->getCpp()) > 0);
+ 
+   assert(mRaw->dim.x >= N_COMP);
++  assert((mRaw->getCpp() * (mRaw->dim.x - offX)) >= N_COMP);
+ 
+   auto ht = getHuffmanTables<N_COMP>();
+   auto pred = getInitialPredictors<N_COMP>();
+-- 
+2.7.4
+

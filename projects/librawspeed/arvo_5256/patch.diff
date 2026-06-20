@@ -1,0 +1,26 @@
+From dbe7591e54bad5e6430d38be6bed051582da76b9 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Thu, 11 Jan 2018 22:03:09 +0300
+Subject: [PATCH] TableLookUp::setTable(): do actually check that the LUT is
+ <2^16
+
+---
+ src/librawspeed/common/TableLookUp.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/librawspeed/common/TableLookUp.cpp b/src/librawspeed/common/TableLookUp.cpp
+index ac5ef57..abaeec3 100644
+--- a/src/librawspeed/common/TableLookUp.cpp
++++ b/src/librawspeed/common/TableLookUp.cpp
+@@ -40,6 +40,8 @@ void TableLookUp::setTable(int ntable, const std::vector<ushort16>& table) {
+   assert(!table.empty());
+ 
+   const int nfilled = table.size();
++  if (nfilled >= 65536)
++    ThrowRDE("Table lookup with %i entries is unsupported", nfilled);
+ 
+   if (ntable > ntables) {
+     ThrowRDE("Table lookup with number greater than number of tables.");
+-- 
+2.7.4
+

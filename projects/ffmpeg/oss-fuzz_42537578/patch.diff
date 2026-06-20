@@ -1,0 +1,40 @@
+From 53387079301690f1bd38b97fdf31d63194201d17 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 15 Aug 2024 00:37:04 +0200
+Subject: [PATCH] avcodec/wmavoice: Do not use uninitialized pitch[0]
+
+Fixes: use of uninitialized value
+Fixes: 70850/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_WMAVOICE_fuzzer-4806127362048000
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/wmavoice.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/libavcodec/wmavoice.c b/libavcodec/wmavoice.c
+index 3db73773b7..39868e02b3 100644
+--- a/libavcodec/wmavoice.c
++++ b/libavcodec/wmavoice.c
+@@ -1506,6 +1506,8 @@ static int synth_frame(AVCodecContext *ctx, GetBitContext *gb, int frame_idx,
+     /* Parse frame type ("frame header"), see frame_descs */
+     int bd_idx = s->vbm_tree[get_vlc2(gb, frame_type_vlc, 6, 3)], block_nsamples;
+ 
++    pitch[0] = INT_MAX;
++
+     if (bd_idx < 0) {
+         av_log(ctx, AV_LOG_ERROR,
+                "Invalid frame type VLC code, skipping\n");
+@@ -1623,6 +1625,9 @@ static int synth_frame(AVCodecContext *ctx, GetBitContext *gb, int frame_idx,
+         double i_lsps[MAX_LSPS];
+         float lpcs[MAX_LSPS];
+ 
++        if(frame_descs[bd_idx].fcb_type >= FCB_TYPE_AW_PULSES && pitch[0] == INT_MAX)
++            return AVERROR_INVALIDDATA;
++
+         for (n = 0; n < s->lsps; n++) // LSF -> LSP
+             i_lsps[n] = cos(0.5 * (prev_lsps[n] + lsps[n]));
+         ff_acelp_lspd2lpc(i_lsps, lpcs, s->lsps >> 1);
+-- 
+2.25.1
+

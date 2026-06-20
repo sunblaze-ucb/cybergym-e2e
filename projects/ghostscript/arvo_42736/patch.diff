@@ -1,0 +1,26 @@
+From 7f5d467726db47da4102a6d6f1d49e63d3c0b77f Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 21 Dec 2021 15:34:42 +0000
+Subject: [PATCH] OSS-fuzz #42736 Error if CMap name exceeds maximum file name
+
+---
+ pdf/pdf_cmap.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/pdf/pdf_cmap.c b/pdf/pdf_cmap.c
+index 42ed795b4..0b1c93b13 100644
+--- a/pdf/pdf_cmap.c
++++ b/pdf/pdf_cmap.c
+@@ -646,6 +646,9 @@ pdf_cmap_open_file(pdf_context *ctx, gs_string *cmap_name, byte **buf, int64_t *
+     fname[0] = '\0';
+ 
+     strncat(fname, path_pfx, strlen(path_pfx));
++    if (strlen(fname) + cmap_name->size >= gp_file_name_sizeof)
++        return_error(gs_error_rangecheck);
++
+     strncat(fname, (char *)cmap_name->data, cmap_name->size);
+     code = pdfi_open_resource_file(ctx, (const char *)fname, (const int)strlen(fname), &s);
+     if (code >= 0) {
+-- 
+2.43.2
+

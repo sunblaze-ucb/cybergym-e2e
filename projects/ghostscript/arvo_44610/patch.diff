@@ -1,0 +1,27 @@
+From 30770fce40f0b47c4da1c41e187b45f9f59edc63 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Mon, 14 Feb 2022 11:47:24 +0000
+Subject: [PATCH] OSS-fuzz #44610 - don't process 'empty' Xref streams
+
+If the Xref stream declares it has a /Size of 0, then it has no entries
+so we should simply stop.
+---
+ pdf/pdf_xref.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/pdf/pdf_xref.c b/pdf/pdf_xref.c
+index edab8e396..c1f61591a 100644
+--- a/pdf/pdf_xref.c
++++ b/pdf/pdf_xref.c
+@@ -175,6 +175,8 @@ static int pdfi_process_xref_stream(pdf_context *ctx, pdf_stream *stream_obj, pd
+     code = pdfi_dict_get_int(ctx, sdict, "Size", &size);
+     if (code < 0)
+         return code;
++    if (size < 1)
++        return 0;
+ 
+     if (size < 0 || size > floor((double)ARCH_MAX_SIZE_T / (double)sizeof(xref_entry)))
+         return_error(gs_error_rangecheck);
+-- 
+2.43.2
+

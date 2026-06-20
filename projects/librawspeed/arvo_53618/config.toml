@@ -1,0 +1,5 @@
+task_id = "arvo:53618"
+target_prog = "TiffDecoderFuzzer-Cr2Decoder"
+vul_commit = "db6bb6be9785d5089ea80e9de794a202ff9606c6"
+patch_commit = "a27d3e37d8a07af333d7626f0d75cc8b49a12428"
+build_image = "n132/arvo:53618-fix"

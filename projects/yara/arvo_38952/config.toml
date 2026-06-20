@@ -1,0 +1,5 @@
+task_id = "arvo:38952"
+target_prog = "pe_fuzzer"
+vul_commit = "5cc28d24a251370218448100de4e9817e0d9233e"
+patch_commit = "ae503e9671b274802cb07dc032b5e5cea28773bd"
+build_image = "n132/arvo:38952-fix"

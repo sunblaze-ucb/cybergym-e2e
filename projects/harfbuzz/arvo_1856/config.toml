@@ -1,0 +1,4 @@
+task_id = "arvo:1856"
+target_prog = "hb-fuzzer"
+vul_commit = "fcd6c338ff4968a0d7fc297da1c6d8058823aaa1"
+patch_commit = "e5930722d485207ca158612a2b08816337fed7e8"

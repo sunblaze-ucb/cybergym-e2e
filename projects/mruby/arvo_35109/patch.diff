@@ -1,0 +1,24 @@
+From 62f4cc8cd1d5839153eb364c1c095df64d7cdc22 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 10 Jun 2021 18:42:51 +0900
+Subject: [PATCH] sprintf.c: check value range before type casting.
+
+---
+ mrbgems/mruby-sprintf/src/sprintf.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mrbgems/mruby-sprintf/src/sprintf.c b/mrbgems/mruby-sprintf/src/sprintf.c
+index 03e5729c6..2ae982a16 100644
+--- a/mrbgems/mruby-sprintf/src/sprintf.c
++++ b/mrbgems/mruby-sprintf/src/sprintf.c
+@@ -270,6 +270,7 @@ get_num(mrb_state *mrb, const char *p, const char *end, int *valp)
+     }
+     next_n += *p - '0';
+   }
++  if (next_n > INT_MAX || next_n < 0) return NULL;
+   if (p >= end) {
+     mrb_raise(mrb, E_ARGUMENT_ERROR, "malformed format string - %%*[0-9]");
+   }
+-- 
+2.43.2
+

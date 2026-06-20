@@ -1,0 +1,31 @@
+From 4c62cbcae2612acbc7ab5e8a7e7815674a6e8df4 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 11 Aug 2024 22:53:47 +0200
+Subject: [PATCH] avformat/mxfdec: Check that key was read sucessfull
+
+Fixes: use of uninitialized value
+Fixes: 70932/clusterfuzz-testcase-minimized-ffmpeg_dem_MXF_fuzzer-4870202133643264
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/mxfdec.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/mxfdec.c b/libavformat/mxfdec.c
+index 0d97b3aade..1bae523c2a 100644
+--- a/libavformat/mxfdec.c
++++ b/libavformat/mxfdec.c
+@@ -1556,7 +1556,8 @@ static int mxf_read_indirect_value(void *arg, AVIOContext *pb, int size)
+     if (size <= 17)
+         return 0;
+ 
+-    avio_read(pb, key, 17);
++    if (avio_read(pb, key, 17) != 17)
++        return AVERROR_INVALIDDATA;
+     /* TODO: handle other types of of indirect values */
+     if (memcmp(key, mxf_indirect_value_utf16le, 17) == 0) {
+         return mxf_read_utf16le_string(pb, size - 17, &tagged_value->value);
+-- 
+2.25.1
+

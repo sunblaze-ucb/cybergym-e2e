@@ -1,0 +1,5 @@
+task_id = "arvo:50629"
+target_prog = "fuzz-read-print-write"
+vul_commit = "7a92e1bd0f8a1435eed7743e3aeadcb73f63182d"
+patch_commit = "337fe1854ff17f169032e993789a24bbb53579c4"
+build_image = "n132/arvo:50629-fix"

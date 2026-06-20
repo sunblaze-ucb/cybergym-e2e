@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:410786957"
+target_prog = "fuzz_windres"
+vul_commit = "c3fd5960228911b1cc4cccfa1579dd7a829d9265"
+patch_commit = "46efd5fb30d093496b7d9a4d5548913c2278efda"
+build_image = "cybergym/e2e:binutils"

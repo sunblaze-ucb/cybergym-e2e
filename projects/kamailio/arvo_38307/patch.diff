@@ -1,0 +1,35 @@
+From 1d3fde1205440296c1d6a54feee5a9d637055bee Mon Sep 17 00:00:00 2001
+From: Daniel-Constantin Mierla <miconda@gmail.com>
+Date: Tue, 14 Sep 2021 08:05:05 +0200
+Subject: [PATCH] core: parse via - safe check for end of buffer
+
+- just in case it is needed to be used for non-zero-terminated strings
+---
+ src/core/parser/parse_via.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/core/parser/parse_via.c b/src/core/parser/parse_via.c
+index 78bd304f32..100af6d6bf 100644
+--- a/src/core/parser/parse_via.c
++++ b/src/core/parser/parse_via.c
+@@ -940,7 +940,7 @@ static /*inline*/ char *parse_via_param(char *const p, const char *const end,
+ 
+ find_value:
+ 	tmp++;
+-	for(; *tmp; tmp++) {
++	for(; tmp<end && *tmp; tmp++) {
+ 		switch(*tmp) {
+ 			case ' ':
+ 			case '\t':
+@@ -2064,7 +2064,7 @@ main_via:
+ 	tmp++;
+ 	c_nest = 0;
+ 	/*state should always be F_HOST here*/;
+-	for(; *tmp; tmp++) {
++	for(; tmp<end && *tmp; tmp++) {
+ 		switch(*tmp) {
+ 			case ' ':
+ 			case '\t':
+-- 
+2.43.2
+

@@ -1,0 +1,4 @@
+task_id = "arvo:57887"
+target_prog = "fuzz_die_cu"
+vul_commit = "ce002f8e78c80a96997efa86db51ec0f38a04fda"
+patch_commit = "1729d9af3f690bece912ae0f625b312566d0ae25"

@@ -1,0 +1,5 @@
+task_id = "arvo:47975"
+target_prog = "fuzz_as"
+vul_commit = "370426d0da768345fb53683c803d6d5a20558065"
+patch_commit = "633de7089179f455d94d0fef54c68c298f545242"
+build_image = "n132/arvo:47975-fix"

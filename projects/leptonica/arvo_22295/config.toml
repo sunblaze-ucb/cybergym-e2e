@@ -1,0 +1,4 @@
+task_id = "arvo:22295"
+target_prog = "enhance_fuzzer"
+vul_commit = "d4084b47d0a04165ccc8d0f1b2b40449173f4cf2"
+patch_commit = "33e0c892ff0036da5d23dce834f384df786c91bb"

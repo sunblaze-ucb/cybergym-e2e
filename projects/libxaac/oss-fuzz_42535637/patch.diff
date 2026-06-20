@@ -1,0 +1,39 @@
+From 85cf44c90c20926fafd980bff0f9d6a7de51be33 Mon Sep 17 00:00:00 2001
+From: akshayragir833 <110660198+akshayragir833@users.noreply.github.com>
+Date: Fri, 24 May 2024 17:15:08 +0530
+Subject: [PATCH] Added a fix in the FAC payload writing path (#91)
+
+- The bit-writing logic had to be skipped when no bits were to be written. Updated the existing check for the same.
+- This change also resolves an issue identified by oss-fuzz.
+
+Bug: ossFuzz: 69103
+Test: poc in bug
+---
+ encoder/iusace_enc_fac.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/encoder/iusace_enc_fac.c b/encoder/iusace_enc_fac.c
+index bc89007..10fb761 100644
+--- a/encoder/iusace_enc_fac.c
++++ b/encoder/iusace_enc_fac.c
+@@ -523,14 +523,14 @@ WORD32 iusace_fd_encode_fac(WORD32 *prm, WORD16 *ptr_bit_buf, WORD32 fac_length)
+     if (qn != 0) {
+       iusace_write_bits2buf(I, 4 * n, ptr_bit_buf);
+       ptr_bit_buf += 4 * n;
+-
++    }
++    if (qn > 4) {
+       for (j = 0; j < 8; j++) {
+         iusace_write_bits2buf(kv[j], nk, ptr_bit_buf);
+         ptr_bit_buf += nk;
+       }
+-
+-      fac_bits += 4 * qn;
+     }
++    fac_bits += 4 * qn;
+   }
+ 
+   return fac_bits;
+-- 
+2.25.1
+

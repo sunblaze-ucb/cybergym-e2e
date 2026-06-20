@@ -1,0 +1,4 @@
+task_id = "arvo:28777"
+target_prog = "format_command_fuzzer"
+vul_commit = "329eaf9bae314f8bc307c809340b262f67c2ce36"
+patch_commit = "1abe0c8285100e31a4688b3b09023eb3ad942394"

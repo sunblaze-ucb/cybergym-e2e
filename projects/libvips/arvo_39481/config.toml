@@ -1,0 +1,5 @@
+task_id = "arvo:39481"
+target_prog = "mosaic_fuzzer"
+vul_commit = "bd8fad842a1858eefdb61193cc7a19d7e47f9258"
+patch_commit = "b98366fcb1bf24491b0033eb21b3f6f5c33e453f"
+build_image = "n132/arvo:39481-fix"

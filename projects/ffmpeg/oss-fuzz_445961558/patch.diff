@@ -1,0 +1,34 @@
+From d8ffec5bf9a2803f55cc0822a97b7815f24bee83 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 6 Aug 2025 12:49:49 +0200
+Subject: [PATCH] avcodec/vlc: Clear val8/16 in vlc_multi_gen() by av_mallocz()
+
+Fixes: use of uninitialized memory
+Fixes: 427814450/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_MAGICYUV_DEC_fuzzer-646512196065689
+Fixes: 445961558/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_UTVIDEO_DEC_fuzzer-5515158672965632
+
+the multi vlc code will otherwise return uninitialized data. Now one can argue that this data should
+not be used, but on errors this data can remain ...
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/vlc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/vlc.c b/libavcodec/vlc.c
+index 260b2052be..93d88714f2 100644
+--- a/libavcodec/vlc.c
++++ b/libavcodec/vlc.c
+@@ -527,7 +527,7 @@ int ff_vlc_init_multi_from_lengths(VLC *vlc, VLC_MULTI *multi, int nb_bits, int
+     if (ret < 0)
+         return ret;
+ 
+-    multi->table = av_malloc(sizeof(*multi->table) << nb_bits);
++    multi->table = av_mallocz(sizeof(*multi->table) << nb_bits);
+     if (!multi->table)
+         goto fail;
+ 
+-- 
+2.25.1
+

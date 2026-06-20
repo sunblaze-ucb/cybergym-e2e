@@ -1,0 +1,4 @@
+task_id = "arvo:66646"
+target_prog = "fuzz_findfuncbypc"
+vul_commit = "6f960447511a3866960cbc14681462f6db75e4b4"
+patch_commit = "812f5db1c0fd4369e4c3b6bb8b132c70b6940320"

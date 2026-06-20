@@ -1,0 +1,44 @@
+From 1909b3e8d27deed5acc93e7f9a0bf48b397e1788 Mon Sep 17 00:00:00 2001
+From: Alex Rebert <alexandre.rebert@gmail.com>
+Date: Thu, 28 Oct 2021 23:33:07 -0400
+Subject: [PATCH] Fix overflow in IOStreamBuffer
+
+`getNextLine` & `getNextDataLine` now double the buffer size each time
+it is needed to avoid writing out of bounds.
+
+Fix https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=24465
+---
+ include/assimp/IOStreamBuffer.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/include/assimp/IOStreamBuffer.h b/include/assimp/IOStreamBuffer.h
+index d54774759..bbb5ef256 100644
+--- a/include/assimp/IOStreamBuffer.h
++++ b/include/assimp/IOStreamBuffer.h
+@@ -261,6 +261,11 @@ AI_FORCE_INLINE bool IOStreamBuffer<T>::getNextDataLine(std::vector<T> &buffer,
+         buffer[i] = m_cache[m_cachePos];
+         ++m_cachePos;
+         ++i;
++
++        if(i == buffer.size()) {
++            buffer.resize(buffer.size() * 2);
++        }
++
+         if (m_cachePos >= size()) {
+             break;
+         }
+@@ -308,6 +313,11 @@ AI_FORCE_INLINE bool IOStreamBuffer<T>::getNextLine(std::vector<T> &buffer) {
+         buffer[i] = m_cache[m_cachePos];
+         ++m_cachePos;
+         ++i;
++
++        if(i == buffer.size()) {
++            buffer.resize(buffer.size() * 2);
++        }
++
+         if (m_cachePos >= m_cacheSize) {
+             if (!readNextBlock()) {
+                 return false;
+-- 
+2.43.2
+

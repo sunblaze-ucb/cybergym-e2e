@@ -1,0 +1,54 @@
+From af1cb4cb719dcb94314bbefc78b59ac426b8fed2 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Wed, 8 Apr 2020 23:52:43 +0200
+Subject: [PATCH] Fix uninitialized memory read on malformed documents
+
+---
+ libspectre/ps.c | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/libspectre/ps.c b/libspectre/ps.c
+index 4374272..0883670 100644
+--- a/libspectre/ps.c
++++ b/libspectre/ps.c
+@@ -1050,15 +1050,17 @@ continuepage:
+ 		/* Do nothing */
+ 	    } else if (doc->pages[doc->numpages].orientation == NONE &&
+ 		iscomment(line+2, "PageOrientation:")) {
+-		sscanf(line+length("%%PageOrientation:"), "%256s", text);
+-		if (strcmp(text, "Portrait") == 0) {
+-		    doc->pages[doc->numpages].orientation = PORTRAIT;
+-		} else if (strcmp(text, "Landscape") == 0) {
+-		    doc->pages[doc->numpages].orientation = LANDSCAPE;
+-		} else if (strcmp(text, "Seascape") == 0) {
+-		    doc->pages[doc->numpages].orientation = SEASCAPE;
+-		} else if (strcmp(text, "UpsideDown") == 0) {
+-		    doc->pages[doc->numpages].orientation = UPSIDEDOWN;
++		const int res = sscanf(line+length("%%PageOrientation:"), "%256s", text);
++		if (res != EOF) {
++		    if (strcmp(text, "Portrait") == 0) {
++			doc->pages[doc->numpages].orientation = PORTRAIT;
++		    } else if (strcmp(text, "Landscape") == 0) {
++			doc->pages[doc->numpages].orientation = LANDSCAPE;
++		    } else if (strcmp(text, "Seascape") == 0) {
++			doc->pages[doc->numpages].orientation = SEASCAPE;
++		    } else if (strcmp(text, "UpsideDown") == 0) {
++			doc->pages[doc->numpages].orientation = UPSIDEDOWN;
++		    }
+ 		}
+ 	    } else if (doc->pages[doc->numpages].media == NULL &&
+ 		       iscomment(line+2, "PageMedia:")) {
+@@ -1086,8 +1088,8 @@ continuepage:
+ 		PS_free(cp);
+ 	    } else if ((page_bb_set == NONE || page_bb_set == ATEND) &&
+ 		       iscomment(line+2, "PageBoundingBox:")) {
+-		sscanf(line+length("%%PageBoundingBox:"), "%256s", text);
+-		if (strcmp(text, "(atend)") == 0 || strcmp(text, "atend") == 0) {
++		const int res = sscanf(line+length("%%PageBoundingBox:"), "%256s", text);
++		if ((res != EOF) && (strcmp(text, "(atend)") == 0 || strcmp(text, "atend") == 0)) {
+ 		    page_bb_set = ATEND;
+ 		} else {
+ 		    if (scan_boundingbox(doc->pages[doc->numpages].boundingbox,
+-- 
+2.7.4
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:399388655"
+target_prog = "gs_device_faxg3_fuzzer"
+vul_commit = "b1c1d377a8e00b368118582bfb488e9f7d7a4696"
+patch_commit = "714ef06bede27cd12bf3c7d3278fa6327d7a81eb"
+build_image = "cybergym/e2e:ghostscript"

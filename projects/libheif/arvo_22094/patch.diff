@@ -1,0 +1,41 @@
+From b7484d2ed35338970b727e55adb509f2200b0e40 Mon Sep 17 00:00:00 2001
+From: Dirk Farin <dirk.farin@gmail.com>
+Date: Fri, 14 Aug 2020 13:05:04 +0200
+Subject: [PATCH] check color conversion input for correct size of alpha plane
+ (oss-fuzz 22094)
+
+---
+ libheif/heif_colorconversion.cc | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/libheif/heif_colorconversion.cc b/libheif/heif_colorconversion.cc
+index 33fb746..54771fd 100644
+--- a/libheif/heif_colorconversion.cc
++++ b/libheif/heif_colorconversion.cc
+@@ -2924,6 +2924,23 @@ std::shared_ptr<HeifPixelImage> heif::convert_colorspace(const std::shared_ptr<H
+                                                          std::shared_ptr<const color_profile_nclx> target_profile,
+                                                          int output_bpp)
+ {
++  // --- check that input image is valid
++
++  int width = input->get_width();
++  int height = input->get_width();
++
++  // alpha image should have full image resolution
++
++  if (input->has_channel(heif_channel_Alpha)) {
++    if (input->get_width(heif_channel_Alpha) != width ||
++        input->get_height(heif_channel_Alpha) != height) {
++      return nullptr;
++    }
++  }
++
++
++  // --- prepare conversion
++
+   ColorState input_state;
+   input_state.colorspace = input->get_colorspace();
+   input_state.chroma = input->get_chroma_format();
+-- 
+2.43.2
+

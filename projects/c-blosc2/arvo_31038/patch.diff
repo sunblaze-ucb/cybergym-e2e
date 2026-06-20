@@ -1,0 +1,27 @@
+From 49357bd0cf2f48aa45117a650cbde7240098b602 Mon Sep 17 00:00:00 2001
+From: Nathan Moinvaziri <nathan@nathanm.com>
+Date: Wed, 17 Feb 2021 11:14:21 -0800
+Subject: [PATCH] Fixed UBSAN unknown read when content_len < 0 in
+ frame_get_vlmetalayers. https://oss-fuzz.com/testcase-detail/4622970490322944
+
+---
+ blosc/frame.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/blosc/frame.c b/blosc/frame.c
+index 3618c349..dc94a292 100644
+--- a/blosc/frame.c
++++ b/blosc/frame.c
+@@ -1419,6 +1419,9 @@ static int get_vlmeta_from_trailer(blosc2_frame_s* frame, blosc2_schunk* schunk,
+       return BLOSC2_ERROR_READ_BUFFER;
+     }
+     big_store(&content_len, content_marker + 1, sizeof(content_len));
++    if (content_len < 0) {
++      return BLOSC2_ERROR_DATA;
++    }
+     metalayer->content_len = content_len;
+ 
+     // Finally, read the content
+-- 
+2.43.2
+

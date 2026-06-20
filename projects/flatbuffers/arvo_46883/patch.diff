@@ -1,0 +1,38 @@
+From 234d86c92aee0e6b77a3fcf7de44f62390ca2088 Mon Sep 17 00:00:00 2001
+From: Derek Bailey <derekbailey@google.com>
+Date: Thu, 21 Apr 2022 21:22:20 -0700
+Subject: [PATCH] fixed off-by-one in parser
+
+---
+ src/idl_parser.cpp     | 2 +-
+ tests/fuzzer/readme.md | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/idl_parser.cpp b/src/idl_parser.cpp
+index 74d61f3e..690bd8d5 100644
+--- a/src/idl_parser.cpp
++++ b/src/idl_parser.cpp
+@@ -492,7 +492,7 @@ CheckedError Parser::Next() {
+         if (has_sign) {
+           // Check for +/-inf which is considered a float constant.
+           if (strncmp(cursor_, "inf", 3) == 0 &&
+-              !(IsIdentifierStart(cursor_[4]) || is_digit(cursor_[4]))) {
++              !(IsIdentifierStart(cursor_[3]) || is_digit(cursor_[3]))) {
+             attribute_.assign(cursor_ - 1, cursor_ + 3);
+             token_ = kTokenFloatConstant;
+             cursor_ += 3;
+diff --git a/tests/fuzzer/readme.md b/tests/fuzzer/readme.md
+index 1d0b392c..c4513012 100644
+--- a/tests/fuzzer/readme.md
++++ b/tests/fuzzer/readme.md
+@@ -11,6 +11,7 @@ For details about **libFuzzer** see: https://llvm.org/docs/LibFuzzer.html
+ To build and run these tests LLVM compiler (with clang frontend) and CMake should be installed before.
+ 
+ The fuzzer section include four tests:
++- `annotator_fuzzer` checks that inputs given to the flatc --annotate are always parsable;
+ - `verifier_fuzzer` checks stability of deserialization engine for `Monster` schema;
+ - `parser_fuzzer` checks stability of schema and json parser under various inputs;
+ - `scalar_parser` focused on validation of the parser while parse numeric scalars in schema and/or json files;
+-- 
+2.43.2
+

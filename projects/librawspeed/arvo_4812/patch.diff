@@ -1,0 +1,27 @@
+From 2d8507d1909829e9151fac73ffc0d20f691f558c Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Wed, 27 Dec 2017 17:33:18 +0300
+Subject: [PATCH] FujiDecompressor: don't forget to sanitize cpp/bpp
+
+---
+ src/librawspeed/decompressors/FujiDecompressor.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/librawspeed/decompressors/FujiDecompressor.cpp b/src/librawspeed/decompressors/FujiDecompressor.cpp
+index ba21635..013dc2a 100644
+--- a/src/librawspeed/decompressors/FujiDecompressor.cpp
++++ b/src/librawspeed/decompressors/FujiDecompressor.cpp
+@@ -37,6 +37,10 @@ namespace rawspeed {
+ 
+ FujiDecompressor::FujiDecompressor(const RawImage& img, ByteStream input_)
+     : AbstractParallelizedDecompressor(img), input(std::move(input_)) {
++  if (mRaw->getCpp() != 1 || mRaw->getDataType() != TYPE_USHORT16 ||
++      mRaw->getBpp() != 2)
++    ThrowRDE("Unexpected component count / data type");
++
+   input.setByteOrder(Endianness::big);
+ 
+   header = FujiHeader(&input);
+-- 
+2.7.4
+

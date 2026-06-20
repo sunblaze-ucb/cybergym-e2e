@@ -1,0 +1,5 @@
+task_id = 'arvo:13466'
+target_prog = 'fuzz_disasmnext'
+vul_commit = "238b4b67dc9e848ff4c2e5fe6f9cbe6a3d740d2e"
+patch_commit = "6a769e815915ff0fe9d158de0e9d0539364f5ed0"
+repo_to_patch = "capstonenext"

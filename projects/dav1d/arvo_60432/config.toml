@@ -1,0 +1,5 @@
+task_id = "arvo:60432"
+target_prog = "dav1d_fuzzer_mt"
+vul_commit = "8dbf789ebe1640dbc3bb5d49345efd9b0f9236d6"
+patch_commit = "9eace34cbadef14980af15c4d43b012a29c2ae56"
+build_image = "n132/arvo:60432-fix"

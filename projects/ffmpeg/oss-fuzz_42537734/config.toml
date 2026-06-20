@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537734"
+target_prog = "ffmpeg_AV_CODEC_ID_WEBP_fuzzer"
+vul_commit = "4482218440534804d067de00ee1a4bc493c8b41d"
+patch_commit = "7c1e732ad2e240af5afe9ffea443c91bb233aa65"
+build_image = "cybergym/oss-fuzz:42537734-fix"

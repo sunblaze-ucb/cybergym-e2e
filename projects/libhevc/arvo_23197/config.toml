@@ -1,0 +1,4 @@
+task_id = "arvo:23197"
+target_prog = "hevc_dec_fuzzer"
+vul_commit = "7247e6e4017e540e6b2a99f728362ee997af58b0"
+patch_commit = "3cacdbc078fc3269f2273a45220f3d127e0d87e9"

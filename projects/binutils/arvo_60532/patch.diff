@@ -1,0 +1,83 @@
+From 22e90ac5af46c01ee4972cf04e835266862bbb35 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 13 Jul 2023 13:32:42 +0930
+Subject: [PATCH] elf_object_p load of dynamic symbols
+
+This fixes an uninitialised memory access on a fuzzed file:
+0 0xf22e9b in offset_from_vma /src/binutils-gdb/bfd/elf.c:1899:2
+1 0xf1e90f in _bfd_elf_get_dynamic_symbols /src/binutils-gdb/bfd/elf.c:2099:13
+2 0x10e6a54 in bfd_elf32_object_p /src/binutils-gdb/bfd/elfcode.h:851:9
+
+Hopefully it will also stop any attempt to load dynamic symbols from
+eu-strip debug files.
+
+	* elfcode.h (elf_object_p): Do not attempt to load dynamic
+	symbols for a file with no section headers until all the
+	program headers are swapped in.  Do not fail on eu-strip debug
+	files.
+---
+ bfd/elfcode.h | 41 ++++++++++++++++++++++++++---------------
+ 1 file changed, 26 insertions(+), 15 deletions(-)
+
+diff --git a/bfd/elfcode.h b/bfd/elfcode.h
+index aae66bcebf8..b2277921680 100644
+--- a/bfd/elfcode.h
++++ b/bfd/elfcode.h
+@@ -819,6 +819,7 @@ elf_object_p (bfd *abfd)
+ 	goto got_no_match;
+       if (bfd_seek (abfd, (file_ptr) i_ehdrp->e_phoff, SEEK_SET) != 0)
+ 	goto got_no_match;
++      bool eu_strip_broken_phdrs = false;
+       i_phdr = elf_tdata (abfd)->phdr;
+       for (i = 0; i < i_ehdrp->e_phnum; i++, i_phdr++)
+ 	{
+@@ -839,21 +840,31 @@ elf_object_p (bfd *abfd)
+ 		  abfd->read_only = 1;
+ 		}
+ 	    }
+-	  if (i_phdr->p_filesz != 0)
+-	    {
+-	      if ((i_phdr->p_offset + i_phdr->p_filesz) > filesize)
+-		goto got_no_match;
+-	      /* Try to reconstruct dynamic symbol table from PT_DYNAMIC
+-		 segment if there is no section header.  */
+-	      if (i_phdr->p_type == PT_DYNAMIC
+-		  && i_ehdrp->e_shstrndx == 0
+-		  && i_ehdrp->e_shoff == 0
+-		  && !_bfd_elf_get_dynamic_symbols (abfd, i_phdr,
+-						    elf_tdata (abfd)->phdr,
+-						    i_ehdrp->e_phnum,
+-						    filesize))
+-		goto got_no_match;
+-	    }
++	  /* Detect eu-strip -f debug files, which have program
++	     headers that describe the original file.  */
++	  if (i_phdr->p_filesz != 0
++	      && (i_phdr->p_filesz > filesize
++		  || i_phdr->p_offset > filesize - i_phdr->p_filesz))
++	    eu_strip_broken_phdrs = true;
++	}
++      if (!eu_strip_broken_phdrs
++	  && i_ehdrp->e_shoff == 0
++	  && i_ehdrp->e_shstrndx == 0)
++	{
++	  /* Try to reconstruct dynamic symbol table from PT_DYNAMIC
++	     segment if there is no section header.  */
++	  i_phdr = elf_tdata (abfd)->phdr;
++	  for (i = 0; i < i_ehdrp->e_phnum; i++, i_phdr++)
++	    if (i_phdr->p_type == PT_DYNAMIC)
++	      {
++		if (i_phdr->p_filesz != 0
++		    && !_bfd_elf_get_dynamic_symbols (abfd, i_phdr,
++						      elf_tdata (abfd)->phdr,
++						      i_ehdrp->e_phnum,
++						      filesize))
++		  goto got_no_match;
++		break;
++	      }
+ 	}
+     }
+ 
+-- 
+2.25.1
+

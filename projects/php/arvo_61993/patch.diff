@@ -1,0 +1,75 @@
+From 64ebadcac5ca57c686f31695eb8076e164ce1cd1 Mon Sep 17 00:00:00 2001
+From: Jakub Zelenka <bukka@php.net>
+Date: Thu, 7 Sep 2023 16:10:14 +0100
+Subject: [PATCH] Fix GH-12151: str_getcsv ending with escape zero segfualt
+
+Closes GH-12152
+---
+ NEWS                                    |  4 ++++
+ ext/standard/file.c                     |  6 ++++++
+ ext/standard/tests/strings/gh12151.phpt | 14 ++++++++++++++
+ 3 files changed, 24 insertions(+)
+ create mode 100644 ext/standard/tests/strings/gh12151.phpt
+
+diff --git a/NEWS b/NEWS
+index b67446b6df..92d38e495d 100644
+--- a/NEWS
++++ b/NEWS
+@@ -32,6 +32,10 @@ PHP                                                                        NEWS
+   . Fixed bug GH-11972 (RecursiveCallbackFilterIterator regression in 8.1.18).
+     (nielsdos)
+ 
++- Standard:
++  . Fixed bug GH-12151 (str_getcsv ending with escape zero segfualt).
++    (Jakub Zelenka)
++
+ 31 Aug 2023, PHP 8.3.0RC1
+ 
+ - Core:
+diff --git a/ext/standard/file.c b/ext/standard/file.c
+index edaba57748..5f6452e23d 100644
+--- a/ext/standard/file.c
++++ b/ext/standard/file.c
+@@ -2023,6 +2023,9 @@ PHPAPI HashTable *php_fgetcsv(php_stream *stream, char delimiter, char enclosure
+ 									if (bptr > limit) {
+ 										/* if the line ends with enclosure, we need to go back by
+ 										 * one character so the \0 character is not copied. */
++										if (hunk_begin == bptr) {
++											--hunk_begin;
++										}
+ 										--bptr;
+ 									}
+ 									goto quit_loop_2;
+@@ -2038,6 +2041,9 @@ PHPAPI HashTable *php_fgetcsv(php_stream *stream, char delimiter, char enclosure
+ 									if (bptr > limit) {
+ 										/* if the line ends with enclosure, we need to go back by
+ 										 * one character so the \0 character is not copied. */
++										if (hunk_begin == bptr) {
++											--hunk_begin;
++										}
+ 										--bptr;
+ 									}
+ 									goto quit_loop_2;
+diff --git a/ext/standard/tests/strings/gh12151.phpt b/ext/standard/tests/strings/gh12151.phpt
+new file mode 100644
+index 0000000000..eeb21ea5bd
+--- /dev/null
++++ b/ext/standard/tests/strings/gh12151.phpt
+@@ -0,0 +1,14 @@
++--TEST--
++GH-12151 (str_getcsv ending with escape zero segfualt)
++--FILE--
++<?php
++var_export(str_getcsv("y","","y","\000"));
++var_export(str_getcsv("\0yy","y","y","\0"));
++?>
++--EXPECT--
++array (
++  0 => '' . "\0" . '',
++)array (
++  0 => '' . "\0" . '',
++  1 => '' . "\0" . '',
++)
+-- 
+2.25.1
+

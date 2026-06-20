@@ -1,0 +1,7 @@
+name = "duckdb"
+language = "c++"
+homepage = "https://duckdb.org/"
+main_repo = "https://github.com/duckdb/duckdb"
+repo_to_patch = "duckdb"
+build_image = "n132/arvo:56682-fix"
+immutable_files = ["test"]

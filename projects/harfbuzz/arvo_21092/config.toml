@@ -1,0 +1,4 @@
+task_id = "arvo:21092"
+target_prog = "hb-draw-fuzzer"
+vul_commit = "6924e29f62a320c91d987a91d4efa752d13c7660"
+patch_commit = "0d729b4b7237934abfca0b5738ad4383f3f22476"

@@ -1,0 +1,29 @@
+From 4dc7dfe65aaa21801a907c66592b92b05da921dc Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Tue, 6 Aug 2024 18:02:58 +0200
+Subject: [PATCH] avformat/segafilm: Set keyframe
+
+Fixes: use of uninitialized value
+Fixes: 70871/clusterfuzz-testcase-minimized-ffmpeg_dem_SEGAFILM_fuzzer-5883617752973312
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/segafilm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libavformat/segafilm.c b/libavformat/segafilm.c
+index 96a50c0e3b..e72d872f96 100644
+--- a/libavformat/segafilm.c
++++ b/libavformat/segafilm.c
+@@ -234,6 +234,7 @@ static int film_read_header(AVFormatContext *s)
+             else if (film->audio_type != AV_CODEC_ID_NONE)
+                 audio_frame_counter += (film->sample_table[i].sample_size /
+                     (film->audio_channels * film->audio_bits / 8));
++            film->sample_table[i].keyframe = 1;
+         } else {
+             film->sample_table[i].stream = film->video_stream_index;
+             film->sample_table[i].pts = AV_RB32(&scratch[8]) & 0x7FFFFFFF;
+-- 
+2.25.1
+

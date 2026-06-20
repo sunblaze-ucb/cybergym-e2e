@@ -1,0 +1,40 @@
+From 3970faeb7fc8cee60cc5260ab4102433c37d5d63 Mon Sep 17 00:00:00 2001
+From: bobsayshilol <bobsayshilol@live.co.uk>
+Date: Sun, 14 Feb 2021 13:09:18 +0000
+Subject: [PATCH] Make sure that there's enough space to store decoded nibbles
+ in when reading IMA ADPCM data
+
+The loop in wavlike_ima_decode_block() that pulls apart the nibbles
+assumes that there's 8 nibbles worth of data for every channel, so
+rather than adding a branch in the hot path I've opted for allocating
+slightly more than we might need.
+
+This was a blocker caught by fuzzing locally.
+
+This also appears to be the same crash as
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=25530.
+---
+ src/ima_adpcm.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/ima_adpcm.c b/src/ima_adpcm.c
+index 8c9bbff3..28c20ca3 100644
+--- a/src/ima_adpcm.c
++++ b/src/ima_adpcm.c
+@@ -182,7 +182,12 @@ ima_reader_init (SF_PRIVATE *psf, int blockalign, int samplesperblock)
+ 	if (psf->file.mode != SFM_READ)
+ 		return SFE_BAD_MODE_RW ;
+ 
+-	pimasize = sizeof (IMA_ADPCM_PRIVATE) + blockalign * psf->sf.channels + 3 * psf->sf.channels * samplesperblock ;
++	/*
++	**	Allocate enough space for 1 more than a multiple of 8 samples
++	**	to avoid having to branch when pulling apart the nibbles.
++	*/
++	count = ((samplesperblock - 2) | 7) + 2 ;
++	pimasize = sizeof (IMA_ADPCM_PRIVATE) + psf->sf.channels * (blockalign + samplesperblock + sizeof(short) * count) ;
+ 
+ 	if (! (pima = calloc (1, pimasize)))
+ 		return SFE_MALLOC_FAILED ;
+-- 
+2.43.2
+

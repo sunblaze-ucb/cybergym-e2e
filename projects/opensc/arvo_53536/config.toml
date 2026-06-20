@@ -1,0 +1,5 @@
+task_id = "arvo:53536"
+target_prog = "fuzz_pkcs15_encode"
+vul_commit = "ad33a3ac9bbe0b3c9978f154e5ff66190b4043e4"
+patch_commit = "ce773aaaaedd37a66329e0eea3c45f30cb567fe2"
+build_image = "n132/arvo:53536-fix"

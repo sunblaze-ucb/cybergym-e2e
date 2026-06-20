@@ -1,0 +1,31 @@
+From 4e39795c75e664ef06f17473adec8c75fcf9de6f Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 15 Aug 2024 00:37:05 +0200
+Subject: [PATCH] avformat/mvdec: Check if name was fully read
+
+Fixes: use of uninitialized value
+Fixes: 70901/clusterfuzz-testcase-minimized-ffmpeg_dem_MV_fuzzer-6341913949569024
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/mvdec.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/mvdec.c b/libavformat/mvdec.c
+index 0718f0483a..c045d2c7c8 100644
+--- a/libavformat/mvdec.c
++++ b/libavformat/mvdec.c
+@@ -256,7 +256,8 @@ static int read_table(AVFormatContext *avctx, AVStream *st,
+         if (avio_feof(pb))
+             return AVERROR_EOF;
+ 
+-        avio_read(pb, name, 16);
++        if (avio_read(pb, name, 16) != 16)
++            return AVERROR_INVALIDDATA;
+         name[sizeof(name) - 1] = 0;
+         size = avio_rb32(pb);
+         if (size < 0) {
+-- 
+2.25.1
+

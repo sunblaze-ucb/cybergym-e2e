@@ -1,0 +1,32 @@
+From c093f5eeabf152730bdf9ca32cbc8e045933369c Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 4 Jan 2023 21:43:54 +1030
+Subject: [PATCH] asan: segv in parse_module
+
+	* vms-alpha.c (parse_module): Ignore DST__K_SRC_SETFILE data
+	if out of range.
+---
+ bfd/vms-alpha.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/bfd/vms-alpha.c b/bfd/vms-alpha.c
+index a9f87962f5b..fd2cf50441f 100644
+--- a/bfd/vms-alpha.c
++++ b/bfd/vms-alpha.c
+@@ -4577,8 +4577,11 @@ parse_module (bfd *abfd, struct module *module, unsigned char *ptr,
+ 
+ 		case DST__K_SRC_SETFILE:
+ 		  data = bfd_getl16 (src_ptr + DST_S_W_SRC_UNSWORD);
+-		  curr_srec->sfile = data;
+-		  curr_srec->srec = module->file_table[data].srec;
++		  if ((unsigned int) data < module->file_table_count)
++		    {
++		      curr_srec->sfile = data;
++		      curr_srec->srec = module->file_table[data].srec;
++		    }
+ 		  vms_debug2 ((4, "DST_S_C_SRC_SETFILE: %d\n", data));
+ 		  break;
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:10628"
+target_prog = "mode_padding"
+vul_commit = "97c7a8bf1d8af210b300b4d88a488b1c4cdaaa97"
+patch_commit = "b859e175a0f2357dcfe2211ca487a7bde0e971b1"

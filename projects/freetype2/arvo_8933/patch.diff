@@ -1,0 +1,89 @@
+From 1079063701986505980f5c5183b3a92700dc1cf5 Mon Sep 17 00:00:00 2001
+From: Werner Lemberg <wl@gnu.org>
+Date: Sat, 16 Jun 2018 21:45:13 +0200
+Subject: [PATCH] [sfnt] Fix color palette loading.
+
+Reported as
+
+  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=8933
+
+* src/sfnt/ttcpal.c (Cpal): Add `table_size' field.
+(tt_face_load_cpal): Set it.
+(tt_face_palette_set): Check pointer limit for color entries.
+---
+ ChangeLog         | 12 ++++++++++++
+ src/sfnt/ttcpal.c | 17 +++++++++++++----
+ 2 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index eab381a..3f53703 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,5 +1,17 @@
+ 2018-06-16  Werner Lemberg  <wl@gnu.org>
+ 
++	[sfnt] Fix color palette loading.
++
++	Reported as
++
++	  https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=8933
++
++	* src/sfnt/ttcpal.c (Cpal): Add `table_size' field.
++	(tt_face_load_cpal): Set it.
++	(tt_face_palette_set): Check pointer limit for color entries.
++
++2018-06-16  Werner Lemberg  <wl@gnu.org>
++
+ 	* src/base/ftbitmap.c (FT_Bitmap_Blend): Avoid integer overflow.
+ 
+ 2018-06-16  Werner Lemberg  <wl@gnu.org>
+diff --git a/src/sfnt/ttcpal.c b/src/sfnt/ttcpal.c
+index 54c5f0f..6c6b06d 100644
+--- a/src/sfnt/ttcpal.c
++++ b/src/sfnt/ttcpal.c
+@@ -55,7 +55,8 @@
+                              /* in the combined color record array.        */
+ 
+     /* The memory which backs up the `CPAL' table. */
+-    void*  table;
++    void*     table;
++    FT_ULong  table_size;
+ 
+   } Cpal;
+ 
+@@ -197,7 +198,8 @@
+       }
+     }
+ 
+-    cpal->table = table;
++    cpal->table      = table;
++    cpal->table_size = table_size;
+ 
+     face->cpal = cpal;
+ 
+@@ -253,13 +255,20 @@
+     FT_Color*  q;
+     FT_Color*  limit;
+ 
++    FT_ULong  record_offset;
++
+ 
+     if ( palette_index >= face->palette_data.num_palettes )
+       return FT_THROW( Invalid_Argument );
+ 
+-    offset = cpal->color_indices + 2 * palette_index;
+-    p      = cpal->colors + COLOR_SIZE * FT_PEEK_USHORT( offset );
++    offset        = cpal->color_indices + 2 * palette_index;
++    record_offset = COLOR_SIZE * FT_PEEK_USHORT( offset );
++
++    if ( record_offset + COLOR_SIZE * face->palette_data.num_palette_entries >
++           cpal->table_size )
++      return FT_THROW( Invalid_Table );
+ 
++    p     = cpal->colors + record_offset;
+     q     = face->palette;
+     limit = q + face->palette_data.num_palette_entries;
+ 
+-- 
+2.7.4
+

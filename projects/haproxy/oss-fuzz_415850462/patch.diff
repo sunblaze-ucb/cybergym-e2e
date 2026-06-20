@@ -1,0 +1,55 @@
+From 10e6d0bd5702586a11daf8bd320713e0b501e37d Mon Sep 17 00:00:00 2001
+From: Willy Tarreau <w@1wt.eu>
+Date: Wed, 7 May 2025 07:22:24 +0200
+Subject: [PATCH] BUG/MINOR: tools: only fill first empty arg when not out of
+ range
+
+In commit 3f2c8af313 ("MINOR: tools: make parse_line() provide hints
+about empty args") we've added the ability to record the position of
+the first empty arg in parse_line(), but that check requires to
+access the args[] array for the current arg, which is not valid in
+case we stopped on too large an argument count. Let's just check the
+arg's validity before doing so.
+
+This was reported by OSS Fuzz:
+  https://issues.oss-fuzz.com/issues/415850462
+
+No backport is needed since this was in the latest dev branch.
+---
+ src/tools.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/tools.c b/src/tools.c
+index 73335d21e..313396823 100644
+--- a/src/tools.c
++++ b/src/tools.c
+@@ -6439,7 +6439,7 @@ uint32_t parse_line(char *in, char *out, size_t *outlen, char **args, int *nbarg
+ 							err |= PARSE_ERR_TOOMANY;
+ 					}
+ 					if (prev_in_arg && !in_arg) {
+-						if (!empty_arg_ptr && args[arg] == out + arg_start)
++						if (!empty_arg_ptr && arg < argsmax && args[arg] == out + arg_start)
+ 							empty_arg_ptr = begin_new_arg;
+ 						EMIT_CHAR(0);
+ 						arg++;
+@@ -6481,7 +6481,7 @@ uint32_t parse_line(char *in, char *out, size_t *outlen, char **args, int *nbarg
+ 		}
+ 
+ 		if (prev_in_arg && !in_arg) {
+-			if (!empty_arg_ptr && args[arg] == out + arg_start)
++			if (!empty_arg_ptr && arg < argsmax && args[arg] == out + arg_start)
+ 				empty_arg_ptr = begin_new_arg;
+ 			EMIT_CHAR(0);
+ 			arg++;
+@@ -6490,7 +6490,7 @@ uint32_t parse_line(char *in, char *out, size_t *outlen, char **args, int *nbarg
+ 
+ 	/* end of output string */
+ 	if (in_arg) {
+-		if (!empty_arg_ptr && args[arg] == out + arg_start)
++		if (!empty_arg_ptr && arg < argsmax && args[arg] == out + arg_start)
+ 			empty_arg_ptr = begin_new_arg;
+ 		EMIT_CHAR(0);
+ 		arg++;
+-- 
+2.25.1
+

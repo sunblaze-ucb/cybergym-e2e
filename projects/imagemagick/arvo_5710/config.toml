@@ -1,0 +1,4 @@
+task_id = "arvo:5710"
+target_prog = "encoder_wpg_fuzzer"
+vul_commit = "6e9a6c7577313571ec41f4ed15f306b8b3bebf7a"
+patch_commit = "ce433f8048b120b2a0413b4ac3ef59fca35a9788"

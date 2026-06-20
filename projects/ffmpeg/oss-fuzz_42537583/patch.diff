@@ -1,0 +1,29 @@
+From a0f22218f74e3af73492e05e6696546b0da8d40e Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sat, 3 Aug 2024 13:30:28 +0200
+Subject: [PATCH] bsf/media100_to_mjpegb: Clear output buffer padding
+
+Fixes: use-of-uninitialized-value
+Fixes: 70855/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_MEDIA100_fuzzer-5537446610141184
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/bsf/media100_to_mjpegb.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libavcodec/bsf/media100_to_mjpegb.c b/libavcodec/bsf/media100_to_mjpegb.c
+index 6e117ae20f..4b2dc1a35a 100644
+--- a/libavcodec/bsf/media100_to_mjpegb.c
++++ b/libavcodec/bsf/media100_to_mjpegb.c
+@@ -148,6 +148,7 @@ second_field:
+     AV_WB32(out->data + second_field_offset + 36, sod_offset[1] - second_field_offset);
+ 
+     out->size = bytestream2_tell_p(&pb);
++    memset(out->data + out->size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+ 
+     ret = av_packet_copy_props(out, in);
+     if (ret < 0)
+-- 
+2.25.1
+

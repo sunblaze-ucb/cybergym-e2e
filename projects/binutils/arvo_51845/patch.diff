@@ -1,0 +1,32 @@
+From 8e4a500a5c4cef1aafc2c6e47cadd3dea0bfb99b Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 28 Sep 2022 09:52:22 +0930
+Subject: [PATCH] asan: _bfd_stab_section_find_nearest_line segv
+
+The segv was on "info->strs[strsize - 1] = 0;" with strsize zero.  OK,
+if strsize is zero we don't have any filenames in stabs so no useful
+info.
+
+	* syms.c (_bfd_stab_section_find_nearest_line): Exit if either
+	stabsize or strsize is zero.
+---
+ bfd/syms.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/bfd/syms.c b/bfd/syms.c
+index ec62f3457ca..e8077f59bf0 100644
+--- a/bfd/syms.c
++++ b/bfd/syms.c
+@@ -1027,6 +1027,9 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
+ 		 ? info->strsec->rawsize
+ 		 : info->strsec->size);
+ 
++      if (stabsize == 0 || strsize == 0)
++	goto out;
++
+       if (!bfd_malloc_and_get_section (abfd, info->stabsec, &info->stabs))
+ 	goto out;
+       if (!bfd_malloc_and_get_section (abfd, info->strsec, &info->strs))
+-- 
+2.25.1
+

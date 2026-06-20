@@ -1,0 +1,5 @@
+task_id = "arvo:56450"
+target_prog = "fuzz_die_cu_attrs"
+vul_commit = "2ee326bad2b4286ca19a2d007d2bb0e77adcdcff"
+patch_commit = "680899627db6f05b8cf8d86272255563b6d81ebd"
+build_image = "n132/arvo:56450-fix"

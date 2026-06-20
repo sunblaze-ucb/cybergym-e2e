@@ -1,0 +1,5 @@
+task_id = "arvo:47101"
+target_prog = "fuzz_as"
+vul_commit = "b3abcebcae6e648086147637bcba09c217c8bd9a"
+patch_commit = "6f87d3fd27417e5adb2aa6f106a614296425df57"
+build_image = "n132/arvo:47101-fix"

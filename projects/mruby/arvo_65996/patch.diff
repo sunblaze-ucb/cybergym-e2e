@@ -1,0 +1,25 @@
+From 772f13520c089a2eb163f82587a31106834a7b02 Mon Sep 17 00:00:00 2001
+From: dearblue <dearblue@users.osdn.me>
+Date: Sat, 20 Jan 2024 09:44:47 +0900
+Subject: [PATCH] Fixed buffer overflow in `mrb_memsearch()`
+
+---
+ src/string.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/string.c b/src/string.c
+index e80f7fbff..eb1ca78c3 100644
+--- a/src/string.c
++++ b/src/string.c
+@@ -499,7 +499,7 @@ mrb_memsearch(const void *x0, mrb_int m, const void *y0, mrb_int n)
+     const unsigned char *ye = ys+n-m+1;
+ 
+     for (;;) {
+-      y = (const unsigned char*)memchr(y, x[0], (size_t)(ye-ys));
++      y = (const unsigned char*)memchr(y, x[0], (size_t)(ye-y));
+       if (y == NULL) return -1;
+       if (memcmp(x, y, m) == 0) {
+         return (mrb_int)(y - ys);
+-- 
+2.25.1
+

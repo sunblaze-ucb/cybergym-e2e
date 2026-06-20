@@ -1,0 +1,34 @@
+From d5294be00b0f89486b3459d5835045dbf26444b5 Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Sat, 10 Dec 2022 01:22:00 +0000
+Subject: [PATCH] Fixes Heap-buffer-overflow READ 4 in
+ Assimp::ScenePreprocessor::ProcessMesh
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=49797
+---
+ code/AssetLib/OFF/OFFLoader.cpp | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/code/AssetLib/OFF/OFFLoader.cpp b/code/AssetLib/OFF/OFFLoader.cpp
+index a366d7463..cb265029a 100644
+--- a/code/AssetLib/OFF/OFFLoader.cpp
++++ b/code/AssetLib/OFF/OFFLoader.cpp
+@@ -290,11 +290,12 @@ void OFFImporter::InternReadFile( const std::string& pFile, aiScene* pScene, IOS
+         sz = line; SkipSpaces(&sz);
+         idx = strtoul10(sz,&sz);
+         if(!idx || idx > 9) {
+-	    ASSIMP_LOG_ERROR("OFF: Faces with zero indices aren't allowed");
++	        ASSIMP_LOG_ERROR("OFF: Faces with zero indices aren't allowed");
+             --mesh->mNumFaces;
++            ++i;
+             continue;
+-	}
+-	faces->mNumIndices = idx;
++	    }
++	    faces->mNumIndices = idx;
+         faces->mIndices = new unsigned int[faces->mNumIndices];
+         for (unsigned int m = 0; m < faces->mNumIndices;++m) {
+             SkipSpaces(&sz);
+-- 
+2.25.1
+

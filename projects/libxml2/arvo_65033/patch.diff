@@ -1,0 +1,58 @@
+From 862e9ce0e63a74fb39522a4bc9152cdddef51f8f Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Wed, 13 Dec 2023 14:53:44 +0100
+Subject: [PATCH] malloc-fail: Fix use-of-uninitialized-value in
+ xmlParseConditionalSections
+
+Short-lived regression.
+---
+ parser.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/parser.c b/parser.c
+index d6b8f2a1..2b32097b 100644
+--- a/parser.c
++++ b/parser.c
+@@ -6793,7 +6793,11 @@ xmlParseConditionalSections(xmlParserCtxtPtr ctxt) {
+                 }
+                 NEXT;
+ 
+-                while ((PARSER_STOPPED(ctxt) == 0) && (RAW != 0)) {
++                while (PARSER_STOPPED(ctxt) == 0) {
++                    if (RAW == 0) {
++                        xmlFatalErr(ctxt, XML_ERR_CONDSEC_NOT_FINISHED, NULL);
++                        goto error;
++                    }
+                     if ((RAW == '<') && (NXT(1) == '!') && (NXT(2) == '[')) {
+                         SKIP(3);
+                         ignoreDepth++;
+@@ -6804,25 +6808,20 @@ xmlParseConditionalSections(xmlParserCtxtPtr ctxt) {
+                         }
+                     } else if ((RAW == ']') && (NXT(1) == ']') &&
+                                (NXT(2) == '>')) {
++                        SKIP(3);
+                         if (ignoreDepth == 0)
+                             break;
+-                        SKIP(3);
+                         ignoreDepth--;
+                     } else {
+                         NEXT;
+                     }
+                 }
+ 
+-		if (RAW == 0) {
+-		    xmlFatalErr(ctxt, XML_ERR_CONDSEC_NOT_FINISHED, NULL);
+-                    goto error;
+-		}
+                 if (ctxt->input->id != id) {
+                     xmlFatalErrMsg(ctxt, XML_ERR_ENTITY_BOUNDARY,
+                                    "All markup of the conditional section is"
+                                    " not in the same entity\n");
+                 }
+-                SKIP(3);
+             } else {
+                 xmlFatalErr(ctxt, XML_ERR_CONDSEC_INVALID_KEYWORD, NULL);
+                 xmlHaltParser(ctxt);
+-- 
+2.25.1
+

@@ -1,0 +1,4 @@
+task_id = "arvo:20694"
+target_prog = "hts_open_fuzzer"
+vul_commit = "6b72368c97a234ceebdc89c8806199585d9706b3"
+patch_commit = "d6f15361ee63ff13dfb57f3eac119e3d50e65c56"

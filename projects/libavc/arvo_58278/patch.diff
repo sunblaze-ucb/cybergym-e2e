@@ -1,0 +1,62 @@
+From 84f955dd77e42ffb57cb05a869cb8c8bf68f1e13 Mon Sep 17 00:00:00 2001
+From: Mallikarjun Kamble <mallikarjun.kamble@ittiam.com>
+Date: Thu, 27 Apr 2023 13:17:22 +0530
+Subject: [PATCH] svcdec: Fix for out of range reference index during base mode
+ flag
+
+Bug: 58278
+Test: svc_dec_fuzzer
+---
+ decoder/svc/isvcd_parse_ebslice.c   | 12 ++++++++++++
+ decoder/svc/isvcd_process_epslice.c | 12 ++++++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/decoder/svc/isvcd_parse_ebslice.c b/decoder/svc/isvcd_parse_ebslice.c
+index 3a92dfe..d805764 100644
+--- a/decoder/svc/isvcd_parse_ebslice.c
++++ b/decoder/svc/isvcd_parse_ebslice.c
+@@ -487,6 +487,18 @@ WORD32 isvcd_mv_pred_ref_tfr_nby2_ebmb(dec_struct_t *ps_dec, UWORD8 u1_mb_idx, U
+                             /********************************************************/
+                             u1_tmp_lx = (u1_lx << 1);
+                             i1_ref_idx = s_mvPred.i1_ref_frame[u1_lx];
++                            /********************************************************************/
++                            /* If reference index is inferred from the base layer and it is     */
++                            /* exceeding the number of active reference in the current layer.   */
++                            /* Then reference index is clipped to the max in the current layer  */
++                            /********************************************************************/
++                            if(ps_svc_cur_mb_info->u1_base_mode_flag == 1)
++                            {
++                                if(i1_ref_idx > (ps_dec->ps_cur_slice->u1_num_ref_idx_lx_active[u1_lx] - 1))
++                                {
++                                    i1_ref_idx = ps_dec->ps_cur_slice->u1_num_ref_idx_lx_active[u1_lx] - 1;
++                                }
++                            }
+                             if(0 == ps_svc_cur_mb_info->u1_base_mode_flag)
+                             {
+                                 i2_mv_x = ps_mv_nmb->i2_mv[u1_tmp_lx];
+diff --git a/decoder/svc/isvcd_process_epslice.c b/decoder/svc/isvcd_process_epslice.c
+index d23aa5e..cbcce8c 100644
+--- a/decoder/svc/isvcd_process_epslice.c
++++ b/decoder/svc/isvcd_process_epslice.c
+@@ -340,6 +340,18 @@ WORD32 isvcd_mv_pred_ref_tfr_nby2_epmb(dec_struct_t *ps_dec, UWORD8 u1_mb_idx, U
+ 
+                         /* Populate the colpic info and reference frames */
+                         i1_ref_idx = pi1_ref_idx[u1_blk_no];
++                        /********************************************************************/
++                        /* If reference index is inferred from the base layer and it is     */
++                        /* exceeding the number of active reference in the current layer.   */
++                        /* Then reference index is clipped to the max in the current layer  */
++                        /********************************************************************/
++                        if(ps_svc_cur_mb_info->u1_base_mode_flag == 1)
++                        {
++                            if(i1_ref_idx > (ps_dec->ps_cur_slice->u1_num_ref_idx_lx_active[0] - 1))
++                            {
++                                i1_ref_idx = ps_dec->ps_cur_slice->u1_num_ref_idx_lx_active[0] - 1;
++                            }
++                        }
+                         s_mvPred.i1_ref_frame[0] = i1_ref_idx;
+ 
+                         if((1 != ps_svc_cur_mb_info->u1_base_mode_flag) &&
+-- 
+2.25.1
+

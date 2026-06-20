@@ -1,0 +1,35 @@
+From e29d15cda20e6e7c7e1122c30bff7805a2e59fbc Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Wed, 2 Nov 2022 00:55:10 +0300
+Subject: [PATCH] DngOpcodes::PixelOpcode: rewrite applyOP() once more
+
+`op()` should receive coords with step 1, regardless of our step.
+---
+ src/librawspeed/common/DngOpcodes.cpp | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/librawspeed/common/DngOpcodes.cpp b/src/librawspeed/common/DngOpcodes.cpp
+index 59da0cfa..5d08abf5 100644
+--- a/src/librawspeed/common/DngOpcodes.cpp
++++ b/src/librawspeed/common/DngOpcodes.cpp
+@@ -328,11 +328,13 @@ protected:
+     const CroppedArray2DRef<T> img = getDataAsCroppedArray2DRef<T>(ri);
+     int cpp = ri->getCpp();
+     const iRectangle2D& ROI = getRoi();
+-    for (auto y = 0; y < ROI.getHeight(); y += rowPitch) {
+-      for (auto x = 0; x < ROI.getWidth(); x += colPitch) {
++    const iPoint2D numAffected(roundUpDivision(getRoi().dim.x, colPitch),
++                               roundUpDivision(getRoi().dim.y, rowPitch));
++    for (int y = 0; y < numAffected.y; ++y) {
++      for (int x = 0; x < numAffected.x; ++x) {
+         for (auto p = 0U; p < planes; ++p) {
+-          T& pixel =
+-              img(ROI.getTop() + y, firstPlane + (ROI.getLeft() + x) * cpp + p);
++          T& pixel = img(ROI.getTop() + rowPitch * y,
++                         firstPlane + (ROI.getLeft() + colPitch * x) * cpp + p);
+           pixel = op(x, y, pixel);
+         }
+       }
+-- 
+2.25.1
+

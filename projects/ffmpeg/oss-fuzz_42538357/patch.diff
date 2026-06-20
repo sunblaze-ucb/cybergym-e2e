@@ -1,0 +1,31 @@
+From f52b9d05837c23b0c55013551bc28dce4922de0b Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Mon, 23 Sep 2024 20:55:17 +0200
+Subject: [PATCH] avformat/qcp: Check for read failure in header
+
+Fixes: Use of uninitialized value
+Fixes: 71551/clusterfuzz-testcase-minimized-ffmpeg_dem_QCP_fuzzer-4647386712965120
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavformat/qcp.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libavformat/qcp.c b/libavformat/qcp.c
+index fdf18618d2..13a479a11e 100644
+--- a/libavformat/qcp.c
++++ b/libavformat/qcp.c
+@@ -105,7 +105,8 @@ static int qcp_read_header(AVFormatContext *s)
+ 
+     st->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
+     st->codecpar->ch_layout  = (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO;
+-    avio_read(pb, buf, 16);
++    if (avio_read(pb, buf, 16) != 16)
++        return AVERROR_INVALIDDATA;
+     if (is_qcelp_13k_guid(buf)) {
+         st->codecpar->codec_id = AV_CODEC_ID_QCELP;
+     } else if (!memcmp(buf, guid_evrc, 16)) {
+-- 
+2.25.1
+

@@ -1,0 +1,288 @@
+From 7fcc471ca223871e5d11ab7bc19be33c2d178ef8 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Thu, 19 Oct 2023 08:51:47 +1030
+Subject: [PATCH] R_MICROMIPS_GPREL7_S2
+
+This reloc is meant for the 16-bit LWGP instruction, 0x6400/0xfc00
+match/mask encoding in `micromips_opcodes'.  It is correctly specified
+to operate on a half-word by the howtos in elf32-mips.c, elfn32-mips.c
+and elf64-mips.c, but is incorrectly subject to shuffle/unshuffle in
+code like _bfd_mips_elf32_gprel16_reloc.
+
+Current behaviour when applying the reloc to .byte 0x11,0x22,0x33,0x44
+is to apply the reloc to byte 0x22 when big-endian, and to byte 0x33
+when little-endian.  Big-endian behaviour is unchanged after this
+patch and little-endian correctly applies the reloc to byte 0x11.
+
+The patch also corrects REL addend extraction from section contents,
+and overflow checking.  gold had all of the bfd problems with this
+reloc and additionally did not apply the rightshift by two.
+
+bfd/
+	* elfxx-mips.c (micromips_reloc_shuffle_p): Return false for
+	R_MICROMIPS_GPREL7_S2.
+	(mips_elf_calculate_relocation): Correct sign extension and
+	overflow calculation for R_MICROMIPS_GPREL7_S2.
+	(_bfd_mips_elf_relocate_section): Update small-data overflow
+	message.
+gold/
+	* mips.cc (Mips_relocate_functions::should_shuffle_micromips_reloc):
+	Return false for R_MICROMIPS_GPREL7_S2.
+	(Mips_relocate_functions::mips_reloc_unshuffle): Update comment.
+	(Mips_relocate_functions::relgprel): Remove R_MICROMIPS_GPREL7_S2
+	handling.
+	(Mips_relocate_functions::relgprel7): New function.
+	(Target_mips::Relocate::relocate): Adjust to suit.
+ld/
+	* testsuite/ld-mips-elf/reloc-4.d: Adjust expected error.
+	* testsuite/ld-mips-elf/reloc-5.d: Likewise.
+---
+ bfd/elfxx-mips.c                   | 43 +++++++++-------
+ gold/mips.cc                       | 82 +++++++++++++++++++++++-------
+ ld/testsuite/ld-mips-elf/reloc-4.d |  2 +-
+ ld/testsuite/ld-mips-elf/reloc-5.d |  2 +-
+ 4 files changed, 90 insertions(+), 39 deletions(-)
+
+diff --git a/bfd/elfxx-mips.c b/bfd/elfxx-mips.c
+index 4b1ec670dc0..bae8622fd34 100644
+--- a/bfd/elfxx-mips.c
++++ b/bfd/elfxx-mips.c
+@@ -2223,15 +2223,17 @@ micromips_reloc_p (unsigned int r_type)
+ }
+ 
+ /* Similar to MIPS16, the two 16-bit halves in microMIPS must be swapped
+-   on a little-endian system.  This does not apply to R_MICROMIPS_PC7_S1
+-   and R_MICROMIPS_PC10_S1 relocs that apply to 16-bit instructions.  */
++   on a little-endian system.  This does not apply to R_MICROMIPS_PC7_S1,
++   R_MICROMIPS_PC10_S1 and R_MICROMIPS_GPREL7_S2 relocs that apply to
++   16-bit instructions.  */
+ 
+ static inline bool
+ micromips_reloc_shuffle_p (unsigned int r_type)
+ {
+   return (micromips_reloc_p (r_type)
+ 	  && r_type != R_MICROMIPS_PC7_S1
+-	  && r_type != R_MICROMIPS_PC10_S1);
++	  && r_type != R_MICROMIPS_PC10_S1
++	  && r_type != R_MICROMIPS_GPREL7_S2);
+ }
+ 
+ static inline bool
+@@ -6255,21 +6257,24 @@ mips_elf_calculate_relocation (bfd *abfd, bfd *input_bfd,
+     case R_MIPS_GPREL16:
+     case R_MICROMIPS_GPREL7_S2:
+     case R_MICROMIPS_GPREL16:
+-      /* Only sign-extend the addend if it was extracted from the
+-	 instruction.  If the addend was separate, leave it alone,
+-	 otherwise we may lose significant bits.  */
+-      if (howto->partial_inplace)
+-	addend = _bfd_mips_elf_sign_extend (addend, 16);
+-      value = symbol + addend - gp;
+-      /* If the symbol was local, any earlier relocatable links will
+-	 have adjusted its addend with the gp offset, so compensate
+-	 for that now.  Don't do it for symbols forced local in this
+-	 link, though, since they won't have had the gp offset applied
+-	 to them before.  */
+-      if (was_local_p)
+-	value += gp0;
+-      if (was_local_p || h->root.root.type != bfd_link_hash_undefweak)
+-	overflowed_p = mips_elf_overflow_p (value, 16);
++      {
++	int bits = howto->bitsize + howto->rightshift;
++	/* Only sign-extend the addend if it was extracted from the
++	   instruction.  If the addend was separate, leave it alone,
++	   otherwise we may lose significant bits.  */
++	if (howto->partial_inplace)
++	  addend = _bfd_mips_elf_sign_extend (addend, bits);
++	value = symbol + addend - gp;
++	/* If the symbol was local, any earlier relocatable links will
++	   have adjusted its addend with the gp offset, so compensate
++	   for that now.  Don't do it for symbols forced local in this
++	   link, though, since they won't have had the gp offset applied
++	   to them before.  */
++	if (was_local_p)
++	  value += gp0;
++	if (was_local_p || h->root.root.type != bfd_link_hash_undefweak)
++	  overflowed_p = mips_elf_overflow_p (value, bits);
++      }
+       break;
+ 
+     case R_MIPS16_GOT16:
+@@ -10671,7 +10676,7 @@ _bfd_mips_elf_relocate_section (bfd *output_bfd, struct bfd_link_info *info,
+ 		  && (gprel16_reloc_p (howto->type)
+ 		      || literal_reloc_p (howto->type)))
+ 		{
+-		  msg = _("small-data section exceeds 64KB;"
++		  msg = _("small-data section too large;"
+ 			  " lower small-data size limit (see option -G)");
+ 
+ 		  htab->small_data_overflow_reported = true;
+diff --git a/gold/mips.cc b/gold/mips.cc
+index 121cecdf487..5b2edcd559a 100644
+--- a/gold/mips.cc
++++ b/gold/mips.cc
+@@ -4348,7 +4348,8 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+   {
+     return (micromips_reloc(r_type)
+             && r_type != elfcpp::R_MICROMIPS_PC7_S1
+-            && r_type != elfcpp::R_MICROMIPS_PC10_S1);
++            && r_type != elfcpp::R_MICROMIPS_PC10_S1
++            && r_type != elfcpp::R_MICROMIPS_GPREL7_S2);
+   }
+ 
+  public:
+@@ -4438,8 +4439,9 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+   //   little-endian system.
+ 
+   // Similar to MIPS16, the two 16-bit halves in microMIPS must be swapped
+-  // on a little-endian system.  This does not apply to R_MICROMIPS_PC7_S1
+-  // and R_MICROMIPS_PC10_S1 relocs that apply to 16-bit instructions.
++  // on a little-endian system.  This does not apply to R_MICROMIPS_PC7_S1,
++  // R_MICROMIPS_PC10_S1 and R_MICROMIPS_GPREL7_S2 relocs that apply
++  // to 16-bit instructions.
+ 
+   static void
+   mips_reloc_unshuffle(unsigned char* view, unsigned int r_type,
+@@ -5432,13 +5434,12 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+   }
+ 
+   // R_MIPS_GPREL16, R_MIPS16_GPREL, R_MIPS_LITERAL, R_MICROMIPS_LITERAL
+-  // R_MICROMIPS_GPREL7_S2, R_MICROMIPS_GPREL16
++  // R_MICROMIPS_GPREL16
+   static inline typename This::Status
+   relgprel(unsigned char* view, const Mips_relobj<size, big_endian>* object,
+            const Symbol_value<size>* psymval, Mips_address gp,
+            Mips_address addend_a, bool extract_addend, bool local,
+-           unsigned int r_type, bool calculate_only,
+-           Valtype* calculated_value)
++           bool calculate_only, Valtype* calculated_value)
+   {
+     Valtype32* wv = reinterpret_cast<Valtype32*>(view);
+     Valtype32 val = elfcpp::Swap<32, big_endian>::readval(wv);
+@@ -5446,10 +5447,7 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+     Valtype addend;
+     if (extract_addend)
+       {
+-        if (r_type == elfcpp::R_MICROMIPS_GPREL7_S2)
+-          addend = (val & 0x7f) << 2;
+-        else
+-          addend = val & 0xffff;
++	addend = val & 0xffff;
+         // Only sign-extend the addend if it was extracted from the
+         // instruction.  If the addend was separate, leave it alone,
+         // otherwise we may lose significant bits.
+@@ -5468,10 +5466,7 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+     if (local)
+       x += object->gp_value();
+ 
+-    if (r_type == elfcpp::R_MICROMIPS_GPREL7_S2)
+-      val = Bits<32>::bit_select32(val, x, 0x7f);
+-    else
+-      val = Bits<32>::bit_select32(val, x, 0xffff);
++    val = Bits<32>::bit_select32(val, x, 0xffff);
+ 
+     if (calculate_only)
+       {
+@@ -5483,13 +5478,56 @@ class Mips_relocate_functions : public Relocate_functions<size, big_endian>
+ 
+     if (check_overflow<16>(x) == This::STATUS_OVERFLOW)
+       {
+-        gold_error(_("small-data section exceeds 64KB; lower small-data size "
+-                     "limit (see option -G)"));
++	gold_error(_("small-data section too large;"
++		     " lower small-data size limit (see option -G)"));
+         return This::STATUS_OVERFLOW;
+       }
+     return This::STATUS_OKAY;
+   }
+ 
++  // R_MICROMIPS_GPREL7_S2
++  static inline typename This::Status
++  relgprel7(unsigned char* view, const Mips_relobj<size, big_endian>* object,
++	    const Symbol_value<size>* psymval, Mips_address gp,
++	    Mips_address addend_a, bool extract_addend, bool local,
++	    bool calculate_only, Valtype* calculated_value)
++  {
++    Valtype16* wv = reinterpret_cast<Valtype16*>(view);
++    Valtype16 val = elfcpp::Swap<16, big_endian>::readval(wv);
++
++    Valtype addend;
++    if (extract_addend)
++      {
++	addend = (val & 0x7f) << 2;
++	addend = Bits<9>::sign_extend32(addend);
++      }
++    else
++      addend = addend_a;
++
++    Valtype x = psymval->value(object, addend) - gp;
++
++    if (local)
++      x += object->gp_value();
++
++    val = Bits<16>::bit_select32(val, x >> 2, 0x7f);
++
++    if (calculate_only)
++      {
++	*calculated_value = x;
++	return This::STATUS_OKAY;
++      }
++    else
++      elfcpp::Swap<16, big_endian>::writeval(wv, val);
++
++    if (check_overflow<9>(x) == This::STATUS_OVERFLOW)
++      {
++	gold_error(_("small-data section too large;"
++		     " lower small-data size limit (see option -G)"));
++	return This::STATUS_OVERFLOW;
++      }
++    return This::STATUS_OKAY;
++  }
++
+   // R_MIPS_GPREL32
+   static inline typename This::Status
+   relgprel32(unsigned char* view, const Mips_relobj<size, big_endian>* object,
+@@ -11938,12 +11976,20 @@ Target_mips<size, big_endian>::Relocate::relocate(
+ 
+         case elfcpp::R_MIPS_GPREL16:
+         case elfcpp::R_MIPS16_GPREL:
+-        case elfcpp::R_MICROMIPS_GPREL7_S2:
+         case elfcpp::R_MICROMIPS_GPREL16:
+           reloc_status = Reloc_funcs::relgprel(view, object, psymval,
+                                              target->adjusted_gp_value(object),
+                                              r_addend, extract_addend,
+-                                             gsym == NULL, r_types[i],
++                                             gsym == NULL,
++                                             this->calculate_only_,
++                                             &this->calculated_value_);
++          break;
++
++        case elfcpp::R_MICROMIPS_GPREL7_S2:
++          reloc_status = Reloc_funcs::relgprel7(view, object, psymval,
++                                             target->adjusted_gp_value(object),
++                                             r_addend, extract_addend,
++                                             gsym == NULL,
+                                              this->calculate_only_,
+                                              &this->calculated_value_);
+           break;
+diff --git a/ld/testsuite/ld-mips-elf/reloc-4.d b/ld/testsuite/ld-mips-elf/reloc-4.d
+index 936a861c65c..3d0a37a2ead 100644
+--- a/ld/testsuite/ld-mips-elf/reloc-4.d
++++ b/ld/testsuite/ld-mips-elf/reloc-4.d
+@@ -1,3 +1,3 @@
+ #source: reloc-4.s
+ #ld:
+-#error: small-data section exceeds 64KB.*truncated to fit: R_MIPS_LITERAL
++#error: small-data section too large.*truncated to fit: R_MIPS_LITERAL
+diff --git a/ld/testsuite/ld-mips-elf/reloc-5.d b/ld/testsuite/ld-mips-elf/reloc-5.d
+index 2fc74ea27d5..7910b35fcaf 100644
+--- a/ld/testsuite/ld-mips-elf/reloc-5.d
++++ b/ld/testsuite/ld-mips-elf/reloc-5.d
+@@ -1,3 +1,3 @@
+ #source: reloc-5.s
+ #ld:
+-#error: small-data section exceeds 64KB.*truncated to fit: R_MIPS_GPREL16
++#error: small-data section too large.*truncated to fit: R_MIPS_GPREL16
+-- 
+2.25.1
+

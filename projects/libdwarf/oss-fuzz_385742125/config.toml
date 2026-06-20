@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:385742125"
+target_prog = "fuzz_die_cu_print"
+vul_commit = "9cf5066516e5e46785bad045d97012e3c1c61b84"
+patch_commit = "375d102768ee1ff953f97a93345318db3f63ea3c"
+build_image = "cybergym/oss-fuzz:385742125-fix"

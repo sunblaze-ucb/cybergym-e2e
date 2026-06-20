@@ -1,0 +1,5 @@
+task_id = "arvo:37621"
+target_prog = "fuzz_lua"
+vul_commit = "066e0f93c4901e601d93e31fb700f8f66f95feb8"
+patch_commit = "cf613cdc6fa367257fc61c256f63d917350858b5"
+build_image = "n132/arvo:37621-fix"

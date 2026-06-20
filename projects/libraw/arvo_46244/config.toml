@@ -1,0 +1,5 @@
+task_id = "arvo:46244"
+target_prog = "libraw_cr2_fuzzer"
+vul_commit = "a367293ae736779d0a51aab7d64b7e06656cf619"
+patch_commit = "ef1d91a04d36229332d0aa10d0652a6d91e7d3be"
+build_image = "n132/arvo:46244-fix"

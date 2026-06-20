@@ -1,0 +1,5 @@
+task_id = "arvo:57320"
+target_prog = "fuzzer_tool_metaflac"
+vul_commit = "321c4aeb22966b664d933ad8d9fd18ca140dbd5e"
+patch_commit = "af6df3b9532ec88ef6e2a8cfa4b84f5ae7cdb06e"
+build_image = "n132/arvo:57320-fix"

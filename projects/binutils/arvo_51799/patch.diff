@@ -1,0 +1,28 @@
+From 540e53422cd8916b85d43060210251132fba8548 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 28 Sep 2022 09:22:43 +0930
+Subject: [PATCH] asan: segv in _bfd_archive_close_and_cleanup
+
+Uninitialised arelt_data->parent_cache led to this segv.
+
+	* pdb.c (pdb_get_elt_at_index): Clear arelt_data.
+---
+ bfd/pdb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bfd/pdb.c b/bfd/pdb.c
+index 14e1049d03c..5d72797c298 100644
+--- a/bfd/pdb.c
++++ b/bfd/pdb.c
+@@ -193,7 +193,7 @@ pdb_get_elt_at_index (bfd *abfd, symindex sym_index)
+     goto fail;
+ 
+   file->arelt_data =
+-    (struct areltdata *) bfd_malloc (sizeof (struct areltdata));
++    (struct areltdata *) bfd_zmalloc (sizeof (struct areltdata));
+ 
+   if (!file->arelt_data)
+     goto fail;
+-- 
+2.25.1
+

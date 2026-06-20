@@ -1,0 +1,72 @@
+From fce1c53844ca21dcc14f3acabeaf2e12d47e5568 Mon Sep 17 00:00:00 2001
+From: Isaac Brodsky <isaac@isaacbrodsky.com>
+Date: Mon, 12 Sep 2022 16:55:26 -0700
+Subject: [PATCH] Fix potential OOB read in localIjToCell (#684)
+
+---
+ src/apps/testapps/testCellToLocalIj.c | 8 ++++++++
+ src/h3lib/lib/coordijk.c              | 9 +++++----
+ src/h3lib/lib/localij.c               | 6 +++---
+ 3 files changed, 16 insertions(+), 7 deletions(-)
+
+diff --git a/src/apps/testapps/testCellToLocalIj.c b/src/apps/testapps/testCellToLocalIj.c
+index fd64eb6b..944d1eb1 100644
+--- a/src/apps/testapps/testCellToLocalIj.c
++++ b/src/apps/testapps/testCellToLocalIj.c
+@@ -272,4 +272,12 @@ SUITE(h3ToLocalIj) {
+                      "Invalid mode fail for cellToLocalIj");
+         }
+     }
++
++    TEST(invalid_negativeIj) {
++        H3Index index = 0x200f202020202020;
++        CoordIJ ij = {.i = -14671840, .j = -2147483648};
++        H3Index out;
++        t_assert(H3_EXPORT(localIjToCell)(index, &ij, 0, &out) == E_FAILED,
++                 "Negative I and J components fail");
++    }
+ }
+diff --git a/src/h3lib/lib/coordijk.c b/src/h3lib/lib/coordijk.c
+index 91771bdf..b3533ed0 100644
+--- a/src/h3lib/lib/coordijk.c
++++ b/src/h3lib/lib/coordijk.c
+@@ -245,11 +245,12 @@ void _ijkNormalize(CoordIJK *c) {
+ }
+ 
+ /**
+- * Determines the H3 digit corresponding to a unit vector in ijk coordinates.
++ * Determines the H3 digit corresponding to a unit vector or the zero vector
++ * in ijk coordinates.
+  *
+- * @param ijk The ijk coordinates; must be a unit vector.
+- * @return The H3 digit (0-6) corresponding to the ijk unit vector, or
+- * INVALID_DIGIT on failure.
++ * @param ijk The ijk coordinates; must be a unit vector or zero vector.
++ * @return The H3 digit (0-6) corresponding to the ijk unit vector, zero vector,
++ * or INVALID_DIGIT (7) on failure.
+  */
+ Direction _unitIjkToDigit(const CoordIJK *ijk) {
+     CoordIJK c = *ijk;
+diff --git a/src/h3lib/lib/localij.c b/src/h3lib/lib/localij.c
+index 6e338c6d..8b073026 100644
+--- a/src/h3lib/lib/localij.c
++++ b/src/h3lib/lib/localij.c
+@@ -317,12 +317,12 @@ H3Error localIjkToCell(H3Index origin, const CoordIJK *ijk, H3Index *out) {
+ 
+     // check for res 0/base cell
+     if (res == 0) {
+-        if (ijk->i > 1 || ijk->j > 1 || ijk->k > 1) {
+-            // out of range input
++        const Direction dir = _unitIjkToDigit(ijk);
++        if (dir == INVALID_DIGIT) {
++            // out of range input - not a unit vector or zero vector
+             return E_FAILED;
+         }
+ 
+-        const Direction dir = _unitIjkToDigit(ijk);
+         const int newBaseCell = _getBaseCellNeighbor(originBaseCell, dir);
+         if (newBaseCell == INVALID_BASE_CELL) {
+             // Moving in an invalid direction off a pentagon.
+-- 
+2.43.2
+

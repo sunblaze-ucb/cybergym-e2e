@@ -1,0 +1,5 @@
+task_id = "arvo:45161"
+target_prog = "dotnet_fuzzer"
+vul_commit = "7f01792a8b94c730a9b740e178cf2f5a478368df"
+patch_commit = "7ed3cc413635b51ea34006cd6094a8cd8455b526"
+build_image = "n132/arvo:45161-fix"

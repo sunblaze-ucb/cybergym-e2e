@@ -1,0 +1,7 @@
+name = "capstone"
+language = "c++"
+homepage = "https://www.capstone-engine.org"
+main_repo = 'https://github.com/capstone-engine/capstone.git'
+repo_to_patch = "capstonemaster" # used to find the directory to patch
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:8eda74a11e800aead5a041ee479a65b33dab3150d6e89e5694e2b6eb27be98fc"
+immutable_files = ["tests/"] # the directories or files that shouldn't be modified, relative to the repo_to_patch directory

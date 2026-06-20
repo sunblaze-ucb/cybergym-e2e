@@ -1,0 +1,26 @@
+From 17294b5fd82bff80463c21386d3847142a37549d Mon Sep 17 00:00:00 2001
+From: Alex Tutubalin <lexa@lexa.ru>
+Date: Mon, 31 Jul 2023 12:19:21 +0300
+Subject: [PATCH] extra metadata check in arq_load_raw
+
+---
+ src/decoders/decoders_libraw.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/decoders/decoders_libraw.cpp b/src/decoders/decoders_libraw.cpp
+index 332e2af2..bc62a6c2 100644
+--- a/src/decoders/decoders_libraw.cpp
++++ b/src/decoders/decoders_libraw.cpp
+@@ -22,6 +22,9 @@
+ void LibRaw::sony_arq_load_raw()
+ {
+   int row, col;
++  if (imgdata.idata.filters || imgdata.idata.colors < 3)
++	  throw LIBRAW_EXCEPTION_IO_CORRUPT;
++
+   read_shorts(imgdata.rawdata.raw_image,
+               imgdata.sizes.raw_width * imgdata.sizes.raw_height * 4);
+   libraw_internal_data.internal_data.input->seek(
+-- 
+2.25.1
+

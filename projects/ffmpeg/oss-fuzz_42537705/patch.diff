@@ -1,0 +1,30 @@
+From b730defd52ad96dbdd6ac49a6f18f3c4c5f17008 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Thu, 15 Aug 2024 00:37:06 +0200
+Subject: [PATCH] avcodec/msmpeg4dec: init dc_pred_dir
+
+Its not really used but its passed as a argument and then not used
+Fixes: 70965/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_MSMPEG4V1_fuzzer-5583223747313664
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/msmpeg4dec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/msmpeg4dec.c b/libavcodec/msmpeg4dec.c
+index 31b17c2839..12bef4f506 100644
+--- a/libavcodec/msmpeg4dec.c
++++ b/libavcodec/msmpeg4dec.c
+@@ -628,7 +628,7 @@ int ff_msmpeg4_decode_block(MpegEncContext * s, int16_t * block,
+                               int n, int coded, const uint8_t *scan_table)
+ {
+     int level, i, last, run, run_diff;
+-    int av_uninit(dc_pred_dir);
++    int dc_pred_dir = -1; //unused but its passed around, so it needs to be initialized
+     const RLTable *rl;
+     const RL_VLC_ELEM *rl_vlc;
+     int qmul, qadd;
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:433311403"
+target_prog = "hb-shape-fuzzer"
+vul_commit = "c0052d1753073ecc5c385a7dd70dd7ea11972181"
+patch_commit = "de2efbf3755c6a02c5380153df305414b319b78c"
+build_image = "cybergym/e2e:harfbuzz"

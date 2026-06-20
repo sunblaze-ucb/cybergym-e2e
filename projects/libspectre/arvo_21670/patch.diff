@@ -1,0 +1,28 @@
+From 3639f1fe932d8374dd482de4e01457afe3e43a34 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Mon, 13 Apr 2020 15:51:08 +0200
+Subject: [PATCH] Make sure we don't read uninitialized memory from text
+
+oss-fuzz/21670
+---
+ libspectre/ps.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/libspectre/ps.c b/libspectre/ps.c
+index bb45c9a..03d462a 100644
+--- a/libspectre/ps.c
++++ b/libspectre/ps.c
+@@ -448,6 +448,10 @@ psscan(FILE *file, const char *filename, int scanstyle)
+ 	}
+     }
+ 
++    // Initialize text so that all the strcmp we do after sscanf don't
++    // end up reading uninitialized memory if the sscanf fails
++    text[0] = '\0';
++
+     /* Header comments */
+     
+     /* Header should start with "%!PS-Adobe-", but some programms omit
+-- 
+2.7.4
+

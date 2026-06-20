@@ -1,0 +1,29 @@
+From f15ba945a49b75c23f8133f3be170a681bb050de Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Mon, 12 Sep 2022 18:09:24 +0930
+Subject: [PATCH] ubsan: arm-dis.c index out of bounds
+
+We are way off in the weeds with this one, and will be printing
+<UNPREDICTABLE> for S > 10.
+
+	* arm-dis.c (print_insn_cde): Wrap 'T' value.
+---
+ opcodes/arm-dis.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/opcodes/arm-dis.c b/opcodes/arm-dis.c
+index c1bf276b423..684c74f7f20 100644
+--- a/opcodes/arm-dis.c
++++ b/opcodes/arm-dis.c
+@@ -8957,7 +8957,7 @@ print_insn_cde (struct disassemble_info *info, long given, bool thumb)
+ 		    break;
+ 
+ 		  case 'T':
+-		    func (stream, "%s", arm_regnames[value + 1]);
++		    func (stream, "%s", arm_regnames[(value + 1) & 15]);
+ 		    break;
+ 
+ 		  case 'd':
+-- 
+2.25.1
+

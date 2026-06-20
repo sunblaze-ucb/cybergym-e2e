@@ -1,0 +1,7 @@
+name = "open62541"
+language = "c++"
+homepage = "https://open62541.org/"
+main_repo = "https://github.com/open62541/open62541.git"
+repo_to_patch = "open62541"
+build_image = "n132/arvo:39741-fix"
+immutable_files = ["tests"]

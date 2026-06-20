@@ -1,0 +1,7 @@
+name = "sleuthkit"
+language = "c++"
+homepage = "https://sleuthkit.org"
+main_repo = "https://github.com/sleuthkit/sleuthkit"
+repo_to_patch = "sleuthkit"
+build_image = "n132/arvo:36025-fix"
+immutable_files = ["unit_tests", "tests"]

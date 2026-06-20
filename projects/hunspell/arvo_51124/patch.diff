@@ -1,0 +1,25 @@
+From ebf0e2ce8d903815a6e8d828286394b6f8830860 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Caol=C3=A1n=20McNamara?= <caolanm@redhat.com>
+Date: Thu, 8 Sep 2022 15:53:42 +0100
+Subject: [PATCH] ofz#51124 negative array index with malformed .aff
+
+---
+ src/hunspell/affixmgr.cxx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hunspell/affixmgr.cxx b/src/hunspell/affixmgr.cxx
+index d6010b2..1c2b8b9 100644
+--- a/src/hunspell/affixmgr.cxx
++++ b/src/hunspell/affixmgr.cxx
+@@ -4820,7 +4820,7 @@ int AffixMgr::redundant_condition(char ft,
+                              linenum);
+             return 0;
+           }
+-        } else {
++        } else if (j > 0) {
+           in = 0;
+           do {
+             j--;
+-- 
+2.43.2
+

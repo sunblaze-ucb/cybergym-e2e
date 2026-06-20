@@ -1,0 +1,36 @@
+From 4d664d5711b297ca6666f529e83bb624f587df77 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 26 Oct 2022 16:34:19 +1030
+Subject: [PATCH] segfault in objdump.c reloc_at
+
+bfd_canonicalize_reloc returns -1L on errors.
+
+	* objdump.c (load_specific_debug_section): Properly handle
+	error return from bfd_canonicalize_reloc.
+---
+ binutils/objdump.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/binutils/objdump.c b/binutils/objdump.c
+index a4ab0dbd66c..0825e051ef6 100644
+--- a/binutils/objdump.c
++++ b/binutils/objdump.c
+@@ -4212,13 +4212,13 @@ load_specific_debug_section (enum dwarf_section_display_enum debug,
+ 
+ 	  if (reloc_size > 0)
+ 	    {
+-	      unsigned long reloc_count;
++	      long reloc_count;
+ 	      arelent **relocs;
+ 
+ 	      relocs = (arelent **) xmalloc (reloc_size);
+ 
+ 	      reloc_count = bfd_canonicalize_reloc (abfd, sec, relocs, NULL);
+-	      if (reloc_count == 0)
++	      if (reloc_count <= 0)
+ 		free (relocs);
+ 	      else
+ 		{
+-- 
+2.25.1
+

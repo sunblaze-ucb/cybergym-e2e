@@ -1,0 +1,31 @@
+From 95b6708a1689f717398cfe60c8eaf46977bc33c3 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Mon, 10 Jun 2024 14:29:12 +0200
+Subject: [PATCH] Add terminating NULL to lookup path to pdf_dict_getl().
+
+Commit 091a16c85441af44680a54182cb27c9c8c9a9555 added a call to
+pdf_dict_getl() accidentally forgot to add the terminating NULL
+to the dict key lookup path. This causes a complaint when mupdf is
+compiled by clang-17 as done by oss-fuzz.
+
+This fixes oss-fuzz issue 69502.
+---
+ source/pdf/pdf-run.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/pdf/pdf-run.c b/source/pdf/pdf-run.c
+index 722cf55bd..ca376f282 100644
+--- a/source/pdf/pdf-run.c
++++ b/source/pdf/pdf-run.c
+@@ -79,7 +79,7 @@ pdf_run_annot_with_usage(fz_context *ctx, pdf_document *doc, pdf_page *page, pdf
+ 
+ 		ctm = fz_concat(page_ctm, ctm);
+ 
+-		struct_parent = pdf_dict_getl(ctx, page->obj, PDF_NAME(StructParent));
++		struct_parent = pdf_dict_getl(ctx, page->obj, PDF_NAME(StructParent), NULL);
+ 		struct_parent_num = pdf_to_int_default(ctx, struct_parent, -1);
+ 
+ 		proc = pdf_new_run_processor(ctx, page->doc, dev, ctm, struct_parent_num, usage, NULL, default_cs, cookie);
+-- 
+2.25.1
+

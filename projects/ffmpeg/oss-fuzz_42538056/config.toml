@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42538056"
+target_prog = "ffmpeg_dem_ARGO_BRP_fuzzer"
+vul_commit = "46e3bc2ebd21b215edce773de7c498121c1be766"
+patch_commit = "815d00868101956e2f1f9f8dd509c11af5a63684"
+build_image = "cybergym/oss-fuzz:42538056-fix"

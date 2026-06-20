@@ -1,0 +1,41 @@
+From 706664b9e9bd9c30b8a394d27014f16a66450948 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Tue, 1 Feb 2022 13:08:05 +0000
+Subject: [PATCH] OSS-fuzz #44258 - treat /Prev XRefStm with increased /Size as
+ an error
+
+The file has an XrefStm which has a /Prev in the stream dictionary. The
+/Prev key has a value pointing to a previous XRefStm (so this is an
+incrementally updated file).
+
+The /Size in the initial XRefStm should be at least as large as the
+/Size in the previous XRefStm (it is the largest object in the PDF file
+and incrementally updated files do not remove objects). In this case
+the previous XRefStm has a larger /Size than the initial one, which is
+illegal.
+
+We were then attempting to read more entries into the xref table than
+we had allocated, leading to writing off the end of the buffer.
+
+Fix by treating an increased /Size in a /Prev xref as an error.
+---
+ pdf/pdf_xref.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/pdf/pdf_xref.c b/pdf/pdf_xref.c
+index 1d331649d..e663796b7 100644
+--- a/pdf/pdf_xref.c
++++ b/pdf/pdf_xref.c
+@@ -205,6 +205,9 @@ static int pdfi_process_xref_stream(pdf_context *ctx, pdf_stream *stream_obj, pd
+         ctx->Trailer = sdict;
+         pdfi_countup(sdict);
+     } else {
++        if (size > ctx->xref_table->xref_size)
++            return_error(gs_error_rangecheck);
++
+         code = pdfi_merge_dicts(ctx, ctx->Trailer, sdict);
+         if (code < 0) {
+             if (code == gs_error_VMerror || ctx->args.pdfstoponerror)
+-- 
+2.43.2
+

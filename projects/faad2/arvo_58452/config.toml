@@ -1,0 +1,5 @@
+task_id = "arvo:58452"
+target_prog = "fuzz_decode"
+vul_commit = "d59ee831e1ef2412a9f4f4aae7fe51575a436ebb"
+patch_commit = "d7aa650f3c04aa344ab236d784394c8f6d8d59ee"
+build_image = "n132/arvo:58452-fix"

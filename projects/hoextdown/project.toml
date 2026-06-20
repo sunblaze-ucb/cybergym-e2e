@@ -1,0 +1,7 @@
+name = "hoextdown"
+language = "c++"
+homepage = "https://github.com/kjdev/hoextdown"
+main_repo = "https://github.com/kjdev/hoextdown.git"
+repo_to_patch = "hoextdown"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:8eda74a11e800aead5a041ee479a65b33dab3150d6e89e5694e2b6eb27be98fc"
+immutable_files = ["test"]

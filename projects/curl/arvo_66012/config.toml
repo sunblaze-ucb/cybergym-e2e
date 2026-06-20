@@ -1,0 +1,4 @@
+task_id = "arvo:66012"
+target_prog = "curl_fuzzer"
+vul_commit = "196074e73feded8d8de9003837853622d463667e"
+patch_commit = "c2d973627bab12abc5486a3f37ce40ed16da0641"

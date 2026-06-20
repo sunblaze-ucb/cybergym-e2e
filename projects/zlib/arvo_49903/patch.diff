@@ -1,0 +1,31 @@
+From 981ee7570ad98a3cf1ae74d737e2ee619ed79171 Mon Sep 17 00:00:00 2001
+From: Andrzej Hunt <andrzej@ahunt.org>
+Date: Fri, 4 Jun 2021 18:25:19 +0200
+Subject: [PATCH] Suppress MSAN detections in deflate's slide_hash().
+
+slide_hash() knowingly reads potentially uninitialized memory, see
+comment lower down about prev[n] potentially being garbage. In
+this case, the result is never used.
+---
+ deflate.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/deflate.c b/deflate.c
+index c271d01..1ede12a 100644
+--- a/deflate.c
++++ b/deflate.c
+@@ -179,6 +179,11 @@ local const config configuration_table[10] = {
+  * bit values at the expense of memory usage). We slide even when level == 0 to
+  * keep the hash table consistent if we switch back to level > 0 later.
+  */
++#if defined(__has_feature)
++#  if __has_feature(memory_sanitizer)
++     __attribute__((no_sanitize("memory")))
++#  endif
++#endif
+ local void slide_hash(deflate_state *s) {
+     unsigned n, m;
+     Posf *p;
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:47512"
+target_prog = "fuzz_card"
+vul_commit = "26a7dceb7b2adb8162a3a8cd888d3ef16b24c76b"
+patch_commit = "74a8f296e0f195916d28e1c928f457e04aa22892"
+build_image = "n132/arvo:47512-fix"

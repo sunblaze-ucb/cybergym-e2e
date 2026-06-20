@@ -1,0 +1,35 @@
+From 580add2219c696e425087bc61b952f4ccb295f09 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Sat, 2 Dec 2017 20:28:58 +0300
+Subject: [PATCH] LJpegDecompressor::decodeN(): fix curr. slice width clipping.
+
+---
+ src/librawspeed/decompressors/LJpegDecompressor.cpp | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/librawspeed/decompressors/LJpegDecompressor.cpp b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+index aa06d6f..104480b 100644
+--- a/src/librawspeed/decompressors/LJpegDecompressor.cpp
++++ b/src/librawspeed/decompressors/LJpegDecompressor.cpp
+@@ -27,7 +27,6 @@
+ #include <algorithm>                      // for min, copy_n
+ 
+ using std::copy_n;
+-using std::min;
+ 
+ namespace rawspeed {
+ 
+@@ -127,8 +126,8 @@ void LJpegDecompressor::decodeN()
+     // the predictor for the next line is the start of this line
+     predNext = dest;
+ 
+-    unsigned width = min(frame.w,
+-                         (mRaw->dim.x - offX) / (N_COMP / mRaw->getCpp()));
++    unsigned width =
++        std::min(frame.w, (mRaw->getCpp() * (mRaw->dim.x - offX)) / N_COMP);
+ 
+     // For x, we first process all pixels within the image buffer ...
+     for (unsigned x = 0; x < width; ++x) {
+-- 
+2.7.4
+

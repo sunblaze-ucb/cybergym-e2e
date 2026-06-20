@@ -1,0 +1,97 @@
+From d7dc88e0d04726d0e0e053832cae8c506fa02df5 Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Tue, 1 Aug 2023 13:04:16 +0000
+Subject: [PATCH 1/2] Fix UNKNOWN READ in
+ Assimp::MDLImporter::InternReadFile_Quake1
+
+---
+ code/AssetLib/MDL/MDLLoader.cpp | 10 ++++++++--
+ code/AssetLib/MDL/MDLLoader.h   |  1 +
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/code/AssetLib/MDL/MDLLoader.cpp b/code/AssetLib/MDL/MDLLoader.cpp
+index 098b53e76..9efbc821c 100644
+--- a/code/AssetLib/MDL/MDLLoader.cpp
++++ b/code/AssetLib/MDL/MDLLoader.cpp
+@@ -271,10 +271,16 @@ void MDLImporter::InternReadFile(const std::string &pFile,
+     }
+ }
+ 
++// ------------------------------------------------------------------------------------------------
++// Check whether we're still inside the valid file range
++bool MDLImporter::IsPosValid(const void *szPos) {
++    return szPos && (const unsigned char *)szPos <= this->mBuffer + this->iFileSize && szPos >= this->mBuffer;
++}
++
+ // ------------------------------------------------------------------------------------------------
+ // Check whether we're still inside the valid file range
+ void MDLImporter::SizeCheck(const void *szPos) {
+-    if (!szPos || (const unsigned char *)szPos > this->mBuffer + this->iFileSize || szPos < this->mBuffer) {
++    if (!IsPosValid(szPos)) {
+         throw DeadlyImportError("Invalid MDL file. The file is too small "
+                                 "or contains invalid data.");
+     }
+@@ -284,7 +290,7 @@ void MDLImporter::SizeCheck(const void *szPos) {
+ // Just for debugging purposes
+ void MDLImporter::SizeCheck(const void *szPos, const char *szFile, unsigned int iLine) {
+     ai_assert(nullptr != szFile);
+-    if (!szPos || (const unsigned char *)szPos > mBuffer + iFileSize) {
++    if (!IsPosValid(szPos)) {
+         // remove a directory if there is one
+         const char *szFilePtr = ::strrchr(szFile, '\\');
+         if (!szFilePtr) {
+diff --git a/code/AssetLib/MDL/MDLLoader.h b/code/AssetLib/MDL/MDLLoader.h
+index 433100938..de690b1e7 100644
+--- a/code/AssetLib/MDL/MDLLoader.h
++++ b/code/AssetLib/MDL/MDLLoader.h
+@@ -150,6 +150,7 @@ protected:
+     */
+     void SizeCheck(const void* szPos);
+     void SizeCheck(const void* szPos, const char* szFile, unsigned int iLine);
++    bool IsPosValid(const void* szPos);
+ 
+     // -------------------------------------------------------------------
+     /** Validate the header data structure of a game studio MDL7 file
+-- 
+2.25.1
+
+
+From f7e7f82b9dbb63369c8d22261cbd291e57c8bb4f Mon Sep 17 00:00:00 2001
+From: Alex <aleksandrosansan@gmail.com>
+Date: Thu, 3 Aug 2023 17:10:17 +0000
+Subject: [PATCH 2/2] Add const
+
+---
+ code/AssetLib/MDL/MDLLoader.cpp | 2 +-
+ code/AssetLib/MDL/MDLLoader.h   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/code/AssetLib/MDL/MDLLoader.cpp b/code/AssetLib/MDL/MDLLoader.cpp
+index 9efbc821c..7b2ec7115 100644
+--- a/code/AssetLib/MDL/MDLLoader.cpp
++++ b/code/AssetLib/MDL/MDLLoader.cpp
+@@ -273,7 +273,7 @@ void MDLImporter::InternReadFile(const std::string &pFile,
+ 
+ // ------------------------------------------------------------------------------------------------
+ // Check whether we're still inside the valid file range
+-bool MDLImporter::IsPosValid(const void *szPos) {
++bool MDLImporter::IsPosValid(const void *szPos) const {
+     return szPos && (const unsigned char *)szPos <= this->mBuffer + this->iFileSize && szPos >= this->mBuffer;
+ }
+ 
+diff --git a/code/AssetLib/MDL/MDLLoader.h b/code/AssetLib/MDL/MDLLoader.h
+index de690b1e7..44ff21e3e 100644
+--- a/code/AssetLib/MDL/MDLLoader.h
++++ b/code/AssetLib/MDL/MDLLoader.h
+@@ -150,7 +150,7 @@ protected:
+     */
+     void SizeCheck(const void* szPos);
+     void SizeCheck(const void* szPos, const char* szFile, unsigned int iLine);
+-    bool IsPosValid(const void* szPos);
++    bool IsPosValid(const void* szPos) const;
+ 
+     // -------------------------------------------------------------------
+     /** Validate the header data structure of a game studio MDL7 file
+-- 
+2.25.1
+

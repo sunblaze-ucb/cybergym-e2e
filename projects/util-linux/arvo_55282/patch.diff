@@ -1,0 +1,60 @@
+From 46ce48b6a5bf13f95318d579e2af4fde189d049a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Thomas=20Wei=C3=9Fschuh?= <thomas@t-8ch.de>
+Date: Wed, 25 Jan 2023 05:47:16 +0000
+Subject: [PATCH] libblkid: bcachefs: avoid overflow in address comparisions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adding the offset to the address may overflow and break the comparision,
+use substraction instead.
+
+Addresses: #2030
+Signed-off-by: Thomas Weißschuh <thomas@t-8ch.de>
+---
+ libblkid/src/superblocks/bcache.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/libblkid/src/superblocks/bcache.c b/libblkid/src/superblocks/bcache.c
+index 02fc6e3d2..1d6ee9519 100644
+--- a/libblkid/src/superblocks/bcache.c
++++ b/libblkid/src/superblocks/bcache.c
+@@ -168,6 +168,17 @@ static void probe_bcachefs_sb_members(blkid_probe pr,
+ 	blkid_probe_set_fssize(pr, sectors * BCACHEFS_SECTOR_SIZE);
+ }
+ 
++static int is_within_range(void *start, uint64_t size, void *end)
++{
++	ptrdiff_t diff;
++
++	if (start >= end)
++		return 0; // should not happen
++
++	diff = (unsigned char *) end - (unsigned char *) start;
++	return size <= (uint64_t) diff;
++}
++
+ static void probe_bcachefs_sb_fields(blkid_probe pr, const struct bcachefs_super_block *bcs,
+ 				     unsigned char *sb_start, unsigned char *sb_end)
+ {
+@@ -178,7 +189,7 @@ static void probe_bcachefs_sb_fields(blkid_probe pr, const struct bcachefs_super
+ 		uint64_t field_size;
+ 		uint32_t type;
+ 
+-		if ((unsigned char *) field + sizeof(*field) > sb_end)
++		if (!is_within_range(field, sizeof(*field), sb_end))
+ 			break;
+ 
+ 		field_size = BYTES(field);
+@@ -186,7 +197,7 @@ static void probe_bcachefs_sb_fields(blkid_probe pr, const struct bcachefs_super
+ 		if (field_size < sizeof(*field))
+ 			break;
+ 
+-		if ((unsigned char *) field + field_size > sb_end)
++		if (!is_within_range(field, field_size, sb_end))
+ 			break;
+ 
+ 		type = le32_to_cpu(field->type);
+-- 
+2.25.1
+

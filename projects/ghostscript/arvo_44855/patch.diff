@@ -1,0 +1,30 @@
+From c8051ae666672cb7ca39531e28ec85636e1ce6d5 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Mon, 21 Feb 2022 10:18:52 +0000
+Subject: [PATCH] oss-fuzz 44855: Don't ignore Freetype error code
+
+In one of the "in extremis" fallback cases, the return code from Freetype
+wasn't being acted upon, leaving a partially initialised glyph bitmap, that we
+subsequently attempt to use, resulting in a crash.
+---
+ base/fapi_ft.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/base/fapi_ft.c b/base/fapi_ft.c
+index b4111993a..f02018eca 100644
+--- a/base/fapi_ft.c
++++ b/base/fapi_ft.c
+@@ -810,6 +810,10 @@ load_glyph(gs_fapi_server * a_server, gs_fapi_font * a_fapi_font,
+                 FT_Render_Mode mode = FT_RENDER_MODE_MONO;
+ 
+                 ft_error = FT_Render_Glyph(ft_face->glyph, mode);
++                if (ft_error != 0) {
++                    (*a_glyph) = NULL;
++                    return (gs_error_VMerror);
++                }
+             }
+             else {
+                 (*a_glyph) = NULL;
+-- 
+2.43.2
+

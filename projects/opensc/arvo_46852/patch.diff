@@ -1,0 +1,30 @@
+From 0ed4b62ae9cd7104706b779fd50bb65385443310 Mon Sep 17 00:00:00 2001
+From: Frank Morgner <frankmorgner@gmail.com>
+Date: Sat, 30 Apr 2022 00:24:44 +0200
+Subject: [PATCH] fixed accessing data length before accessing buffer
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+fixes UNKNOWN READ · sc_pkcs15_decode_pubkey_ec
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46852
+---
+ src/libopensc/pkcs15-pubkey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libopensc/pkcs15-pubkey.c b/src/libopensc/pkcs15-pubkey.c
+index 5c45104b..6982ccee 100644
+--- a/src/libopensc/pkcs15-pubkey.c
++++ b/src/libopensc/pkcs15-pubkey.c
+@@ -649,7 +649,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
+ 	if (r < 0)
+ 		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+ 
+-	if (*ecpoint_data != 0x04)
++	if (ecpoint_len == 0 || *ecpoint_data != 0x04)
+ 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
+ 
+ 	key->ecpointQ.len = ecpoint_len;
+-- 
+2.43.2
+

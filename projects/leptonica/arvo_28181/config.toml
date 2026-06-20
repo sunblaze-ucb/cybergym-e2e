@@ -1,0 +1,4 @@
+task_id = "arvo:28181"
+target_prog = "pageseg_fuzzer"
+vul_commit = "f7fe7d14df6f674b2e52403e4e144274d30592d8"
+patch_commit = "86c6d11824cbb094b97cd5a60998168b68598b85"

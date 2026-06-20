@@ -1,0 +1,35 @@
+From bcefc6be9754d45fb9391993e6daaf01a68d9bd5 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 22 Mar 2023 10:13:46 +1030
+Subject: [PATCH] coff_get_normalized_symtab bfd_release
+
+We can't free "internal" on errors, since bfd_coff_swap_sym_in may
+call bfd_alloc.  For example, _bfd_XXi_swap_sym_in may even create new
+sections, which use bfd_alloc'd memory.  If "internal" is freed, all
+more recently bfd_alloc'd memory is also freed.
+
+	* coffgen.c (coff_get_normalized_symtab): Don't bfd_release on
+	error.
+---
+ bfd/coffgen.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/bfd/coffgen.c b/bfd/coffgen.c
+index 774edf76f24..0b764b0c45f 100644
+--- a/bfd/coffgen.c
++++ b/bfd/coffgen.c
+@@ -1753,10 +1753,7 @@ coff_get_normalized_symtab (bfd *abfd)
+ 
+       /* PR 17512: Prevent buffer overrun.  */
+       if (symbol_ptr->u.syment.n_numaux > ((raw_end - 1) - raw_src) / symesz)
+-	{
+-	  bfd_release (abfd, internal);
+-	  return NULL;
+-	}
++	return NULL;
+ 
+       for (i = 0;
+ 	   i < symbol_ptr->u.syment.n_numaux;
+-- 
+2.25.1
+

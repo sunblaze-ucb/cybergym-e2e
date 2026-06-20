@@ -1,0 +1,5 @@
+task_id = "arvo:47947"
+target_prog = "read_edgelist_fuzzer"
+vul_commit = "0189aa3b1f3c2dff3cf699cbbf6295b1c6cb1d2b"
+patch_commit = "4f8cb7809e3f5aa1fd7b28c1934bf4893ec3195f"
+build_image = "n132/arvo:47947-fix"

@@ -1,0 +1,5 @@
+task_id = "arvo:40363"
+target_prog = "bpf-object-fuzzer"
+vul_commit = "2f52e2afc068b801880021334a41f16a18fa4bc2"
+patch_commit = "a383b3e200c72fd5fdc8b8539fb409942357fc5b"
+build_image = "n132/arvo:40363-fix"

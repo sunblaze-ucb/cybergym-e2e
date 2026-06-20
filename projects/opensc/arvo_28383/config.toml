@@ -1,0 +1,4 @@
+task_id = "arvo:28383"
+target_prog = "fuzz_pkcs15_reader"
+vul_commit = "69544553c36f0613f6283e0eeb3f9eb549825986"
+patch_commit = "5df913b7f57ad89b9832555d24c08d23a534311e"

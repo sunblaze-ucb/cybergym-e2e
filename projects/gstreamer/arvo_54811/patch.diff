@@ -1,0 +1,29 @@
+From fa2b98f9579c5b9069753ae390a05d16fb5526f9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Sebastian=20Dr=C3=B6ge?= <sebastian@centricular.com>
+Date: Fri, 6 Jan 2023 18:09:02 +0200
+Subject: [PATCH] typefindfunctions: Add missing length check to XML typefinder
+
+Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=54811
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/3690>
+---
+ .../gst-plugins-base/gst/typefind/gsttypefindfunctions.c       | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/subprojects/gst-plugins-base/gst/typefind/gsttypefindfunctions.c b/subprojects/gst-plugins-base/gst/typefind/gsttypefindfunctions.c
+index 121a9a5192..c732f31237 100644
+--- a/subprojects/gst-plugins-base/gst/typefind/gsttypefindfunctions.c
++++ b/subprojects/gst-plugins-base/gst/typefind/gsttypefindfunctions.c
+@@ -570,6 +570,9 @@ xml_check_first_element_from_data (const guint8 * data, guint length,
+     length -= (ptr - data);
+     data = ptr;
+ 
++    if (length < 2)
++      return FALSE;
++
+     got_xmldec = (memcmp (data, "?>", 2) == 0);
+     if (!got_xmldec)
+       return FALSE;
+-- 
+2.25.1
+

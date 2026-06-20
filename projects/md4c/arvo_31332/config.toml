@@ -1,0 +1,5 @@
+task_id = "arvo:31332"
+target_prog = "fuzz-mdhtml"
+vul_commit = "933388a6573ed04ee267ccfbc0625f6f6306313d"
+patch_commit = "260cd3394d45bd51f2002936a63401419658ecd7"
+

@@ -1,0 +1,26 @@
+From 32d19328855dd599bf7f15dcfd5fafd6f87fb0d5 Mon Sep 17 00:00:00 2001
+From: Marti Maria <marti.maria@littlecms.com>
+Date: Sun, 12 Dec 2021 10:59:27 +0100
+Subject: [PATCH] fix an overflow condition
+
+on ill-formed CGATS file
+---
+ src/cmscgats.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/cmscgats.c b/src/cmscgats.c
+index f37eb2d..8289754 100644
+--- a/src/cmscgats.c
++++ b/src/cmscgats.c
+@@ -759,7 +759,7 @@ void InStringSymbol(cmsIT8* it8)
+ 
+         while (it8->ch != sng) {
+ 
+-            if (it8->ch == '\n' || it8->ch == '\r') break;
++            if (it8->ch == '\n' || it8->ch == '\r' || it8->ch == 0) break;
+             else {
+                 StringAppend(it8->str, (char)it8->ch);
+                 NextCh(it8);
+-- 
+2.43.2
+

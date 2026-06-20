@@ -1,0 +1,5 @@
+task_id = "arvo:49528"
+target_prog = "gs_device_tiffsep1_fuzzer"
+vul_commit = "337d3d12545c645b2306903b4d2d3343c584d206"
+patch_commit = "cca48284c537fd9e32167fcf1066d9a8eb313157"
+build_image = "n132/arvo:49528-fix"

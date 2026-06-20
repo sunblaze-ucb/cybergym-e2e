@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:42537635"
+target_prog = "ffmpeg_dem_MV_fuzzer"
+vul_commit = "53387079301690f1bd38b97fdf31d63194201d17"
+patch_commit = "4e39795c75e664ef06f17473adec8c75fcf9de6f"
+build_image = "cybergym/oss-fuzz:42537635-fix"

@@ -1,0 +1,33 @@
+From 92ea05adb2478c64be571aff6fe00130fd29c252 Mon Sep 17 00:00:00 2001
+From: James Bonfield <jkb@sanger.ac.uk>
+Date: Mon, 14 Oct 2019 11:23:28 +0100
+Subject: [PATCH] Bug fix a read-beyond-buffer bug in VCF code.
+
+The VCF write code only checked the upper range of z->key, not
+noticing it's signed.
+
+Credit to OSS-Fuzz
+Fixes oss-fuzz id 18196
+---
+ vcf.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/vcf.c b/vcf.c
+index c222831..e02fd24 100644
+--- a/vcf.c
++++ b/vcf.c
+@@ -2830,8 +2830,9 @@ int vcf_format(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
+             if ( !z->vptr ) continue;
+             if ( !first ) kputc(';', s);
+             first = 0;
+-            if (z->key >= h->n[BCF_DT_ID]) {
+-                hts_log_error("Invalid BCF, the INFO index is too large");
++            if (z->key < 0 || z->key >= h->n[BCF_DT_ID]) {
++                hts_log_error("Invalid BCF, the INFO index %d is %s",
++                              z->key, z->key < 0 ? "negative" : "too large");
+                 errno = EINVAL;
+                 return -1;
+             }
+-- 
+2.7.4
+

@@ -1,0 +1,66 @@
+From e450552d07b7c99f607d56da6820870c88881ae6 Mon Sep 17 00:00:00 2001
+From: Behdad Esfahbod <behdad@behdad.org>
+Date: Tue, 25 Feb 2025 14:54:37 -0700
+Subject: [PATCH] [coord-setter] Fix memory access in case of malloc failure
+
+Fixes https://oss-fuzz.com/testcase-detail/5383702943432704
+---
+ src/OT/Var/VARC/coord-setter.hh | 16 +++++++++-------
+ src/hb-vector.hh                |  4 ++--
+ 2 files changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/src/OT/Var/VARC/coord-setter.hh b/src/OT/Var/VARC/coord-setter.hh
+index 805d145ce..fe838f3d3 100644
+--- a/src/OT/Var/VARC/coord-setter.hh
++++ b/src/OT/Var/VARC/coord-setter.hh
+@@ -34,23 +34,25 @@ struct coord_setter_t
+ 	return static_coords[idx];
+       }
+       else
+-      {
+         dynamic_coords.extend (hb_array (static_coords, length));
+-      }
+     }
+ 
+-    if (dynamic_coords.length <= idx &&
+-	unlikely (!dynamic_coords.resize (idx + 1)))
+-      return Crap(int);
++    if (dynamic_coords.length <= idx)
++    {
++      if (unlikely (!dynamic_coords.resize (idx + 1)))
++	return Crap(int);
++      length = idx + 1;
++    }
+     return dynamic_coords.arrayZ[idx];
+   }
+ 
+   hb_array_t<int> get_coords ()
+-  { return dynamic_coords ? dynamic_coords.as_array () : hb_array (static_coords, length); }
++  { return length <= ARRAY_LENGTH (static_coords) ? hb_array (static_coords, length) : dynamic_coords.as_array (); }
+ 
++  private:
++  hb_vector_t<int> dynamic_coords;
+   unsigned length;
+   int static_coords[64];
+-  hb_vector_t<int> dynamic_coords;
+ };
+ 
+ 
+diff --git a/src/hb-vector.hh b/src/hb-vector.hh
+index 89e4cd337..643e6d4fb 100644
+--- a/src/hb-vector.hh
++++ b/src/hb-vector.hh
+@@ -66,8 +66,8 @@ struct hb_vector_t
+       alloc (hb_len (iter), true);
+     while (iter)
+     {
+-      if (!alloc (length + 1))
+-	break;
++      if (unlikely (!alloc (length + 1)))
++        return;
+       unsigned room = allocated - length;
+       for (unsigned i = 0; i < room && iter; i++)
+ 	push_has_room (*iter++);
+-- 
+2.25.1
+

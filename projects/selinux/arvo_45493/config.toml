@@ -1,0 +1,5 @@
+task_id = "arvo:45493"
+target_prog = "binpolicy-fuzzer"
+vul_commit = "5456002f1afb99cb8fdbf14a3496eccdbb289147"
+patch_commit = "dfc652f01ea22e367c39d132873735473608f8fa"
+build_image = "n132/arvo:45493-fix"

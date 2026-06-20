@@ -1,0 +1,29 @@
+From f84ffabbb304853a6570656200dfbd32e732386f Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Wed, 26 Oct 2022 17:50:29 +1030
+Subject: [PATCH] buffer overflow in _bfd_XX_print_ce_compressed_pdata
+
+More fuzzed fun.
+
+	* peXXigen.c (_bfd_XX_print_ce_compressed_pdata): Use smaller of
+	virt_size and bfd section size as limit of function table.
+---
+ bfd/peXXigen.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/bfd/peXXigen.c b/bfd/peXXigen.c
+index c5a7f7bf7ac..0232a63d558 100644
+--- a/bfd/peXXigen.c
++++ b/bfd/peXXigen.c
+@@ -2026,6 +2026,8 @@ _bfd_XX_print_ce_compressed_pdata (bfd * abfd, void * vfile)
+     }
+ 
+   start = 0;
++  if (stop > datasize)
++    stop = datasize;
+ 
+   for (i = start; i < stop; i += onaline)
+     {
+-- 
+2.25.1
+

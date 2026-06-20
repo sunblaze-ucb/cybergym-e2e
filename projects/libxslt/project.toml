@@ -1,0 +1,7 @@
+name = "libxslt"
+language = "c++"
+homepage = "http://www.xmlsoft.org/libxslt/"
+main_repo = "https://gitlab.gnome.org/GNOME/libxslt.git"
+repo_to_patch = "libxslt"
+build_image = "n132/arvo:57061-fix"
+immutable_files = ["tests", "python/tests"]

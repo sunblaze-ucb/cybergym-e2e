@@ -1,0 +1,5 @@
+task_id = "arvo:60971"
+target_prog = "fuzz_pkcs11"
+vul_commit = "04be2e6799cd33dcdad9d88df76493d5e80440b3"
+patch_commit = "ffbff25ec6c6d0ad3f8df76f57210698f7947fc3"
+build_image = "n132/arvo:60971-fix"

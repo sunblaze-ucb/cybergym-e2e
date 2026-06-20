@@ -1,0 +1,4 @@
+task_id = "arvo:1268"
+target_prog = "fuzzshark_ip"
+vul_commit = "907d05da84f97b893887416d453a540a793c9ec5"
+patch_commit = "bfd1461ec81311f31e9fc0f3f298ae779911c7f4"

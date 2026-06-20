@@ -1,0 +1,53 @@
+From 07f7fa7806e94ccaa271c185213afed80e13a77d Mon Sep 17 00:00:00 2001
+From: Andreas Schneider <asn@cryptomilk.org>
+Date: Wed, 19 Sep 2018 10:09:44 +0200
+Subject: [PATCH] buffer: Fix invalid memory access in ssh_buffer_unpack()
+
+Found by oss-fuzz.
+
+Signed-off-by: Andreas Schneider <asn@cryptomilk.org>
+---
+ src/buffer.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/buffer.c b/src/buffer.c
+index 10f0084..952065f 100644
+--- a/src/buffer.c
++++ b/src/buffer.c
+@@ -1239,29 +1239,29 @@ int ssh_buffer_unpack_va(struct ssh_buffer_struct *buffer,
+         for(p=format;p<last;++p){
+             switch(*p){
+             case 'b':
++                o.byte = va_arg(ap_copy, uint8_t *);
+                 if (buffer->secure) {
+-                    o.byte = va_arg(ap_copy, uint8_t *);
+                     explicit_bzero(o.byte, sizeof(uint8_t));
+                     break;
+                 }
+                 break;
+             case 'w':
++                o.word = va_arg(ap_copy, uint16_t *);
+                 if (buffer->secure) {
+-                    o.word = va_arg(ap_copy, uint16_t *);
+                     explicit_bzero(o.word, sizeof(uint16_t));
+                     break;
+                 }
+                 break;
+             case 'd':
++                o.dword = va_arg(ap_copy, uint32_t *);
+                 if (buffer->secure) {
+-                    o.dword = va_arg(ap_copy, uint32_t *);
+                     explicit_bzero(o.dword, sizeof(uint32_t));
+                     break;
+                 }
+                 break;
+             case 'q':
++                o.qword = va_arg(ap_copy, uint64_t *);
+                 if (buffer->secure) {
+-                    o.qword = va_arg(ap_copy, uint64_t *);
+                     explicit_bzero(o.qword, sizeof(uint64_t));
+                     break;
+                 }
+-- 
+2.7.4
+

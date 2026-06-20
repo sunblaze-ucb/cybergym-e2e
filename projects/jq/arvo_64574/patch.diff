@@ -1,0 +1,67 @@
+From 71c2ab509a8628dbbad4bc7b3f98a64aa90d3297 Mon Sep 17 00:00:00 2001
+From: Emanuele Torre <torreemanuele6@gmail.com>
+Date: Wed, 13 Dec 2023 20:20:22 +0100
+Subject: [PATCH] Merge pull request from GHSA-686w-5m7m-54vc
+
+decNumberToString calls for a buffer that can hold a string of digits+14
+characters, not a buffer of size digits+14.
+We need to allocate an extra byte for the NUL byte.
+
+-10E-1000010001, for example, will be stringified as -1.0E-1000010000
+and decNumberToString will currently write an extra NUL byte after the
+allocated buffer in the heap.
+
+Originally reported by @SEU-SSL on GitHub.
+
+Ref: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64574
+
+Fixes GHSA-686w-5m7m-54vc
+---
+ NEWS.md      | 2 +-
+ src/jv.c     | 2 +-
+ tests/shtest | 5 +++++
+ 3 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/NEWS.md b/NEWS.md
+index 913be89..14a594b 100644
+--- a/NEWS.md
++++ b/NEWS.md
+@@ -2,7 +2,7 @@
+ 
+ ## Security
+ 
+-- CVE-2023-50246: ....
++- CVE-2023-50246: Fix heap buffer overflow in jvp\_literal\_number\_literal
+ - CVE-2023-50268: fix stack-buffer-overflow if comparing nan with payload
+ 
+ ## CLI changes
+diff --git a/src/jv.c b/src/jv.c
+index 6ca1e1d..e23d8ec 100644
+--- a/src/jv.c
++++ b/src/jv.c
+@@ -635,7 +635,7 @@ static const char* jvp_literal_number_literal(jv n) {
+   }
+ 
+   if (plit->literal_data == NULL) {
+-    int len = jvp_dec_number_ptr(n)->digits + 14;
++    int len = jvp_dec_number_ptr(n)->digits + 15 /* 14 + NUL */;
+     plit->literal_data = jv_mem_alloc(len);
+ 
+     // Preserve the actual precision as we have parsed it
+diff --git a/tests/shtest b/tests/shtest
+index a426c79..14aafbf 100755
+--- a/tests/shtest
++++ b/tests/shtest
+@@ -609,4 +609,9 @@ if ! r=$($JQ --args -rn 1 -- '$ARGS.positional[0]' bar) || [ "$r" != 1 ]; then
+     exit 1
+ fi
+ 
++# CVE-2023-50246: No heap overflow for '-10E-1000000001'
++$VALGRIND $Q $JQ . <<\NUM
++-10E-1000000001
++NUM
++
+ exit 0
+-- 
+2.25.1
+

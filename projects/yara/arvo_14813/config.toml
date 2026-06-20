@@ -1,0 +1,4 @@
+task_id = "arvo:14813"
+target_prog = "dotnet_fuzzer"
+vul_commit = "63f520b41fdeff02f88eea0909d210f27e1de283"
+patch_commit = "7a5a2b6d4acbe58ed9ea4164ca0a1ee802078e8b"

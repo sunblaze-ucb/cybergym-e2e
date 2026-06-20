@@ -1,0 +1,150 @@
+From 9540f5183c8aa358264afcc9b72c2f2e00e8260a Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Mon, 7 Mar 2022 15:44:40 +0000
+Subject: [PATCH] OSS-fuzz 45320 - illegal colour in CharProc before d0/d1
+
+The file has a (fuzzed) CharProc which does an 'RG' operation before
+executing either d0 or d1, which is illegal according to the spec.
+
+In addition, because of the gstate hackery we are required to do to deal
+with the possibility of setcachedevice potentially pushing a new device
+and the 'helpfulness' of setcachedevice, this messes up the reference
+counting of the colour space, because it decrements the stroke colour
+space reference. See the comments in pdfi_d0 in pdf_font.c.
+
+To deal with this, we extend the existing code to check (and ignore, as
+per the spec) any colour space changes in the course of a CharProc
+which executes a d1. The 'd1' flag has changed into an enumerated type
+and we now start a CharProc by setting the flag to 'none' to indicate
+that we haven't encountered any d0 or d1. If we get any colour space
+or colour changes before we get a d0 or d1, then we ignore them. If we
+get a colour or space change, and we are in a d1, we also ignore them.
+
+This resolves the problem, though it is possible there are other kinds
+of graphics state changes we need to guard similarly.
+---
+ pdf/ghostpdf.h   | 13 ++++++++++++-
+ pdf/pdf_colour.c |  8 ++++----
+ pdf/pdf_font.c   |  4 +++-
+ pdf/pdf_font3.c  |  4 ++--
+ 4 files changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/pdf/ghostpdf.h b/pdf/ghostpdf.h
+index c20fd23af..49c918084 100644
+--- a/pdf/ghostpdf.h
++++ b/pdf/ghostpdf.h
+@@ -75,6 +75,11 @@ typedef enum pdf_crypt_filter_e {
+     CRYPT_AESV3,  /* 256-bit AES */
+ } pdf_crypt_filter;
+ 
++typedef enum pdf_type3_d_type_e {
++    pdf_type3_d_none,
++    pdf_type3_d0,
++    pdf_type3_d1
++} pdf_type3_d_type;
+ 
+ #define INITIAL_STACK_SIZE 32
+ #define MAX_STACK_SIZE 524288
+@@ -226,8 +231,14 @@ typedef struct text_state_s {
+     /* We need to know if we're in a type 3 CharProc which has executed a 'd1' operator.
+      * Colour operators are technically invalid if we are in a 'd1' context and we must
+      * ignore them.
++     * OSS-fuzz #45320 has a type 3 font with a BuildChar which has a 'RG' before the
++     * d1. This is (obviously) illegal because the spec says the first operation must
++     * be either a d0 or d1, in addition because of the graphics state depth hackery
++     * (see comments in pdf_d0() in pdf_font.c) this messes up the reference counting
++     * of the colour spaces, leading to a crash. So what was a boolean flag is now an
++     * enumerated type; pdf_type3_d_none, pdf_type3_d0 or pdf_type3_d1.
+      */
+-    bool CharProc_is_d1;
++    pdf_type3_d_type CharProc_d_type;
+     /* If there is no current point when we do a BT we start by doing a 0 0 moveto in order
+      * to establish an initial point. However, this also starts a path. When we finish
+      * off with a BT we need to clear that path by doing a newpath, otherwise we might
+diff --git a/pdf/pdf_colour.c b/pdf/pdf_colour.c
+index 94c7af214..a3fe8049c 100644
+--- a/pdf/pdf_colour.c
++++ b/pdf/pdf_colour.c
+@@ -341,7 +341,7 @@ int pdfi_gs_setgray(pdf_context *ctx, double d)
+     int code = 0;
+ 
+     /* PDF Reference 1.7 p423, any colour operators in a CharProc, following a d1, should be ignored */
+-    if (ctx->text.inside_CharProc && ctx->text.CharProc_is_d1)
++    if (ctx->text.inside_CharProc && ctx->text.CharProc_d_type != pdf_type3_d0)
+         return 0;
+ 
+     if (ctx->page.DefaultGray_cs != NULL) {
+@@ -367,7 +367,7 @@ int pdfi_gs_setrgbcolor(pdf_context *ctx, double r, double g, double b)
+     int code = 0;
+ 
+     /* PDF Reference 1.7 p423, any colour operators in a CharProc, following a d1, should be ignored */
+-    if (ctx->text.inside_CharProc && ctx->text.CharProc_is_d1)
++    if (ctx->text.inside_CharProc && ctx->text.CharProc_d_type != pdf_type3_d0)
+         return 0;
+ 
+     if (ctx->page.DefaultRGB_cs != NULL) {
+@@ -396,7 +396,7 @@ static int pdfi_gs_setcmykcolor(pdf_context *ctx, double c, double m, double y,
+     int code = 0;
+ 
+     /* PDF Reference 1.7 p423, any colour operators in a CharProc, following a d1, should be ignored */
+-    if (ctx->text.inside_CharProc && ctx->text.CharProc_is_d1)
++    if (ctx->text.inside_CharProc && ctx->text.CharProc_d_type != pdf_type3_d0)
+         return 0;
+ 
+     if (ctx->page.DefaultCMYK_cs != NULL) {
+@@ -427,7 +427,7 @@ int pdfi_gs_setcolorspace(pdf_context *ctx, gs_color_space *pcs)
+      */
+     if (ctx->pgs->color[0].color_space->id != pcs->id) {
+         /* PDF Reference 1.7 p423, any colour operators in a CharProc, following a d1, should be ignored */
+-        if (ctx->text.inside_CharProc && ctx->text.CharProc_is_d1)
++        if (ctx->text.inside_CharProc && ctx->text.CharProc_d_type != pdf_type3_d0)
+             return 0;
+ 
+         pdfi_set_colour_callback(pcs, ctx, pdfi_cspace_free_callback);
+diff --git a/pdf/pdf_font.c b/pdf/pdf_font.c
+index 49e194c1e..a34ef231b 100644
+--- a/pdf/pdf_font.c
++++ b/pdf/pdf_font.c
+@@ -1169,6 +1169,8 @@ int pdfi_d0(pdf_context *ctx)
+     if (ctx->text.inside_CharProc == false)
+         pdfi_set_warning(ctx, 0, NULL, W_PDF_NOTINCHARPROC, "pdfi_d0", NULL);
+ 
++    ctx->text.CharProc_d_type = pdf_type3_d0;
++
+     if (pdfi_count_stack(ctx) < 2) {
+         code = gs_note_error(gs_error_stackunderflow);
+         goto d0_error;
+@@ -1249,7 +1251,7 @@ int pdfi_d1(pdf_context *ctx)
+     if (ctx->text.inside_CharProc == false)
+         pdfi_set_warning(ctx, 0, NULL, W_PDF_NOTINCHARPROC, "pdfi_d1", NULL);
+ 
+-    ctx->text.CharProc_is_d1 = true;
++    ctx->text.CharProc_d_type = pdf_type3_d1;
+ 
+     if (pdfi_count_stack(ctx) < 6) {
+         code = gs_note_error(gs_error_stackunderflow);
+diff --git a/pdf/pdf_font3.c b/pdf/pdf_font3.c
+index 9cb3d2885..7ecd3bfff 100644
+--- a/pdf/pdf_font3.c
++++ b/pdf/pdf_font3.c
+@@ -81,7 +81,7 @@ pdfi_type3_build_char(gs_show_enum * penum, gs_gstate * pgs, gs_font * pfont,
+ 
+     OBJ_CTX(font)->text.BlockDepth = 0;
+     OBJ_CTX(font)->text.inside_CharProc = true;
+-    OBJ_CTX(font)->text.CharProc_is_d1 = false;
++    OBJ_CTX(font)->text.CharProc_d_type = pdf_type3_d_none;
+ 
+     {
+         /* It turns out that if a type 3 font uses a stroke to draw, and does not
+@@ -122,7 +122,7 @@ pdfi_type3_build_char(gs_show_enum * penum, gs_gstate * pgs, gs_font * pfont,
+     }
+ 
+     OBJ_CTX(font)->text.inside_CharProc = false;
+-    OBJ_CTX(font)->text.CharProc_is_d1 = false;
++    OBJ_CTX(font)->text.CharProc_d_type = pdf_type3_d_none;
+     OBJ_CTX(font)->text.BlockDepth = SavedTextBlockDepth;
+ 
+ build_char_error:
+-- 
+2.43.2
+

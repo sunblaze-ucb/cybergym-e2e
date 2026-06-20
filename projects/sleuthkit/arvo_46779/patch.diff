@@ -1,0 +1,35 @@
+From 7a24f4c9e10a7dbe2564f5cacdb29abb98edfe86 Mon Sep 17 00:00:00 2001
+From: Aleks L <93376818+sashashura@users.noreply.github.com>
+Date: Fri, 22 Jul 2022 09:34:53 +0100
+Subject: [PATCH] Fixes Heap-buffer-overflow READ in ntfs_make_data_run
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46779
+
+The `runlist_head` parameter in `ntfs_make_data_run` called from `ntfs_load_bmap` is calculated as `data_attr + run_off`.
+Even though it is checked before as:
+```cpp
+if ((run_off < 48) || (run_off >= attr_len)) {
+```
+it points beyond `mft + ntfs->mft_rsize_b`.
+---
+ tsk/fs/ntfs.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tsk/fs/ntfs.c b/tsk/fs/ntfs.c
+index 42e5b1736..6f509523e 100644
+--- a/tsk/fs/ntfs.c
++++ b/tsk/fs/ntfs.c
+@@ -3300,7 +3300,9 @@ ntfs_load_bmap(NTFS_INFO * ntfs)
+     uint64_t run_start_vcn = tsk_getu64(fs->endian, data_attr->c.nr.start_vcn);
+     uint16_t run_off = tsk_getu16(fs->endian, data_attr->c.nr.run_off);
+ 
+-    if ((run_off < 48) || (run_off >= attr_len)) {
++    if ((run_off < 48) ||
++        (run_off >= attr_len) ||
++        ((uintptr_t) data_attr + run_off) > ((uintptr_t) mft + (uintptr_t) ntfs->mft_rsize_b)) {
+         tsk_error_reset();
+         tsk_error_set_errno(TSK_ERR_FS_INODE_COR);
+         tsk_error_set_errstr("Invalid run_off of Bitmap Data Attribute - value out of bounds");
+-- 
+2.43.2
+

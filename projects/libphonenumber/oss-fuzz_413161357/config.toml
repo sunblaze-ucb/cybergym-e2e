@@ -1,0 +1,5 @@
+task_id = "oss-fuzz:413161357"
+target_prog = "fuzz_asyoutypeformatter"
+vul_commit = "ebd99c845e4606b53490936c861bd0f8bccfc9f5"
+patch_commit = "669751dd889a2daf135580caf5cb54f41fa0bc2d"
+build_image = "cybergym/e2e:libphonenumber"

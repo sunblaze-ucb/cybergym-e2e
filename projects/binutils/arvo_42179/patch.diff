@@ -1,0 +1,48 @@
+From 9b54b561858b3fb265f57d2b4ddf35fba2603069 Mon Sep 17 00:00:00 2001
+From: Alan Modra <amodra@gmail.com>
+Date: Fri, 17 Dec 2021 13:32:36 +1030
+Subject: [PATCH] asan: heap-buffer-overflow in bpf_elf_generic_reloc
+
+The bpf reloc howtos are a bit weird, using bitpos to specify an
+offset from r_offset that is outside the size of the reloc as given by
+howto.size.  That means bfd_get_reloc_size gives the wrong answer for
+range checking, and thus bfd_reloc_offset_in_range can't be used.
+
+	* elf64-bpf.c (bpf_elf_generic_reloc): Handle bitpos offset reloc
+	range checking.
+---
+ bfd/elf64-bpf.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/bfd/elf64-bpf.c b/bfd/elf64-bpf.c
+index beabad79aff..4e5f9d1e2f7 100644
+--- a/bfd/elf64-bpf.c
++++ b/bfd/elf64-bpf.c
+@@ -608,15 +608,16 @@ bpf_elf_generic_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
+   bfd_byte *where;
+ 
+   /* Sanity check that the address is in range.  */
++  bfd_size_type end = bfd_get_section_limit_octets (abfd, input_section);
++  bfd_size_type reloc_size;
+   if (reloc_entry->howto->type == R_BPF_INSN_64)
+-    {
+-      bfd_size_type end = bfd_get_section_limit_octets (abfd, input_section);
+-      if (reloc_entry->address > end
+-	  || end - reloc_entry->address < 16)
+-	return bfd_reloc_outofrange;
+-    }
+-  else if (!bfd_reloc_offset_in_range (reloc_entry->howto, abfd, input_section,
+-				       reloc_entry->address))
++    reloc_size = 16;
++  else
++    reloc_size = (reloc_entry->howto->bitsize
++		  + reloc_entry->howto->bitpos) / 8;
++
++  if (reloc_entry->address > end
++      || end - reloc_entry->address < reloc_size)
+     return bfd_reloc_outofrange;
+ 
+   /*  Get the symbol value.  */
+-- 
+2.43.2
+

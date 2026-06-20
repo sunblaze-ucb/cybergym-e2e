@@ -1,0 +1,36 @@
+From 9fe927513825d495d63d096168862e4dad4cf20e Mon Sep 17 00:00:00 2001
+From: Rob Davies <rmd+git@sanger.ac.uk>
+Date: Tue, 2 Jan 2024 11:23:43 +0000
+Subject: [PATCH] Fix B aux tag length check in cram_encode_aux
+
+B tags need eight bytes:
+  2 for key
+  1 for type (B)
+  1 for sub-type
+  4 for count
+
+Previously this only checked for at least seven bytes, which
+could lead to a single byte out of bounds read.
+
+Credit to OSS-Fuzz
+Fixes oss-fuzz 65383
+---
+ cram/cram_encode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cram/cram_encode.c b/cram/cram_encode.c
+index bc880071..65dfb841 100644
+--- a/cram/cram_encode.c
++++ b/cram/cram_encode.c
+@@ -3099,7 +3099,7 @@ static sam_hrec_rg_t *cram_encode_aux(cram_fd *fd, bam_seq_t *b,
+         }
+ 
+         case 'B': {
+-            if (aux_end - aux < 3+4)
++            if (aux_end - aux < 4+4)
+                 goto err;
+ 
+             int type = aux[3], blen;
+-- 
+2.25.1
+

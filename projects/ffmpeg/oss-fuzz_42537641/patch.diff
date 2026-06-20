@@ -1,0 +1,30 @@
+From e81d410242ea604c4f667da4a415836c1575d72f Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Wed, 1 Jan 2025 05:03:08 +0100
+Subject: [PATCH] avcodec/cbs_vp9: Initialize VP9RawSuperframeIndex
+
+Fixes: use-of-uninitialized-value
+Fixes: 70907/clusterfuzz-testcase-minimized-ffmpeg_BSF_VP9_METADATA_fuzzer-6339363208757248
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/cbs_vp9.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/cbs_vp9.c b/libavcodec/cbs_vp9.c
+index 816d06da04..ff99fe32fb 100644
+--- a/libavcodec/cbs_vp9.c
++++ b/libavcodec/cbs_vp9.c
+@@ -375,7 +375,7 @@ static int cbs_vp9_split_fragment(CodedBitstreamContext *ctx,
+     superframe_header = frag->data[frag->data_size - 1];
+ 
+     if ((superframe_header & 0xe0) == 0xc0) {
+-        VP9RawSuperframeIndex sfi;
++        VP9RawSuperframeIndex sfi = {0};
+         GetBitContext gbc;
+         size_t index_size, pos;
+         int i;
+-- 
+2.25.1
+

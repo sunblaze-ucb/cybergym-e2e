@@ -1,0 +1,47 @@
+From 85fa6e1874189a349e9842fbf1ed90e2fd474588 Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Sat, 29 Jan 2022 09:02:24 +0000
+Subject: [PATCH] oss-fuzz 44151: pdfi_TJ() hold a local, ref counted reference
+
+to the operand array, in case an error causes the op stack reference to it to
+disappear, and the object to be freed while we're still using it.
+---
+ pdf/pdf_text.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/pdf/pdf_text.c b/pdf/pdf_text.c
+index 9491df380..f2b94312d 100644
+--- a/pdf/pdf_text.c
++++ b/pdf/pdf_text.c
+@@ -486,10 +486,6 @@ static int pdfi_show_set_params(pdf_context *ctx, pdf_string *s, gs_text_params_
+         }
+         text->size = s->length;
+     }
+-    else {
+-        code = gs_note_error(gs_error_invalidfont);
+-        goto text_params_error;
+-    }
+     return 0;
+ 
+ text_params_error:
+@@ -1201,6 +1197,8 @@ int pdfi_TJ(pdf_context *ctx)
+         pdfi_pop(ctx, 1);
+         return gs_note_error(gs_error_typecheck);
+     }
++    pdfi_countup(a);
++    pdfi_pop(ctx, 1);
+ 
+     /* Save the CTM for later restoration */
+     saved = ctm_only(ctx->pgs);
+@@ -1312,7 +1310,7 @@ TJ_error:
+     ctx->pgs->line_params.half_width = linewidth;
+ 
+  exit:
+-    pdfi_pop(ctx, 1);
++    pdfi_countdown(a);
+     return code;
+ }
+ 
+-- 
+2.43.2
+

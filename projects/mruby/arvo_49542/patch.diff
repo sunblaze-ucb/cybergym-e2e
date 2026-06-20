@@ -1,0 +1,25 @@
+From de2ea3c389e4f5a4b0910fbf203b93d8cf409957 Mon Sep 17 00:00:00 2001
+From: "Yukihiro \"Matz\" Matsumoto" <matz@ruby.or.jp>
+Date: Thu, 28 Jul 2022 15:07:22 +0900
+Subject: [PATCH] bigint.c (udiv): avoid integer underflow.
+
+---
+ mrbgems/mruby-bigint/core/bigint.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mrbgems/mruby-bigint/core/bigint.c b/mrbgems/mruby-bigint/core/bigint.c
+index eaf10abde..5c5e1f028 100644
+--- a/mrbgems/mruby-bigint/core/bigint.c
++++ b/mrbgems/mruby-bigint/core/bigint.c
+@@ -448,7 +448,7 @@ udiv(mrb_state *mrb, mpz_t *qq, mpz_t *rr, mpz_t *xx, mpz_t *yy)
+   size_t xd = digits(&x);
+   mpz_realloc(mrb, &q, xd);
+   mp_limb2 z = y.p[yd-1];
+-  for (size_t j=xd-yd-1;; j--) {
++  for (size_t j=xd-yd;; j--) {
+     mp_limb2 qhat = (((mp_limb2)x.p[j+yd] << DIG_SIZE) + x.p[j+yd-1]) / z;
+     mp_limb2s b=0;
+     if (qhat) {
+-- 
+2.43.2
+

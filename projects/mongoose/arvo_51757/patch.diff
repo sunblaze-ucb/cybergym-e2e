@@ -1,0 +1,189 @@
+From 9680b8ccb396d0a49b309b3d23787c092c2f6cd7 Mon Sep 17 00:00:00 2001
+From: cpq <valenok@gmail.com>
+Date: Thu, 29 Sep 2022 16:53:11 +0100
+Subject: [PATCH] Fix overflow in rx_icmp
+
+---
+ Makefile     |  4 ++++
+ mip/mip.c    |  2 +-
+ mongoose.c   | 18 +++++++++---------
+ src/base64.c |  6 +++---
+ src/http.c   |  8 ++++----
+ test/fuzz.c  | 14 +++++++++++++-
+ 6 files changed, 34 insertions(+), 18 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 2eb5f160..67037e88 100644
+--- a/Makefile
++++ b/Makefile
+@@ -81,6 +81,10 @@ fuzz: mongoose.c mongoose.h Makefile test/fuzz.c
+ 	$(CXX) test/fuzz.c $(OPTS) $(WARN) $(INCS) $(TFLAGS) $(ASAN) -o fuzzer
+ 	$(RUN) ./fuzzer
+ 
++fuzz2: mongoose.c mongoose.h Makefile test/fuzz.c
++	$(CC) test/fuzz.c test/packed_fs.c -DMAIN $(CFLAGS) -o fuzzer
++	$(RUN) ./fuzzer /tmp/fuzzdata
++
+ test: Makefile mongoose.h $(SRCS)
+ 	$(CC) $(SRCS) $(CFLAGS) $(LDFLAGS) -o unit_test
+ 	ASAN_OPTIONS=$(ASAN_OPTIONS) $(RUN) ./unit_test
+diff --git a/mip/mip.c b/mip/mip.c
+index c2b464f7..37723361 100644
+--- a/mip/mip.c
++++ b/mip/mip.c
+@@ -453,7 +453,7 @@ static void rx_icmp(struct mip_if *ifp, struct pkt *pkt) {
+     if (left > pkt->pay.len) left = pkt->pay.len;  // Don't overflow TX
+     memset(icmp, 0, sizeof(*icmp));                // Set csum to 0
+     memcpy(icmp + 1, pkt->pay.buf, left);          // Copy RX payload to TX
+-    icmp->csum = ipcsum(icmp, sizeof(*icmp) + pkt->pay.len);
++    icmp->csum = ipcsum(icmp, sizeof(*icmp) + left);
+     ifp->driver->tx(ifp->tx.buf, len + left, ifp->driver_data);
+   }
+ }
+diff --git a/mongoose.c b/mongoose.c
+index fdd2f866..bd1292ac 100644
+--- a/mongoose.c
++++ b/mongoose.c
+@@ -90,9 +90,9 @@ int mg_base64_encode(const unsigned char *p, int n, char *to) {
+ }
+ 
+ int mg_base64_decode(const char *src, int n, char *dst) {
+-  const char *end = src + n;
++  const char *end = src == NULL ? NULL : src + n;  // Cannot add to NULL
+   int len = 0;
+-  while (src + 3 < end) {
++  while (src != NULL && src + 3 < end) {
+     int a = mg_b64rev(src[0]), b = mg_b64rev(src[1]), c = mg_b64rev(src[2]),
+         d = mg_b64rev(src[3]);
+     if (a == 64 || a < 0 || b == 64 || b < 0 || c < 0 || d < 0) return 0;
+@@ -1542,7 +1542,7 @@ static void mg_http_parse_headers(const char *s, const char *end,
+ 
+ int mg_http_parse(const char *s, size_t len, struct mg_http_message *hm) {
+   int is_response, req_len = mg_http_get_request_len((unsigned char *) s, len);
+-  const char *end = s + req_len, *qs;
++  const char *end = s == NULL ? NULL : s + req_len, *qs;  // Cannot add to NULL
+   struct mg_str *cl;
+ 
+   memset(hm, 0, sizeof(*hm));
+@@ -1902,12 +1902,12 @@ static void printdirentry(const char *name, void *userdata) {
+     }
+ #if defined(MG_HTTP_DIRLIST_TIME)
+     char time_str[30];
+-    struct tm * time_info = localtime(&t);
++    struct tm *time_info = localtime(&t);
+     strftime(time_str, sizeof time_str, "%Y/%m/%d %H:%M:%S", time_info);
+     mg_snprintf(mod, sizeof(mod), "%s", time_str);
+ #elif defined(MG_HTTP_DIRLIST_TIME_UTC)
+     char time_str[30];
+-    struct tm * time_info = gmtime(&t);
++    struct tm *time_info = gmtime(&t);
+     strftime(time_str, sizeof time_str, "%Y/%m/%d %H:%M:%S", time_info);
+     mg_snprintf(mod, sizeof(mod), "%s", time_str);
+ #else
+@@ -6715,10 +6715,10 @@ static void rx_icmp(struct mip_if *ifp, struct pkt *pkt) {
+                           sizeof(struct icmp) + pkt->pay.len);
+     struct icmp *icmp = (struct icmp *) (ip + 1);
+     size_t len = PDIFF(ifp->tx.buf, icmp + 1), left = ifp->tx.len - len;
+-    if (left > pkt->pay.len) left = pkt->pay.len;
+-    memset(icmp, 0, sizeof(*icmp));  // Important - set csum to 0
+-    memcpy(icmp + 1, pkt->pay.buf, left);
+-    icmp->csum = ipcsum(icmp, sizeof(*icmp) + pkt->pay.len);
++    if (left > pkt->pay.len) left = pkt->pay.len;  // Don't overflow TX
++    memset(icmp, 0, sizeof(*icmp));                // Set csum to 0
++    memcpy(icmp + 1, pkt->pay.buf, left);          // Copy RX payload to TX
++    icmp->csum = ipcsum(icmp, sizeof(*icmp) + left);
+     ifp->driver->tx(ifp->tx.buf, len + left, ifp->driver_data);
+   }
+ }
+diff --git a/src/base64.c b/src/base64.c
+index 1f8a74c8..d7526e1b 100644
+--- a/src/base64.c
++++ b/src/base64.c
+@@ -1,5 +1,5 @@
+-#include "base64.h"
+ #include "arch.h"
++#include "base64.h"
+ 
+ static int mg_b64idx(int c) {
+   if (c < 26) {
+@@ -66,9 +66,9 @@ int mg_base64_encode(const unsigned char *p, int n, char *to) {
+ }
+ 
+ int mg_base64_decode(const char *src, int n, char *dst) {
+-  const char *end = src + n;
++  const char *end = src == NULL ? NULL : src + n;  // Cannot add to NULL
+   int len = 0;
+-  while (src + 3 < end) {
++  while (src != NULL && src + 3 < end) {
+     int a = mg_b64rev(src[0]), b = mg_b64rev(src[1]), c = mg_b64rev(src[2]),
+         d = mg_b64rev(src[3]);
+     if (a == 64 || a < 0 || b == 64 || b < 0 || c < 0 || d < 0) return 0;
+diff --git a/src/http.c b/src/http.c
+index fb046e1f..d6857441 100644
+--- a/src/http.c
++++ b/src/http.c
+@@ -1,7 +1,7 @@
+-#include "http.h"
+ #include "arch.h"
+ #include "base64.h"
+ #include "fmt.h"
++#include "http.h"
+ #include "log.h"
+ #include "net.h"
+ #include "ssi.h"
+@@ -202,7 +202,7 @@ static void mg_http_parse_headers(const char *s, const char *end,
+ 
+ int mg_http_parse(const char *s, size_t len, struct mg_http_message *hm) {
+   int is_response, req_len = mg_http_get_request_len((unsigned char *) s, len);
+-  const char *end = s + req_len, *qs;
++  const char *end = s == NULL ? NULL : s + req_len, *qs;  // Cannot add to NULL
+   struct mg_str *cl;
+ 
+   memset(hm, 0, sizeof(*hm));
+@@ -562,12 +562,12 @@ static void printdirentry(const char *name, void *userdata) {
+     }
+ #if defined(MG_HTTP_DIRLIST_TIME)
+     char time_str[30];
+-    struct tm * time_info = localtime(&t);
++    struct tm *time_info = localtime(&t);
+     strftime(time_str, sizeof time_str, "%Y/%m/%d %H:%M:%S", time_info);
+     mg_snprintf(mod, sizeof(mod), "%s", time_str);
+ #elif defined(MG_HTTP_DIRLIST_TIME_UTC)
+     char time_str[30];
+-    struct tm * time_info = gmtime(&t);
++    struct tm *time_info = gmtime(&t);
+     strftime(time_str, sizeof time_str, "%Y/%m/%d %H:%M:%S", time_info);
+     mg_snprintf(mod, sizeof(mod), "%s", time_str);
+ #else
+diff --git a/test/fuzz.c b/test/fuzz.c
+index 920d9220..212c413d 100644
+--- a/test/fuzz.c
++++ b/test/fuzz.c
+@@ -58,7 +58,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+   mg_json_get(mg_str_n((char *) data, size), "$[0]", &n);
+ 
+   if (size > 0) {
+-    struct mip_cfg cfg = {};
++    struct mip_cfg cfg = {0};
+     size_t pktlen = 1540;
+     char t[sizeof(struct mip_if) + pktlen * 2 + 0 /* qlen */];
+     struct mip_if *ifp = (struct mip_if *) t;
+@@ -85,3 +85,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+ 
+   return 0;
+ }
++
++#if defined(MAIN)
++int main(int argc, char *argv[]) {
++  if (argc > 1) {
++    size_t len = 0;
++    char *buf = mg_file_read(&mg_fs_posix, argv[1], &len);
++    if (buf != NULL) LLVMFuzzerTestOneInput((uint8_t *) buf, len);
++    free(buf);
++  }
++  return 0;
++}
++#endif
+-- 
+2.25.1
+

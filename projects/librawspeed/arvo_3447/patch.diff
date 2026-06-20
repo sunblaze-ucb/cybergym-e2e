@@ -1,0 +1,30 @@
+From 78846115eaaa0ad13bb36ab87b5d6be2ebd2dc02 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Sun, 24 Sep 2017 16:40:40 +0300
+Subject: [PATCH] DngOpcodes::FixBadPixelsList: iRectangle2D fullImage: fix
+ off-by-one
+
+isPointInside()/isThisInside() considers both of the points
+to be valid, thus later on we could end up with invalid info.
+---
+ src/librawspeed/common/DngOpcodes.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/librawspeed/common/DngOpcodes.cpp b/src/librawspeed/common/DngOpcodes.cpp
+index 66beeba..13adc1f 100644
+--- a/src/librawspeed/common/DngOpcodes.cpp
++++ b/src/librawspeed/common/DngOpcodes.cpp
+@@ -99,8 +99,8 @@ class DngOpcodes::FixBadPixelsList final : public DngOpcodes::DngOpcode {
+ 
+ public:
+   explicit FixBadPixelsList(const RawImage& ri, ByteStream* bs) {
+-    const iRectangle2D fullImage(0, 0, ri->getUncroppedDim().x,
+-                                 ri->getUncroppedDim().y);
++    const iRectangle2D fullImage(0, 0, ri->getUncroppedDim().x - 1,
++                                 ri->getUncroppedDim().y - 1);
+ 
+     bs->getU32(); // Skip phase - we don't care
+     auto badPointCount = bs->getU32();
+-- 
+2.7.4
+

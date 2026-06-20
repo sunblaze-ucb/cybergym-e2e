@@ -1,0 +1,4 @@
+task_id = "arvo:3461"
+target_prog = "TiffDecoderFuzzer-NefDecoder"
+vul_commit = "a17791452ef33b56e59ff9f7047775cf523b63f2"
+patch_commit = "55b420a23ab58bb7dc62fb582f205e65d6445270"

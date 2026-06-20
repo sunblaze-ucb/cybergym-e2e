@@ -1,0 +1,31 @@
+From b849ac006b667dbd494a28de2f8b059fec308ac2 Mon Sep 17 00:00:00 2001
+From: Michael Niedermayer <michael@niedermayer.cc>
+Date: Sun, 13 Jul 2025 01:17:02 +0200
+Subject: [PATCH] avcodec/mpegvideo_dec: Fix lowres=3 field select interlaced
+ mpeg4 frame
+
+Fixes: out of array read in the chroma plane
+Fixes: 428034092/clusterfuzz-testcase-minimized-ffmpeg_AV_CODEC_ID_MPEG4_DEC_fuzzer-5582608941776896.test
+
+Found-by: continuous fuzzing process https://github.com/google/oss-fuzz/tree/master/projects/ffmpeg
+Signed-off-by: Michael Niedermayer <michael@niedermayer.cc>
+---
+ libavcodec/mpegvideo_dec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libavcodec/mpegvideo_dec.c b/libavcodec/mpegvideo_dec.c
+index 4a54f6cd61..85e24c667e 100644
+--- a/libavcodec/mpegvideo_dec.c
++++ b/libavcodec/mpegvideo_dec.c
+@@ -557,7 +557,7 @@ static av_always_inline void mpeg_motion_lowres(MpegEncContext *s,
+     ptr_cr = ref_picture[2] + uvsrc_y * uvlinesize + uvsrc_x;
+ 
+     if ((unsigned) src_x > FFMAX( h_edge_pos - (!!sx) - 2 * block_s,       0) || uvsrc_y<0 ||
+-        (unsigned) src_y > FFMAX((v_edge_pos >> field_based) - (!!sy) - FFMAX(h, hc<<s->chroma_y_shift), 0)) {
++        (unsigned) src_y > FFMAX((v_edge_pos >> field_based) - (!!sy) - FFMAX(h, field_select + hc<<s->chroma_y_shift), 0)) {
+         s->vdsp.emulated_edge_mc(s->sc.edge_emu_buffer, ptr_y,
+                                  linesize >> field_based, linesize >> field_based,
+                                  17, 17 + field_based,
+-- 
+2.25.1
+

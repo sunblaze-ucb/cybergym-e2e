@@ -1,0 +1,4 @@
+task_id = "arvo:30181"
+target_prog = "wolfmqtt-fuzzer"
+vul_commit = "d7ac40ba2e1fb3d37590dcbca2aca2b9f142a6d2"
+patch_commit = "af1c98b16ef3fb90c7c1714d61f069b38d479588"

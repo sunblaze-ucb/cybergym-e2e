@@ -1,0 +1,32 @@
+From b8dfa3ad7f1ac6a165f01625fe1f3f6cb60a417c Mon Sep 17 00:00:00 2001
+From: James Bonfield <jkb@sanger.ac.uk>
+Date: Mon, 19 May 2025 10:28:07 +0100
+Subject: [PATCH] Protect the failed reference error message.
+
+With mismatching ref_id and SQ headers this turned into a null pointer dereference.
+
+Credit to OSS_Fuzz
+Fixes oss-fuzz issue 418125747
+---
+ cram/cram_decode.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/cram/cram_decode.c b/cram/cram_decode.c
+index c33fbb0a..9fb32295 100644
+--- a/cram/cram_decode.c
++++ b/cram/cram_decode.c
+@@ -2391,7 +2391,10 @@ int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
+     if ((fd->required_fields & SAM_SEQ) &&
+         s->ref == NULL && s->hdr->ref_seq_id >= 0 && !c->comp_hdr->no_ref) {
+         hts_log_error("Unable to fetch reference %s:%"PRId64"-%"PRId64,
+-                      fd->refs->ref_id[ref_id]->name, s->hdr->ref_seq_start,
++                      fd->refs->ref_id && ref_id >= 0 && ref_id < fd->refs->nref
++                      ? fd->refs->ref_id[ref_id]->name
++                      : "unknown",
++                      s->hdr->ref_seq_start,
+                       s->hdr->ref_seq_start + s->hdr->ref_seq_span-1);
+         return -1;
+     }
+-- 
+2.25.1
+

@@ -1,0 +1,45 @@
+From 163af0b9c0513f31cc4cbfe8aeee26d22513163c Mon Sep 17 00:00:00 2001
+From: davkor <david@adalogics.com>
+Date: Sat, 7 Nov 2020 14:05:30 +0000
+Subject: [PATCH] strptime: fix bounds check (oss-fuzz 27241)
+
+Signed-off-by: davkor <david@adalogics.com>
+---
+ src/flb_strptime.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/flb_strptime.c b/src/flb_strptime.c
+index c96feb03c..994aad870 100644
+--- a/src/flb_strptime.c
++++ b/src/flb_strptime.c
+@@ -168,6 +168,13 @@ _flb_strptime(const char *buf, const char *fmt, struct tm *tm, int initialize)
+ 			continue;
+ 		}
+ 
++        /*
++         * Having increased bp we need to ensure we are not
++         * moving beyond bounds.
++         */
++        if (*bp == '\0')
++           return (NULL);
++
+ 		if ((c = *fmt++) != '%')
+ 			goto literal;
+ 
+@@ -178,6 +185,13 @@ literal:
+ 		if (c != *bp++)
+ 			return (NULL);
+ 
++        /*
++         * Having increased bp we need to ensure we are not
++         * moving beyond bounds.
++         */
++        if (*bp == '\0')
++           return (NULL);
++
+ 		break;
+ 
+ 		/*
+-- 
+2.43.2
+

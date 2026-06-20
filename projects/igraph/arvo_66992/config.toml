@@ -1,0 +1,5 @@
+task_id = "arvo:66992"
+target_prog = "read_dl"
+vul_commit = "4fcf6190e4d7cfc02a891c0ed08a1bc97e45299e"
+patch_commit = "a6f6f93e0523de1b68a3cb2f312f53adafb193a2"
+build_image = "gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b"

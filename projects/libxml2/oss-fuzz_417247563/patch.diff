@@ -1,0 +1,33 @@
+From 4df8d55742718420f64dffb54f96f785b4244866 Mon Sep 17 00:00:00 2001
+From: Nick Wellnhofer <wellnhofer@aevum.de>
+Date: Mon, 12 May 2025 17:31:14 +0200
+Subject: [PATCH] io: Fix stack use after scope
+
+Short-lived regression.
+---
+ xmlIO.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xmlIO.c b/xmlIO.c
+index 80390f4b..2c62ff96 100644
+--- a/xmlIO.c
++++ b/xmlIO.c
+@@ -277,6 +277,7 @@ xmlEscapeText(const xmlChar *string, int flags) {
+     cur = string;
+ 
+     while (*cur != 0) {
++        char tempBuf[12];
+         const xmlChar *base;
+         const char *repl;
+         size_t used;
+@@ -315,7 +316,6 @@ xmlEscapeText(const xmlChar *string, int flags) {
+                 cur += 1;
+             }
+         } else {
+-            char tempBuf[12];
+             int val = 0, len = 4;
+ 
+             val = xmlGetUTF8Char(cur, &len);
+-- 
+2.25.1
+

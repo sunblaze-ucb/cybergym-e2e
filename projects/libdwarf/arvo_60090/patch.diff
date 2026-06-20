@@ -1,0 +1,35 @@
+From 6f75899f1f90fa87e52da0df09ddaa2e5be778f9 Mon Sep 17 00:00:00 2001
+From: David Anderson <davea42@linuxmail.org>
+Date: Mon, 26 Jun 2023 12:50:39 -0700
+Subject: [PATCH] Correction to a sanity test. DW202306-011  ossfuzz 60090 The
+ test was < yet was supposed to be >= . The test itself is just a few weeks
+ old. Near line 855. 	modified:   src/lib/libdwarf/dwarf_frame2.c
+
+---
+ src/lib/libdwarf/dwarf_frame2.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/lib/libdwarf/dwarf_frame2.c b/src/lib/libdwarf/dwarf_frame2.c
+index 867c6ee6..cc5d552e 100644
+--- a/src/lib/libdwarf/dwarf_frame2.c
++++ b/src/lib/libdwarf/dwarf_frame2.c
+@@ -855,7 +855,7 @@ _dwarf_create_cie_from_after_start(Dwarf_Debug dbg,
+         DECODE_LEB128_UWORD_CK(frame_ptr, lreg,
+             dbg,error,section_ptr_end);
+         length_of_augmented_fields = (Dwarf_Unsigned) lreg;
+-        if (length_of_augmented_fields < dbg->de_filesize) {
++        if (length_of_augmented_fields >= dbg->de_filesize) {
+             _dwarf_error_string(dbg,error,
+                 DW_DLE_DEBUG_FRAME_LENGTH_BAD,
+                 "DW_DLE_DEBUG_FRAME_LENGTH_BAD: "
+@@ -1005,7 +1005,6 @@ _dwarf_create_cie_from_after_start(Dwarf_Debug dbg,
+         return DW_DLV_ERROR;
+     }
+     new_cie->ci_cie_instr_start = frame_ptr;
+-
+     new_cie->ci_dbg = dbg;
+     new_cie->ci_augmentation_type = augt;
+     new_cie->ci_gnu_eh_augmentation_len = cie_aug_data_len;
+-- 
+2.25.1
+

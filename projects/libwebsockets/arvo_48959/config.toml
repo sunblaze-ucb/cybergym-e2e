@@ -1,0 +1,5 @@
+task_id = "arvo:48959"
+target_prog = "lws_upng_inflate_fuzzer"
+vul_commit = "523c921206800c34150554a006b7a4429760467d"
+patch_commit = "608688b3088bb10186700a38b459443d649d6325"
+build_image = "n132/arvo:48959-fix"

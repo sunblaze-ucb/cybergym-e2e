@@ -1,0 +1,32 @@
+From b7f934c26b6d139d665ab924167036c74a973360 Mon Sep 17 00:00:00 2001
+From: Ken Sharp <ken.sharp@artifex.com>
+Date: Wed, 5 Oct 2022 17:09:40 +0100
+Subject: [PATCH] Type 2 (CFF) interpreter - check data is available before
+ 'dup'
+
+OSS-fuzz #52145
+
+The CFF interpreter (used for pdfwrite and friends) was executing the
+'dup' operation without checking to see if there was any data available,
+in this case there wasn't (corrupted font) leading to us reading off
+the bottom of the buffer.
+---
+ base/gstype2.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/base/gstype2.c b/base/gstype2.c
+index e38610041..428317909 100644
+--- a/base/gstype2.c
++++ b/base/gstype2.c
+@@ -781,6 +781,8 @@ gs_type2_interpret(gs_type1_state * pcis, const gs_glyph_data_t *pgd,
+                             *csp = float2fixed(sqrt(fixed2float(*csp)));
+                         break;
+                     case ce2_dup:
++                        if (!CS_CHECK_CSTACK_BOUNDS(csp, cstack))
++                            return_error(gs_error_invalidfont);
+                         CS_CHECK_PUSH(csp, cstack);
+                         csp[1] = *csp;
+                         ++csp;
+-- 
+2.25.1
+

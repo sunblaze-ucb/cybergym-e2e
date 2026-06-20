@@ -1,0 +1,61 @@
+From 8e254a4d6762da22bc1967140ef85cf8fedfa02d Mon Sep 17 00:00:00 2001
+From: Arjun <pkillarjun@protonmail.com>
+Date: Tue, 25 Jun 2024 14:51:30 +0530
+Subject: [PATCH] tstr, conf: Ensure error strings are nul-terminated
+
+This issue was found with oss-fuzz.
+
+  ==18420==WARNING: MemorySanitizer: use-of-uninitialized-value
+	      #0 0x55dd798a5797 in nxt_vsprintf unit/src/nxt_sprintf.c:163:31
+	      #1 0x55dd798d5bdb in nxt_conf_vldt_error unit/src/nxt_conf_validation.c:1525:11
+	      #2 0x55dd798dd4cd in nxt_conf_vldt_var unit/src/nxt_conf_validation.c:1560:16
+	      #3 0x55dd798dd4cd in nxt_conf_vldt_if unit/src/nxt_conf_validation.c:1592:16
+	      #4 0x55dd798d55f4 in nxt_conf_vldt_object unit/src/nxt_conf_validation.c:2815:23
+	      #5 0x55dd798d6f84 in nxt_conf_vldt_access_log unit/src/nxt_conf_validation.c:3426:11
+	      #6 0x55dd798d55f4 in nxt_conf_vldt_object unit/src/nxt_conf_validation.c:2815:23
+	      #7 0x55dd798d47bd in nxt_conf_validate unit/src/nxt_conf_validation.c:1421:11
+	      #8 0x55dd79871c82 in LLVMFuzzerTestOneInput unit/fuzzing/nxt_json_fuzz.c:67:5
+	      #9 0x55dd79770620 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+	      #10 0x55dd7975adb4 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+	      #11 0x55dd7976084a in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+	      #12 0x55dd7978cc42 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+	      #13 0x7e8192213082 in __libc_start_main /build/glibc-SzIz7B/glibc-2.31/csu/libc-start.c:308:16
+	      #14 0x55dd7975188d in _start
+
+	    Uninitialized value was created by an allocation of 'error.i' in the stack frame
+	      #0 0x55dd798dd42b in nxt_conf_vldt_var unit/src/nxt_conf_validation.c:1557:5
+	      #1 0x55dd798dd42b in nxt_conf_vldt_if unit/src/nxt_conf_validation.c:1592:16
+
+The issue was in nxt_tstr_test() where we create an error message with
+nxt_sprintf(), where this error message is then later used with the
+'%s' format specifier which expects a nul-terminated string, but by
+default nxt_sprintf() doesn't nul-terminate, you must use the '%Z'
+specifier to signify a '\0' at the end of the string.
+
+Signed-off-by: Arjun <pkillarjun@protonmail.com>
+Co-developed-by: Zhidao HONG <z.hong@f5.com>
+Signed-off-by: Zhidao HONG <z.hong@f5.com>
+Link: <https://github.com/google/oss-fuzz>
+Reviewed-by: Andrew Clayton <a.clayton@nginx.com>
+[ Commit message/subject - Andrew ]
+Signed-off-by: Andrew Clayton <a.clayton@nginx.com>
+---
+ src/nxt_tstr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nxt_tstr.c b/src/nxt_tstr.c
+index fde4822d..6f39cff2 100644
+--- a/src/nxt_tstr.c
++++ b/src/nxt_tstr.c
+@@ -159,7 +159,7 @@ nxt_tstr_test(nxt_tstr_state_t *state, nxt_str_t *str, u_char *error)
+ #else
+         nxt_sprintf(error, error + NXT_MAX_ERROR_STR,
+                     "Unit is built without support of njs: "
+-                    "\"--njs\" ./configure option is missing.");
++                    "\"--njs\" ./configure option is missing.%Z");
+         return NXT_ERROR;
+ #endif
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,5 @@
+task_id = "arvo:43209"
+target_prog = "secilc-fuzzer"
+vul_commit = "f0823bbbb58c5d5cd82a05b3c76106762a518bfa"
+patch_commit = "86cdb9f11915187cedee327cb833421374e500d1"
+build_image = "n132/arvo:43209-fix"

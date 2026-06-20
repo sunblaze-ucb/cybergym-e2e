@@ -1,0 +1,41 @@
+From 94e5a84d1f05fe905e91a41e8a17e29437c3c15e Mon Sep 17 00:00:00 2001
+From: Dirk Farin <dirk.farin@gmail.com>
+Date: Thu, 12 Oct 2023 22:06:22 +0200
+Subject: [PATCH] check for integer overflow in color_conversion_fuzzer (should
+ fix Clusterfuzz issue 59814). Bug is in fuzzer code, not in library.
+
+---
+ fuzzing/color_conversion_fuzzer.cc | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fuzzing/color_conversion_fuzzer.cc b/fuzzing/color_conversion_fuzzer.cc
+index 9ce9bd5..2901d6f 100644
+--- a/fuzzing/color_conversion_fuzzer.cc
++++ b/fuzzing/color_conversion_fuzzer.cc
+@@ -64,7 +64,10 @@ static bool read_plane(BitstreamRange* range,
+   if (width <= 0 || height <= 0) {
+     return false;
+   }
+-  if (!range->prepare_read(static_cast<uint64_t>(width) * height)) {
++  if (std::numeric_limits<size_t>::max()/width/height == 0) {
++    return false;
++  }
++  if (!range->prepare_read(static_cast<size_t>(width) * height)) {
+     return false;
+   }
+   if (!image->add_plane(channel, width, height, bit_depth)) {
+@@ -87,7 +90,10 @@ static bool read_plane_interleaved(BitstreamRange* range,
+   if (width <= 0 || height <= 0) {
+     return false;
+   }
+-  if (!range->prepare_read(static_cast<uint64_t>(width) * height * comps)) {
++  if (std::numeric_limits<size_t>::max()/width/height/comps == 0) {
++    return false;
++  }
++  if (!range->prepare_read(static_cast<size_t>(width) * height * comps)) {
+     return false;
+   }
+   if (!image->add_plane(channel, width, height, bit_depth)) {
+-- 
+2.25.1
+

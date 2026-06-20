@@ -1,0 +1,5 @@
+task_id = "arvo:51603"
+target_prog = "magic_fuzzer_loaddb"
+vul_commit = "411ec5bf0708dcd5ec99e4d0961740fca30a6bc7"
+patch_commit = "66efe2fa6abc233011a58965d6de2bb0f91328bd"
+build_image = "n132/arvo:51603-fix"

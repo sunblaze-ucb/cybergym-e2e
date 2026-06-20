@@ -1,0 +1,29 @@
+From 38b3bde1293ea8b6064bd6c2a1ed60171adea82b Mon Sep 17 00:00:00 2001
+From: Robin Watts <Robin.Watts@artifex.com>
+Date: Thu, 24 Mar 2022 16:54:02 +0000
+Subject: [PATCH] Bug 705128: Fix division by zero causing matrix with NaNs.
+
+This in turn causes MIN_INT phases, which upsets stuff in the
+graphics library when attempting to fit a tile to a device
+in copy_mono.
+---
+ base/gximage3.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/base/gximage3.c b/base/gximage3.c
+index 609e58ea8..cf5e31cb6 100644
+--- a/base/gximage3.c
++++ b/base/gximage3.c
+@@ -209,7 +209,8 @@ gx_begin_image3_generic(gx_device * dev,
+     int code;
+ 
+     /* Validate the parameters. */
+-    if (pim->Height <= 0 || pim->MaskDict.Height <= 0)
++    if (pim->Width <= 0 || pim->MaskDict.Width <= 0 ||
++        pim->Height <= 0 || pim->MaskDict.Height <= 0)
+         return_error(gs_error_rangecheck);
+     switch (pim->InterleaveType) {
+         default:
+-- 
+2.43.2
+

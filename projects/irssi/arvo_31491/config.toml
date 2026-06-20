@@ -1,0 +1,4 @@
+task_id = "arvo:31491"
+target_prog = "server-fuzz"
+vul_commit = "73e73df1c5f7fc632e7a74f78bd1e857c0ef972d"
+patch_commit = "4c069f5c8f3b63d8ba8556ba8292e1f5972508d6"

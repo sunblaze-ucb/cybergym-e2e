@@ -1,0 +1,38 @@
+From ee78b0b80514460936c585c3ff5fc477338ae371 Mon Sep 17 00:00:00 2001
+From: Jakub Jelen <jjelen@redhat.com>
+Date: Mon, 9 Dec 2019 16:05:26 +0100
+Subject: [PATCH] pkcs15-coolkey: Fix EC key type and fail on invalid key types
+
+Thanks oss-fuzz
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=19251
+---
+ src/libopensc/pkcs15-coolkey.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/libopensc/pkcs15-coolkey.c b/src/libopensc/pkcs15-coolkey.c
+index 39529e3..bc4eecb 100644
+--- a/src/libopensc/pkcs15-coolkey.c
++++ b/src/libopensc/pkcs15-coolkey.c
+@@ -596,7 +596,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
+ 					prkey_info.modulus_length =  key->u.rsa.modulus.len*8;
+ 				}
+ 			} else if (key_type == CKK_EC) {
+-				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
++				obj_type = SC_PKCS15_TYPE_PRKEY_EC;
+ 				if (key) {
+ 					prkey_info.field_length =  key->u.ec.params.field_length;
+ 				}
+@@ -663,7 +663,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
+ 
+ 		default:
+ 			/* no other recognized types which are stored 'on card' */
+-			break;
++			sc_log(card->ctx, "Unknown object type %lu, skipping", obj_class);
++			continue;
+ 		}
+ 		if (obj_info == NULL) {
+ 			continue;
+-- 
+2.7.4
+

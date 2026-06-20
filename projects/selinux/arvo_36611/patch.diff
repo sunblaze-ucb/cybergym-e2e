@@ -1,0 +1,39 @@
+From 05d1c66aaae2b1ce3eaac7d241f24be121fddb39 Mon Sep 17 00:00:00 2001
+From: James Carter <jwcart2@gmail.com>
+Date: Fri, 27 Aug 2021 10:12:42 -0400
+Subject: [PATCH] libsepol/cil: Properly check for parameter when inserting
+ name
+
+File names for typetransition rules are stored in their own datums.
+This allows them to be passed as a parameter, but there needs to be
+a check in __cil_insert_name() so that parameter names are not
+mistaken for file name strings. This check did not verify that a
+matching parameter name had the flavor of CIL_NAME.
+
+Check that the parameter flavor is CIL_NAME and that the paramter
+name matches the file name to be stored in the datum.
+
+This bug was found by the secilc-fuzzer.
+
+Signed-off-by: James Carter <jwcart2@gmail.com>
+---
+ libsepol/cil/src/cil_resolve_ast.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libsepol/cil/src/cil_resolve_ast.c b/libsepol/cil/src/cil_resolve_ast.c
+index 18007324..a4de1c75 100644
+--- a/libsepol/cil/src/cil_resolve_ast.c
++++ b/libsepol/cil/src/cil_resolve_ast.c
+@@ -87,7 +87,8 @@ static struct cil_name * __cil_insert_name(struct cil_db *db, hashtab_key_t key,
+ 	if (macro != NULL && macro->params != NULL) {
+ 		struct cil_list_item *item;
+ 		cil_list_for_each(item, macro->params) {
+-			if (((struct cil_param*)item->data)->str == key) {
++			struct cil_param *param = item->data;
++			if (param->flavor == CIL_NAME && param->str == key) {
+ 				return NULL;
+ 			}
+ 		}
+-- 
+2.43.2
+

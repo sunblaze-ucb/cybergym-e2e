@@ -1,0 +1,54 @@
+From 6ae825b8a85f93917b07cef1f4b2d6951f4b07cf Mon Sep 17 00:00:00 2001
+From: Chris Liddell <chris.liddell@artifex.com>
+Date: Mon, 20 Jun 2022 14:12:55 +0100
+Subject: [PATCH] oss-fuzz 47770: Init null device on creation
+
+Under normal (rendering) operation, for PDF tr 3 text, we send the text
+operation to a null device, meaning the graphics gets updated properly, without
+actually rendering anything on the output.
+
+Previously code would allocated the null device, do a gs_gsave() and the init
+and set the null device.
+
+The problem is that, if the gsave fails, we leave an unitialised device for
+the garbager to clean up, causing a crash.
+
+Secondly, any interpreter not using the garbager would leak memory in that
+error condition.
+
+So, move the device initialisation before the gs_gsave() call, and explicitly
+free the device in the event of an error.
+---
+ base/gxchar.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/base/gxchar.c b/base/gxchar.c
+index 1c534ccb6..e3ffa83ef 100644
+--- a/base/gxchar.c
++++ b/base/gxchar.c
+@@ -168,12 +168,19 @@ gx_default_text_begin(gx_device * dev, gs_gstate * pgs1,
+ 
+         if (dev_null == 0)
+             return_error(gs_error_VMerror);
++
++        /* Set up a null device that forwards xfont requests properly. */
++        /* We have to set the device up here, so the contents are
++           initialised, and safe to free in the event of an error.
++         */
++        gs_make_null_device(dev_null, gs_currentdevice_inline(pgs), mem);
++
+         /* Do an extra gsave and suppress output */
+-        if ((code = gs_gsave(pgs)) < 0)
++        if ((code = gs_gsave(pgs)) < 0) {
++            gs_free_object(mem, dev_null, "gx_default_text_begin");
+             return code;
++        }
+         penum->level = pgs->level;      /* for level check in show_update */
+-        /* Set up a null device that forwards xfont requests properly. */
+-        gs_make_null_device(dev_null, gs_currentdevice_inline(pgs), mem);
+         pgs->ctm_default_set = false;
+         penum->dev_null = dev_null;
+         /* Retain this device, since it is referenced from the enumerator. */
+-- 
+2.43.2
+

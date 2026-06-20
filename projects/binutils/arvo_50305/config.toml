@@ -1,0 +1,5 @@
+task_id = "arvo:50305"
+target_prog = "fuzz_dwarf"
+vul_commit = "11c6a7c6232c2fcd23058dcb9ac7909e491e02bc"
+patch_commit = "2bda15d73cb1d6c4e3db402682d4c11a94d96b7b"
+build_image = "n132/arvo:50305-fix"

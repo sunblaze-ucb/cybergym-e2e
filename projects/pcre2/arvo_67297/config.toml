@@ -1,0 +1,5 @@
+task_id = "arvo:67297"
+target_prog = "pcre2_fuzzer_32_3l"
+vul_commit = "6e5283c8499ecc3619722ab1effe7acac2bd7558"
+patch_commit = "dd0bc880bca3743bacf62e7f021a4eacd74b7fcd"
+build_image = "n132/arvo:67297-fix"

@@ -1,0 +1,28 @@
+From 03667195a3333f1aedb6f2452e20bf4f6d2ef138 Mon Sep 17 00:00:00 2001
+From: evpobr <evpobr@gmail.com>
+Date: Sun, 15 Nov 2020 18:44:19 +0500
+Subject: [PATCH] Fix use of uninitialized value in exif_subchunk_parse
+
+https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=26712
+
+Credit to OSS-Fuzz.
+---
+ src/wavlike.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/wavlike.c b/src/wavlike.c
+index 8c87d3bc..b59c6847 100644
+--- a/src/wavlike.c
++++ b/src/wavlike.c
+@@ -1269,7 +1269,7 @@ exif_fill_and_sink (SF_PRIVATE *psf, char* buf, size_t bufsz, size_t toread)
+ */
+ static int
+ exif_subchunk_parse (SF_PRIVATE *psf, uint32_t length)
+-{	uint32_t marker, dword, vmajor = -1, vminor = -1, bytesread = 0 ;
++{	uint32_t marker, dword = 0, vmajor = -1, vminor = -1, bytesread = 0 ;
+ 	char buf [4096] ;
+ 	int thisread ;
+ 
+-- 
+2.43.2
+

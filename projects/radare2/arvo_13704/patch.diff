@@ -1,0 +1,26 @@
+From 5d65cbe1f7d677a22c0fca593dcae1aebf8cf35b Mon Sep 17 00:00:00 2001
+From: Riccardo Schirone <ret2libc@users.noreply.github.com>
+Date: Wed, 13 Mar 2019 12:04:54 +0100
+Subject: [PATCH] bin_art: avoid double free ##bin
+
+ao->kv's ownership is moved to RBin through the get_sdb method of
+RBinPlugin, thus the plugins should not free it themselves.
+---
+ libr/bin/p/bin_art.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/libr/bin/p/bin_art.c b/libr/bin/p/bin_art.c
+index 84ab447..2d1fa9a 100644
+--- a/libr/bin/p/bin_art.c
++++ b/libr/bin/p/bin_art.c
+@@ -83,7 +83,6 @@ static void *load_buffer(RBinFile *bf, RBuffer *buf, ut64 loadaddr, Sdb *sdb) {
+ 
+ static int destroy(RBinFile *bf) {
+ 	ArtObj *obj = bf->o->bin_obj;
+-	sdb_free (obj->kv);
+ 	r_buf_free (obj->buf);
+ 	free (obj);
+ 	return true;
+-- 
+2.7.4
+

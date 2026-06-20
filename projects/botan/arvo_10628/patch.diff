@@ -1,0 +1,43 @@
+From b859e175a0f2357dcfe2211ca487a7bde0e971b1 Mon Sep 17 00:00:00 2001
+From: Jack Lloyd <jack@randombit.net>
+Date: Sun, 23 Sep 2018 12:43:11 -0400
+Subject: [PATCH] Fix a crash in the mode padding fuzzer
+
+The reference version of 1and0 padding would crash on an all-zero input.
+
+OSS-Fuzz 10628
+---
+ src/fuzzer/mode_padding.cpp | 2 ++
+ src/tests/data/pad.vec      | 3 +++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/src/fuzzer/mode_padding.cpp b/src/fuzzer/mode_padding.cpp
+index 05cb1a8..985ea25 100644
+--- a/src/fuzzer/mode_padding.cpp
++++ b/src/fuzzer/mode_padding.cpp
+@@ -62,6 +62,8 @@ size_t ref_oneandzero_unpad(const uint8_t in[], size_t len)
+       {
+       if(in[idx] == 0)
+          {
++         if(idx == 0)
++            return len;
+          idx -= 1;
+          continue;
+          }
+diff --git a/src/tests/data/pad.vec b/src/tests/data/pad.vec
+index 54efa4f..712d387 100644
+--- a/src/tests/data/pad.vec
++++ b/src/tests/data/pad.vec
+@@ -102,6 +102,9 @@ Blocksize = 8
+ In  = FF70000000000081
+ Blocksize = 8
+ 
++In  = 0000000000000000
++Blocksize = 8
++
+ [X9.23]
+ In  = FFFFFF
+ Out = FFFFFF0000000000000000000000000D
+-- 
+2.7.4
+

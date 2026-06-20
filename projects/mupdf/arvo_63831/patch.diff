@@ -1,0 +1,41 @@
+From 6d167be4bd4d425e3966eef17e34c1589f21af81 Mon Sep 17 00:00:00 2001
+From: Sebastian Rasmussen <sebras@gmail.com>
+Date: Sat, 4 Nov 2023 02:05:35 +0100
+Subject: [PATCH] Mark variables with fz_var() so that they are dropped upon
+ exception.
+
+This fixes OSS-fuzz issue 63831.
+---
+ source/html/html-doc.c | 1 +
+ source/html/office.c   | 3 +++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/source/html/html-doc.c b/source/html/html-doc.c
+index 4499d1c77..b6b2640fc 100644
+--- a/source/html/html-doc.c
++++ b/source/html/html-doc.c
+@@ -246,6 +246,7 @@ htdoc_open_document_with_buffer(fz_context *ctx, fz_archive *zip, fz_buffer *buf
+ 	html_document *doc = NULL;
+ 
+ 	fz_var(doc);
++	fz_var(zip);
+ 
+ 	fz_try(ctx)
+ 	{
+diff --git a/source/html/office.c b/source/html/office.c
+index eb29be48d..ad62d52e5 100644
+--- a/source/html/office.c
++++ b/source/html/office.c
+@@ -971,6 +971,9 @@ process_office_document(fz_context *ctx, fz_archive *arch, const char *file, doc
+ 
+ 	fz_var(resolved_rel);
+ 
++	fz_var(rels);
++	fz_var(xml);
++
+ 	fz_try(ctx)
+ 	{
+ 		fz_xml *pos;
+-- 
+2.25.1
+

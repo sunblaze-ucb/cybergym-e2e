@@ -1,0 +1,4 @@
+task_id = "arvo:4812"
+target_prog = "FujiDecompressorFuzzer"
+vul_commit = "f6a608b1a9ee4001c62515539629f18e6c7a9332"
+patch_commit = "2d8507d1909829e9151fac73ffc0d20f691f558c"
