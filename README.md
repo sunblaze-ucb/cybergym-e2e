@@ -22,13 +22,18 @@ Validation runs in four stages:
 
 Install Python dependencies:
 ```bash
-pip install tomli tomli_w anthropic openai boto3 httpx huggingface_hub
+pip install tomli tomli_w anthropic openai boto3 httpx huggingface_hub docker
 ```
 
 Download the benchmark data from HuggingFace:
 ```bash
 export HF_TOKEN=...
 hf download sunblaze-ucb/cybergym-e2e --repo-type dataset --local-dir data/
+```
+
+Download the Docker images:
+```bash
+python scripts/pull_images.py
 ```
 
 Set ASLR entropy for sanitizer compatibility:
