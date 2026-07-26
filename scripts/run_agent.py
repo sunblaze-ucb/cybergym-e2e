@@ -36,6 +36,7 @@ import time
 import uuid
 import tempfile
 from pathlib import Path
+from typing import Dict, Optional
 
 import tomli
 
@@ -471,6 +472,11 @@ chown -R agent:agent /src /output /out /work 2>/dev/null || true
         if not scripts_dir:
             raise ValueError("scripts_dir required for openhands")
         copy_to_container(container_id, scripts_dir / "install_openhands.sh", "/install_openhands.sh")
+        copy_to_container(
+            container_id,
+            scripts_dir / "run_openhands.py",
+            "/scripts/run_openhands.py",
+        )
         code, _, stderr = exec_run(
             container_id, "bash -eux /install_openhands.sh",
             "Installing OpenHands", timeout=1800
@@ -548,6 +554,24 @@ def _execute_claude_code(container_id, prompt, output_file, args):
     return code
 
 
+def _configure_openhands_llm_env(
+    env: Dict[str, str],
+    *,
+    temperature: Optional[float],
+    top_p: Optional[float],
+    max_tokens: Optional[int],
+) -> Dict[str, str]:
+    """Add explicitly requested sampling settings to OpenHands' LLM config."""
+    configured_env = env.copy()
+    if temperature is not None:
+        configured_env["LLM_TEMPERATURE"] = str(temperature)
+    if top_p is not None:
+        configured_env["LLM_TOP_P"] = str(top_p)
+    if max_tokens is not None:
+        configured_env["LLM_MAX_OUTPUT_TOKENS"] = str(max_tokens)
+    return configured_env
+
+
 def _execute_openhands(container_id, prompt, args):
     """Execute OpenHands agent and return exit code and output.
     
@@ -568,10 +592,17 @@ def _execute_openhands(container_id, prompt, args):
         aws_region=args.aws_region,
         aws_profile=args.aws_profile,
     )
+    env = _configure_openhands_llm_env(
+        env,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        max_tokens=args.max_tokens,
+    )
 
     code, stdout, stderr = exec_run(
         container_id,
-        f"cd /opt && /opt/openhands-venv/bin/python -m openhands.core.main --task {escaped_prompt}",
+        "cd /opt && /opt/openhands-venv/bin/python "
+        f"/scripts/run_openhands.py --task {escaped_prompt}",
         "Running agent",
         timeout=args.timeout,
         env=env,
@@ -1046,14 +1077,20 @@ Examples:
                         default="gcr.io/oss-fuzz-base/base-builder@sha256:8eda74a11e800aead5a041ee479a65b33dab3150d6e89e5694e2b6eb27be98fc")
 
     # LLM configuration
-    parser.add_argument("--model-provider", choices=["litellm", "bedrock", "anthropic"], default="anthropic",
-                        help="LLM provider (default: anthropic)")
+    parser.add_argument("--model-provider", choices=["litellm", "bedrock", "anthropic", "openai"], default="anthropic",
+                        help="LLM provider (default: anthropic; use openai for OpenAI-compatible endpoints)")
     parser.add_argument("--litellm-model-id", default="openai/gpt-5.2-codex")
     parser.add_argument("--bedrock-model-id", default="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
     parser.add_argument("--anthropic-model-id", default="claude-sonnet-4-5",
                         help="Model ID used with --model-provider anthropic (reads ANTHROPIC_API_KEY from env)")
     parser.add_argument("--aws-region", default="us-west-2")
     parser.add_argument("--aws-profile", default=None)
+    parser.add_argument("--temperature", type=float, default=None,
+                        help="OpenHands sampling temperature")
+    parser.add_argument("--top-p", type=float, default=None, dest="top_p",
+                        help="OpenHands nucleus sampling top_p")
+    parser.add_argument("--max-tokens", type=int, default=None, dest="max_tokens",
+                        help="OpenHands maximum output tokens")
 
     args = parser.parse_args()
 

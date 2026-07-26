@@ -53,6 +53,36 @@ python scripts/run_agent.py curl/arvo_66012 --mode e2e
 python scripts/run_agent.py curl/arvo_66012 --mode patch-only
 ```
 
+### OpenAI-Compatible Kimi K3
+
+OpenHands can use a Kimi K3 deployment exposed through an OpenAI-compatible
+Chat Completions endpoint:
+
+```bash
+export OPENAI_API_KEY="<api-key>"
+export OPENAI_BASE_URL="https://<openai-compatible-host>/v1"
+export K3_MODEL_ID="<kimi-k3-model-or-deployment-id>"
+
+python scripts/run_agent.py curl/arvo_66012 \
+  --mode e2e \
+  --agent openhands \
+  --prompt-style no-test \
+  --model-provider openai \
+  --litellm-model-id "$K3_MODEL_ID" \
+  --temperature 1.0 \
+  --top-p 0.95 \
+  --max-tokens 262144
+```
+
+The direct OpenAI-compatible provider enables native tool calling by default.
+Set `LLM_NATIVE_TOOL_CALLING=false` to opt out. The sampling flags are forwarded
+to OpenHands as temperature, top-p, and maximum output tokens.
+
+CyberGym installs the tested transport versions (`openhands-ai==1.0.0`,
+`litellm==1.80.7`, and `openai==2.8.0`). Its small runtime adapter preserves
+`reasoning_content` on assistant tool-call messages so OpenAI-compatible
+reasoning models receive that content again on later turns.
+
 ### Batch Run
 
 ```bash
