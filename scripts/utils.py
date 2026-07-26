@@ -359,8 +359,9 @@ def get_llm_env(
     Get LLM environment variables for OpenHands.
 
     Args:
-        model_provider: "bedrock", "anthropic", or "litellm"
-        litellm_model_id: LiteLLM model ID (required if model_provider="litellm")
+        model_provider: "bedrock", "anthropic", "litellm", or "openai"
+        litellm_model_id: LiteLLM/OpenAI-compatible model ID
+            (required if model_provider in {"litellm", "openai"})
         bedrock_model_id: Bedrock model ID (required if model_provider="bedrock")
         anthropic_model_id: Anthropic model ID (required if model_provider="anthropic")
         aws_region: AWS region for Bedrock
@@ -424,6 +425,33 @@ def get_llm_env(
             "LLM_MODEL": llm_model,
             "LLM_API_KEY": anthropic_api_key,
             "ANTHROPIC_API_KEY": anthropic_api_key,
+        }
+        return env, llm_model
+    elif model_provider == "openai":
+        llm_api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_BASE_URL")
+        if not llm_api_key or not base_url:
+            raise RuntimeError(
+                "--model-provider openai requires OPENAI_API_KEY and OPENAI_BASE_URL"
+            )
+        if not litellm_model_id:
+            raise RuntimeError(
+                "--model-provider openai requires --litellm-model-id"
+            )
+
+        llm_model = litellm_model_id
+        if not llm_model.startswith("openai/"):
+            llm_model = f"openai/{llm_model}"
+        env = {
+            **base_env,
+            "LLM_API_KEY": llm_api_key,
+            "LLM_MODEL": llm_model,
+            "LLM_BASE_URL": base_url,
+            "LLM_NATIVE_TOOL_CALLING": os.getenv(
+                "LLM_NATIVE_TOOL_CALLING", "true"
+            ),
+            "OPENAI_API_KEY": llm_api_key,
+            "OPENAI_BASE_URL": base_url,
         }
         return env, llm_model
     else:

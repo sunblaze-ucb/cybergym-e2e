@@ -26,6 +26,9 @@ source $OPENHANDS_VENV/bin/activate
 # Set SKIP_VSCODE_BUILD to true to skip VSCode extension build for OpenHands
 export SKIP_VSCODE_BUILD=true
 
-# Use 1.0.0 which has Claude Opus 4.5 fix
-# Staggered starts in batch_run.sh should avoid runtime contention issues
-uv pip install --prerelease=allow openhands-ai==1.0.0
+# Keep the transport versions used by scripts/run_openhands.py reproducible.
+# OpenHands 1.0.0 allows a range of LiteLLM versions, so pin the tested maximum.
+uv pip install --prerelease=allow \
+    openhands-ai==1.0.0 \
+    litellm==1.80.7 \
+    openai==2.8.0
