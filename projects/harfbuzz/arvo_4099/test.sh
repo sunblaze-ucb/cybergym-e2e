@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (arvo_4099)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This runs the COMPLETE test suite for the harfbuzz project, excluding only
 # tests that genuinely fail on the vulnerable version of the code.
@@ -32,8 +32,8 @@ SRC_DIR="${SRC:-/src}/harfbuzz"
 cd "$SRC_DIR"
 
 # Install build dependencies needed for the test build
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq libglib2.0-dev libfreetype6-dev pkg-config autoconf automake libtool ragel > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libglib2.0-dev libfreetype6-dev pkg-config autoconf automake libtool ragel  # pre-downloaded in prepare.sh
 
 # Clean the MSan-instrumented build from compile.sh and rebuild cleanly
 # for testing. The MSan build causes check-defs.sh and check-symbols.sh

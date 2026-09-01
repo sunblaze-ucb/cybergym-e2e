@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libavc (oss-fuzz_42536279)
+# test.sh - ALL unit tests for libavc
 #
 # This runs the COMPLETE test suite for the libavc project.
 # The only test suite available is AvcEncTest (Google Test based encoder tests).
@@ -51,8 +51,10 @@ echo "=== Downloading test resources ==="
 # Download and extract test resource files if not already present
 if [ ! -d "${RES_DIR}" ]; then
     mkdir -p /tmp/AvcTestRes
-    wget -q "https://dl.google.com/android-unittest/media/external/libavc/tests/AvcTestRes-1.0.zip" \
-        -O /tmp/AvcTestRes.zip
+    # prefetched in prepare.sh; /deps survives validate.py's restore_src()
+    cp /deps/files/AvcTestRes-1.0.zip /tmp/AvcTestRes.zip 2>/dev/null \
+      || wget -q "https://dl.google.com/android-unittest/media/external/libavc/tests/AvcTestRes-1.0.zip" \
+           -O /tmp/AvcTestRes.zip
     unzip -o /tmp/AvcTestRes.zip -d /tmp/AvcTestRes
 fi
 

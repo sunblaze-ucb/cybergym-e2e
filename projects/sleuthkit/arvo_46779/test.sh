@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - Unit tests for sleuthkit (arvo_36025)
+# test.sh - Unit tests for sleuthkit
 #
 # This script runs the COMPLETE test suite for the sleuthkit project.
 #

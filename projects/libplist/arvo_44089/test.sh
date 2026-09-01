@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libplist (arvo_44089)
+# test.sh - ALL unit tests for libplist
 #
 # This script runs the COMPLETE test suite for the libplist project.
 # The project uses autotools; compile.sh (run by cb validate before this)

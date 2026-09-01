@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for oatpp (oss-fuzz_391916478)
+# test.sh - ALL unit tests for oatpp
 #
 # Build image: cybergym/e2e:oatpp
 #

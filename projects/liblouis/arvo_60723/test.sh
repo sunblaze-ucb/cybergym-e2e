@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for liblouis (arvo_60723)
+# test.sh - ALL unit tests for liblouis
 #
 # This script runs the COMPLETE test suite for the liblouis project.
 #

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for uriparser (oss-fuzz_389731913)
+# test.sh - ALL unit tests for uriparser
 #
 # This script runs the COMPLETE test suite for the uriparser project.
 # The test suite includes tests from 11 test suites:

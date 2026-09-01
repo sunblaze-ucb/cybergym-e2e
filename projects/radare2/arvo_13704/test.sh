@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for radare2 (arvo_13704)
+# test.sh - ALL unit tests for radare2
 #
 # This script runs the COMPLETE unit test suite for the radare2 project.
 # The tests are located in /src/radare2-regressions/unit/ and test
@@ -25,8 +25,8 @@ export CFLAGS='-I/out/r2-static/usr/include/libr -g -fsanitize=address,fuzzer-no
 export LDFLAGS='-L/out/r2-static/usr/lib -fsanitize=address,fuzzer-no-link'
 
 # Install pkg-config if not present
-apt-get update >/dev/null 2>&1 || true
-apt-get install -y pkg-config >/dev/null 2>&1 || true
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config  # pre-downloaded in prepare.sh
 
 # Navigate to unit test directory
 cd /src/radare2-regressions/unit

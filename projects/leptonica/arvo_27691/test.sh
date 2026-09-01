@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for leptonica (arvo_27691)
+# test.sh - ALL unit tests for leptonica
 #
 # This script runs the COMPLETE autotools test suite for leptonica.
 # The project uses autotools with `make check` which runs all AUTO_REG_PROGS

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for selinux (oss-fuzz_388319478)
+# test.sh - Unit tests for selinux
 #
 # This script runs the available tests for the selinux project.
 # Due to the OSS-Fuzz build environment using sanitizers (MSan/ASan),
@@ -31,8 +31,8 @@ set -e
 cd /src/selinux
 
 echo "=== Installing build dependencies ==="
-apt-get update -qq
-apt-get install -y -qq bison flex 2>/dev/null
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download bison flex  # pre-downloaded in prepare.sh
 
 echo "=== Rebuilding libsepol with GCC (no sanitizers) ==="
 cd /src/selinux/libsepol

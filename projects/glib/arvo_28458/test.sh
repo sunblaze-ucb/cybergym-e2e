@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for glib (arvo_28458)
+# test.sh - ALL unit tests for glib
 #
 # This runs the COMPLETE test suite for the glib project, excluding only
 # tests that genuinely fail in the Docker container environment.

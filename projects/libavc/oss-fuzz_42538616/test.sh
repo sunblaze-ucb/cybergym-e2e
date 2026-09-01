@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libavc (oss-fuzz_42538616)
+# test.sh - ALL unit tests for libavc
 #
 # This script runs the COMPLETE test suite for the libavc project.
 # The only test suite is AvcEncTest (gtest-based encoder tests).
@@ -30,11 +30,13 @@ RES_DIR="/tmp/testres"
 # ------------------------------------------------------------------
 # Step 1: Install dependencies and download test resource files
 # ------------------------------------------------------------------
-apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq unzip > /dev/null 2>&1
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download unzip  # pre-downloaded in prepare.sh
 
 mkdir -p "$RES_DIR"
-wget -q "https://dl.google.com/android-unittest/media/external/libavc/tests/AvcTestRes-1.0.zip" \
-    -O "$RES_DIR/AvcTestRes.zip"
+# prefetched in prepare.sh; /deps is outside /src so it survives restore_src()
+cp /deps/files/AvcTestRes-1.0.zip "$RES_DIR/AvcTestRes.zip" 2>/dev/null \
+  || wget -q "https://dl.google.com/android-unittest/media/external/libavc/tests/AvcTestRes-1.0.zip" \
+       -O "$RES_DIR/AvcTestRes.zip"
 unzip -o "$RES_DIR/AvcTestRes.zip" -d "$RES_DIR/" > /dev/null 2>&1
 
 # ------------------------------------------------------------------

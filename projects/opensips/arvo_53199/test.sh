@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for opensips (arvo_39802)
+# test.sh - Unit tests for opensips
 #
 # This script runs the available tests for the opensips project.
 # The opensips project uses unit tests that require building with -DUNIT_TESTS flag

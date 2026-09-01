@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for jsoncpp (arvo_18140)
+# test.sh - ALL unit tests for jsoncpp
 #
 # This script runs the COMPLETE test suite for the jsoncpp project.
 # Tests are run with standard compilation (not ASAN/fuzzer flags) to ensure

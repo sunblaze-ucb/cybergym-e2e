@@ -1,5 +1,6 @@
 #!/bin/bash
-# test.sh - ALL unit tests for arrow (oss-fuzz_447480433)
+source /deps/arrow_env_ok.sh || true  # arrow deps prefetched in prepare.sh
+# test.sh - ALL unit tests for arrow
 #
 # Build image: cybergym/e2e:arrow
 #

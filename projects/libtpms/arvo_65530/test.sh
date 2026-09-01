@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libtpms (arvo_65530)
+# test.sh - ALL unit tests for libtpms
 #
 # This script runs the COMPLETE test suite for the libtpms project.
 # Only tests that genuinely fail are excluded.

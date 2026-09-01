@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Prepare.sh for leptonica arvo_28181
+# Prepare.sh for leptonica
 # Install build tools needed for autotools-based build and testing
 
 apt-get update -qq

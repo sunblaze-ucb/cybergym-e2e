@@ -11,7 +11,7 @@ make install -j"$(nproc)"
 
 # Download sample AAC file
 echo "Downloading sample..."
-curl -L -o sample.aac https://www.nch.com.au/acm/sample.aac
+cp /deps/files/sample.aac . 2>/dev/null || curl -L -o sample.aac https://www.nch.com.au/acm/sample.aac
 
 # Run FAAD decoding test
 echo "Running decode test..."

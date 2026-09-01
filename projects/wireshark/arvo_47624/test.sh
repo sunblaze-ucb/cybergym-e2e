@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for wireshark (arvo_47624)
+# test.sh - Unit tests for wireshark
 #
 # This script runs ALL available unit tests for the wireshark project.
 # The Docker image is a fuzz-build that does not include full tshark/dumpcap binaries,

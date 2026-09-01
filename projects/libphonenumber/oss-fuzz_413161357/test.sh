@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libphonenumber (oss-fuzz_413161357)
+# test.sh - ALL unit tests for libphonenumber
 #
 # Build image: cybergym/e2e:libphonenumber
 #

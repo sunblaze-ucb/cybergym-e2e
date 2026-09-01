@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (arvo_11730)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This script runs the COMPLETE test suite for the harfbuzz project
 # using the CMake build system. The source code version in this task uses
@@ -29,8 +29,8 @@ cd /src/harfbuzz
 # Install development dependencies needed to build the test suite.
 # The oss-fuzz image has runtime libs but not always dev headers for glib,
 # freetype, icu, and cairo which are needed for the full test suite.
-apt-get update -qq
-apt-get install -y -qq libglib2.0-dev libfreetype6-dev libicu-dev libcairo2-dev > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libglib2.0-dev libfreetype6-dev libicu-dev libcairo2-dev  # pre-downloaded in prepare.sh
 
 # Unset sanitizer-related flags that may have been set by compile.sh,
 # since we want a clean build for running the test suite.

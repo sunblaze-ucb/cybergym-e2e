@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for binutils (arvo_23778)
+# test.sh - ALL unit tests for binutils
 #
 # This script runs the COMPLETE test suite for the binutils-gdb project.
 # Only test suites/subdirectories that genuinely fail are excluded.

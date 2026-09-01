@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for mupdf (arvo_5492)
+# test.sh - ALL unit tests for mupdf
 #
 # This script runs the COMPLETE test suite for the mupdf project.
 # MuPDF has limited standalone test infrastructure. The main unit tests

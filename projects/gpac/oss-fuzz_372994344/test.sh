@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for gpac (arvo_67043)
+# test.sh - Unit tests for gpac
 #
 # This script runs tests for the GPAC multimedia framework.
 # Uses the pre-compiled binaries from compile.sh (with ASAN instrumentation).

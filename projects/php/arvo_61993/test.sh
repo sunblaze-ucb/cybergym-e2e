@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for php-src (arvo_42894)
+# test.sh - Unit tests for php-src
 #
 # PHP has an extensive test suite using .phpt files. However, running the full
 # test suite requires:

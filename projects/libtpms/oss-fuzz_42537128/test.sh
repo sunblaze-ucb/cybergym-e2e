@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libtpms (oss-fuzz_42537128)
+# test.sh - ALL unit tests for libtpms
 #
 # This script runs the COMPLETE test suite for the libtpms project.
 # Only tests that genuinely fail are excluded.

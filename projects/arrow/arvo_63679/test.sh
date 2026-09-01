@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+source /deps/arrow_env_ok.sh || true  # arrow deps prefetched in prepare.sh
 set -e
 
 PROJECT_DIR="${SRC:-/src}/arrow"
 BUILD_DIR="${WORK:-/work}"
 
-echo "=== Running tests for arrow (arvo_41221) ==="
+echo "=== Running tests for arrow ==="
 
 # Set environment variables for test data and ASAN
 export PARQUET_TEST_DATA="${PROJECT_DIR}/cpp/submodules/parquet-testing/data"

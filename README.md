@@ -41,6 +41,12 @@ Set ASLR entropy for sanitizer compatibility:
 sudo sysctl -w vm.mmap_rnd_bits=28
 ```
 
+Start the firewall proxy (network isolation is on by default):
+```bash
+docker pull ubuntu/squid:latest
+cd scripts && python -m firewall start
+```
+
 ## Running the Agent
 
 ### Single Task
@@ -59,6 +65,48 @@ python scripts/run_agent.py curl/arvo_66012 --mode patch-only
 # Run all tasks in a task file
 MODE=e2e MAX_PARALLEL=4 bash scripts/batch_run.sh scripts/tasks.txt
 ```
+
+## Network Isolation (Firewall)
+
+Restrict the agent can reach the LLM API and nothing else, enforced at the network layer.
+
+Start the proxy once (it is shared across runs):
+```bash
+docker pull ubuntu/squid:latest
+cd scripts && python -m firewall start
+```
+
+Then run normally — no extra flag needed:
+```bash
+python scripts/run_agent.py curl/arvo_66012 --mode e2e
+MODE=e2e bash scripts/batch_run.sh scripts/tasks.txt
+```
+
+To opt out and give the agent unrestricted internet:
+```bash
+python scripts/run_agent.py curl/arvo_66012 --mode e2e --no-firewall
+USE_FIREWALL=0 MODE=e2e bash scripts/batch_run.sh scripts/tasks.txt
+```
+
+Manage:
+```bash
+cd scripts
+python -m firewall status
+python -m firewall stop-all          # tear down proxy and network
+```
+
+The allowlist is `scripts/firewall/default_allowlist.txt` (LLM APIs only).
+For a custom endpoint, add its domain:
+```bash
+python -m firewall start --domain my-llm-endpoint.example.com
+```
+An endpoint on the host is already reachable; only remote ones need `--domain`.
+
+## Submitting Results
+
+See [SUBMISSION.md](SUBMISSION.md) for leaderboard submission guidelines. A
+submission covers both modes — run the benchmark in `e2e` and in `patch-only`,
+and report both.
 
 ## Citation
 

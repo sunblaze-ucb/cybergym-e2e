@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libjxl (oss-fuzz_450328034)
+# test.sh - ALL unit tests for libjxl
 #
 # Build image: cybergym/e2e:libjxl
 #
@@ -22,8 +22,8 @@
 set -e
 
 # Install required dependencies for building tests
-apt-get update -qq 2>/dev/null
-apt-get install -y -qq libpng-dev zlib1g-dev 2>/dev/null
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libpng-dev zlib1g-dev  # pre-downloaded in prepare.sh
 
 # Clone required submodules not present in the oss-fuzz image
 if [ ! -f /src/libjxl/third_party/googletest/CMakeLists.txt ]; then

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for leptonica (arvo_44008)
+# test.sh - Unit tests for leptonica
 #
 # This script runs the COMPLETE test suite for the leptonica project.
 # Only tests that genuinely fail are excluded.

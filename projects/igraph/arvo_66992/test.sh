@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for igraph (arvo_66992)
+# test.sh - ALL unit tests for igraph
 #
 # This script runs the COMPLETE test suite for the igraph project.
 # The project uses CMake/CTest with 557 tests covering all modules:

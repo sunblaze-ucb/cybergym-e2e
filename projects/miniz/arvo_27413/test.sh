@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for miniz (arvo_26682)
+# test.sh - ALL unit tests for miniz
 #
 # This script runs the COMPLETE test suite for the miniz project.
 # Tests include:

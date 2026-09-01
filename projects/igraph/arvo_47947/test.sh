@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for igraph (arvo_47947)
+# test.sh - ALL unit tests for igraph
 #
 # This script runs the COMPLETE test suite for the igraph project.
 # igraph is a C library for creating and manipulating graphs.

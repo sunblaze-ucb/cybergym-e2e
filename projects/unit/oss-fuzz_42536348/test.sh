@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for unit (oss-fuzz_42536348)
+# test.sh - ALL unit tests for unit
 #
 # This script runs the COMPLETE test suite for the nginx/unit project.
 # The project has C unit tests that are built via ./configure --tests && make tests.

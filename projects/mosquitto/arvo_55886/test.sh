@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for mosquitto (arvo_55820)
+# test.sh - ALL unit tests for mosquitto
 #
 # This script runs the COMPLETE unit test suite for the mosquitto project.
 # Only tests that genuinely fail are excluded.
@@ -33,8 +33,8 @@
 set -e
 
 # Install dependencies
-apt-get update > /dev/null 2>&1 || true
-apt-get install -y libcunit1 libcunit1-dev libcjson-dev > /dev/null 2>&1 || true
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libcunit1 libcunit1-dev libcjson-dev  # pre-downloaded in prepare.sh
 
 # Navigate to mosquitto source
 cd /src/mosquitto

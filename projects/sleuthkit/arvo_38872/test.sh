@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for sleuthkit (arvo_38872)
+# test.sh - Unit tests for sleuthkit
 #
 # The sleuthkit test suite consists of:
 #   - runtests.sh: Tests fs_thread_test with filesystem images (SKIP - images not available)

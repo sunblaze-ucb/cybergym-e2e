@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libspectre (arvo_21670)
+# test.sh - ALL unit tests for libspectre
 #
 # This script runs the COMPLETE test suite for the libspectre project.
 # libspectre has three test programs: parser-test, fuzz-test, and spectre-test.

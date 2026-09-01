@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for binutils (arvo_21339)
+# test.sh - ALL unit tests for binutils
 #
 # This script runs the full test suite for the binutils project,
 # covering libiberty, gas, and binutils subdirectories.

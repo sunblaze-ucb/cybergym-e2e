@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for freetype2 (arvo_8933)
+# test.sh - ALL unit tests for freetype2
 #
 # Freetype2 v2.9.1 (2018 era) has limited built-in tests in its source tree.
 # This script runs ALL available tests:

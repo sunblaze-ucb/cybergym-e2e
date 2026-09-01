@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for flac (arvo_38347)
+# test.sh - ALL unit tests for flac
 #
 # This script runs the COMPLETE test suite for the FLAC project.
 # Only tests that genuinely fail are excluded.

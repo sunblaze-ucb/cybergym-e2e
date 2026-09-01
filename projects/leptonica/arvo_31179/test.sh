@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for leptonica (arvo_31179)
+# test.sh - ALL unit tests for leptonica
 #
 # This script runs the COMPLETE regression test suite for leptonica.
 # The test suite consists of AUTO_REG_PROGS from prog/Makefile.am, which are
@@ -40,8 +40,8 @@ mkdir -p "$WORK/lib" "$WORK/include"
 ##############################################################################
 # Install gnuplot (required by tests that generate plot-based output)
 ##############################################################################
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq gnuplot-nox > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download gnuplot-nox  # pre-downloaded in prepare.sh
 
 ##############################################################################
 # Rebuild dependencies from source WITHOUT sanitizer flags

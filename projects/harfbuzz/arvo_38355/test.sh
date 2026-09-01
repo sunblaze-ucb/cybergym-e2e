@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (arvo_38355)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This script runs the COMPLETE test suite for the harfbuzz project.
 # Build system: meson

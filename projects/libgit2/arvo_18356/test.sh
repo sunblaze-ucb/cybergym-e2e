@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libgit2 (arvo_18356)
+# test.sh - ALL unit tests for libgit2
 #
 # This script runs the COMPLETE test suite for the libgit2 project using the
 # clar test framework. The project is built with cmake and tests are compiled

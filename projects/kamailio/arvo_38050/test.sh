@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for kamailio (arvo_38050)
+# test.sh - Unit tests for kamailio
 #
 # This script runs the available fuzzer-based tests for kamailio's SIP parsing code.
 # The kamailio project's normal unit tests require the full kamailio binary to be built

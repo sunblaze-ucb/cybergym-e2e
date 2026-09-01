@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for mupdf (arvo_56469)
+# test.sh - Unit tests for mupdf
 #
 # MuPDF has very limited test infrastructure:
 # - mu-office-test.c: Requires Windows headers (windows.h)

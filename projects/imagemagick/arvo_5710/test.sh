@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for imagemagick (arvo_5710)
+# test.sh - ALL unit tests for imagemagick
 #
 # This script runs the COMPLETE test suite for ImageMagick 7.0.7-25.
 # The project uses autotools, so "make check" is the standard test command.
@@ -42,7 +42,7 @@ find . -name "Makefile" -exec touch {} + 2>/dev/null || true
 
 # Install pkg-config if not available (needed by configure)
 if ! command -v pkg-config &>/dev/null; then
-    apt-get update -qq && apt-get install -y -qq pkg-config 2>/dev/null || true
+    cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config  # pre-downloaded in prepare.sh
 fi
 
 # Reconfigure with clean flags (no sanitizers) for proper test execution.

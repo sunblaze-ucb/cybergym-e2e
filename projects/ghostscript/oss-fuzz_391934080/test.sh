@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for ghostscript (oss-fuzz_391934080)
+# test.sh - ALL unit tests for ghostscript
 #
 # Build image: cybergym/e2e:ghostscript
 #

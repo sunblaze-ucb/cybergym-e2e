@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for libxaac (arvo_61789)
+# test.sh - Unit tests for libxaac
 #
 # This project uses command-line test applications (xaacdec, xaacenc) rather than
 # a traditional unit test framework like CTest or GoogleTest. The test binaries

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libwebp (oss-fuzz_438294033)
+# test.sh - ALL unit tests for libwebp
 #
 # Build image: cybergym/e2e:libwebp
 #

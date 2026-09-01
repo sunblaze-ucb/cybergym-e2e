@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for freetype2 (arvo_759)
+# test.sh - Unit tests for freetype2
 #
 # FreeType2 does not have a standard test suite (no `make check`, `make test`, or ctest tests).
 # The project provides standalone test programs in src/tools/ that need to be compiled manually.

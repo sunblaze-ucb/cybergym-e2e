@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for binutils (arvo_24020)
+# test.sh - ALL unit tests for binutils
 #
 # This script runs the COMPLETE test suite for the binutils-gdb project.
 # Tests cover: binutils, gas (assembler), ld (linker), and libiberty.
@@ -19,8 +19,8 @@
 #   1 - One or more tests failed
 
 # Install build dependencies
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq texinfo dejagnu bison flex > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download texinfo dejagnu bison flex  # pre-downloaded in prepare.sh
 
 cd /src/binutils-gdb
 

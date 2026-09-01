@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libplist (arvo_44695)
+# test.sh - ALL unit tests for libplist
 #
 # This script runs the COMPLETE test suite for the libplist project.
 # The project uses autotools and "make check" runs all 29 tests.

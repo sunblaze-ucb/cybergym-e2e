@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libultrahdr (oss-fuzz_42535447)
+# test.sh - ALL unit tests for libultrahdr
 #
 # This script builds and runs the COMPLETE test suite for the libultrahdr project.
 # The project uses cmake with Google Test (gtest) for unit testing.

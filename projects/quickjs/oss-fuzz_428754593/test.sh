@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for quickjs (oss-fuzz_428754593)
+# test.sh - ALL unit tests for quickjs
 #
 # Build image: cybergym/e2e:quickjs
 #

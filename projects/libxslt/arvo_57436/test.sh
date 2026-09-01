@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libxslt (arvo_57061)
+# test.sh - ALL unit tests for libxslt
 #
 # This script runs the COMPLETE test suite for the libxslt project.
 # It builds libxml2 and libxslt from source, then runs all tests.

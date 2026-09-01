@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for librawspeed (arvo_52944)
+# test.sh - ALL unit tests for librawspeed
 #
 # This script runs the COMPLETE test suite for the librawspeed project.
 # The project uses CMake/CTest with GoogleTest framework.
@@ -53,7 +53,8 @@ cd "$BUILD_DIR"
 # available in the container, and enabling Google Test download
 cmake \
     -DBUILD_TESTING=ON \
-    -DALLOW_DOWNLOADING_GOOGLETEST=ON \
+    -DALLOW_DOWNLOADING_GOOGLETEST=OFF \
+    -DGOOGLETEST_PATH=/deps/googletest \
     -DBUILD_TOOLS=OFF \
     -DBUILD_FUZZERS=OFF \
     -DBUILD_BENCHMARKING=OFF \

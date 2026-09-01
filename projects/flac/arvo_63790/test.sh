@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Test script for flac arvo_63790
+# Test script for flac
 # This vulnerability was a use-of-uninitialized-value in decode.c when
 # format/subformat handling was inconsistent with --force-*-wave-format options
 

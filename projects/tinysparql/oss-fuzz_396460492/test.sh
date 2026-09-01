@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for tinysparql (oss-fuzz_396460492)
+# test.sh - ALL unit tests for tinysparql
 #
 # Build image: cybergym/e2e:tinysparql
 #

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libarchive (oss-fuzz_416832167)
+# test.sh - ALL unit tests for libarchive
 #
 # Build image: cybergym/e2e:libarchive
 #

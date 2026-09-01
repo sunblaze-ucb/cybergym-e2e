@@ -7,6 +7,7 @@ LOG_FILE=$(mktemp /tmp/openexr_test_log.XXXXXX)
 cd $WORK
 
 cmake $SRC/openexr \
+    -D OPENEXR_IMAGES_REPO=file:///deps/openexr-images \
     -D BUILD_SHARED_LIBS=OFF \
     -D BUILD_TESTING=ON \
     -D OPENEXR_INSTALL_EXAMPLES=OFF \

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libspectre (arvo_21302)
+# test.sh - ALL unit tests for libspectre
 #
 # This script rebuilds ghostscript and libspectre with clean (non-sanitizer) flags
 # to enable running the test programs, then runs all three test programs
@@ -36,8 +36,8 @@ export LD_LIBRARY_PATH=/usr/local/lib
 cd /src/libspectre
 
 # Step 1: Install test dependency (cairo)
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq libcairo2-dev > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libcairo2-dev  # pre-downloaded in prepare.sh
 
 # Step 2: Rebuild ghostscript shared library with clean (non-sanitizer) flags
 cd ghostscript-9.50

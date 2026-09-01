@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for binutils (arvo_31961)
+# test.sh - ALL unit tests for binutils
 #
 # After compile.sh, the build uses AFL/ASAN instrumented compilers.
 # We reconfigure and rebuild with standard gcc to run the full test suite.

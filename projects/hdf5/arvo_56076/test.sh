@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for hdf5 (arvo_56076)
+# test.sh - ALL unit tests for hdf5
 #
 # This script runs the COMPLETE test suite for the HDF5 project,
 # built with CMake and tested via CTest.

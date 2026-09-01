@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libjxl (oss-fuzz_432441297)
+# test.sh - ALL unit tests for libjxl
 #
 # Build image: cybergym/e2e:libjxl
 #
@@ -34,8 +34,8 @@ rm -rf .git
 bash deps.sh
 
 # Install system packages needed for test builds
-apt-get update -qq
-apt-get install -y -qq zlib1g-dev libpng-dev libgif-dev
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download zlib1g-dev libpng-dev libgif-dev  # pre-downloaded in prepare.sh
 
 # Build with tests enabled
 mkdir -p build

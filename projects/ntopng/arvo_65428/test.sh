@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for ntopng (arvo_60037)
+# test.sh - Unit tests for ntopng
 #
 # This script runs the available unit tests for the ntopng project.
 #

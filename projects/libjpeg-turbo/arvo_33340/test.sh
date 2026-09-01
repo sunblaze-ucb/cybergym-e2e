@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libjpeg-turbo (arvo_33340)
+# test.sh - ALL unit tests for libjpeg-turbo
 #
 # This script runs the COMPLETE test suite for the libjpeg-turbo project.
 # Uses cmake and ctest to build and run all 310 tests.

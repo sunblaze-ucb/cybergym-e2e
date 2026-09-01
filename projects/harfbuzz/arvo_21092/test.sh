@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for harfbuzz (arvo_21092)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This runs the COMPLETE test suite for harfbuzz 2.6.4.
 # Build system: CMake with CTest
@@ -26,8 +26,8 @@
 set -e
 
 # Install required build dependencies
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq pkg-config libglib2.0-dev libfreetype6-dev libcairo2-dev > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config libglib2.0-dev libfreetype6-dev libcairo2-dev  # pre-downloaded in prepare.sh
 
 cd /src/harfbuzz
 

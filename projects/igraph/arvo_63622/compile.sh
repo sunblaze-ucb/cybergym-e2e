@@ -16,5 +16,5 @@ if [ ! -f IGRAPH_VERSION ]; then
     echo "0.10.8-dev" > IGRAPH_VERSION
 fi
 # Install flex and bison needed for parser generation
-apt-get update -qq && apt-get install -y -qq flex bison 2>&1 | tail -3
+true  # installed in prepare.sh
 compile

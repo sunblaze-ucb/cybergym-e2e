@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libconfig (oss-fuzz_391975647)
+# test.sh - ALL unit tests for libconfig
 #
 # Build image: cybergym/e2e:libconfig
 #

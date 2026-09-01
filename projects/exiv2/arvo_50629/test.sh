@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for exiv2 (arvo_50629)
+# test.sh - ALL unit tests for exiv2
 #
 # This script runs the COMPLETE test suite for the exiv2 project.
 # The tests are Python-based system tests that exercise the exiv2 library

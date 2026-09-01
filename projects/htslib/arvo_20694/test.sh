@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for htslib (arvo_20694)
+# test.sh - ALL unit tests for htslib
 #
 # This runs the COMPLETE test suite for the htslib project using `make check`.
 # The test suite includes:

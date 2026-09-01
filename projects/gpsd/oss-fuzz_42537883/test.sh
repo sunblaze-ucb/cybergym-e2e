@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for gpsd (oss-fuzz_42537883)
+# test.sh - ALL unit tests for gpsd
 #
 # This script runs the COMPLETE test suite for the gpsd project.
 # It first builds the test binaries (since the fuzz compile step

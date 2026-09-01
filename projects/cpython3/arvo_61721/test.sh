@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for cpython3 (arvo_61721)
+# test.sh - ALL unit tests for cpython3
 #
 # This script runs the COMPLETE test suite for CPython 3.13 that passes
 # in this MSan-instrumented build environment.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for htslib (oss-fuzz_372547397)
+# test.sh - ALL unit tests for htslib
 #
 # This script runs the COMPLETE test suite for the htslib project,
 # rebuilding with gcc (not fuzzer-instrumented) and running all tests.

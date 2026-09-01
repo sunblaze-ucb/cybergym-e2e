@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libexif (arvo_37211)
+# test.sh - ALL unit tests for libexif
 #
 # This runs the COMPLETE test suite for the libexif project.
 # The compile.sh builds the fuzzer targets with ASAN/libfuzzer flags,
@@ -39,8 +39,8 @@ set -e
 cd ${SRC:-/src}/libexif
 
 echo "=== Installing build dependencies for test suite ==="
-apt-get update -qq
-apt-get install -y -qq autoconf automake libtool gettext autopoint pkg-config gcc g++ make 2>/dev/null || true
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download autoconf automake libtool gettext autopoint pkg-config gcc g++ make  # pre-downloaded in prepare.sh
 
 echo "=== Rebuilding libexif for test suite (without fuzzer/sanitizer flags) ==="
 # Clean any previous build artifacts from the fuzzer build

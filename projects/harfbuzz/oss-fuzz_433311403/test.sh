@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (oss-fuzz_433311403)
+# test.sh - ALL unit tests for harfbuzz
 #
 # Build image: cybergym/e2e:harfbuzz
 # Build system: meson + ninja

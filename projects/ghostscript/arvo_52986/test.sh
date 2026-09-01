@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for ghostscript (arvo_42298)
+# test.sh - ALL unit tests for ghostscript
 #
 # This script runs the COMPLETE test suite for the ghostscript/ghostpdl project.
 # The project consists of multiple subprojects, each with their own test suite.

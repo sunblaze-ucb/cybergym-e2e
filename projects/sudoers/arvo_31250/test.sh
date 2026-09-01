@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for sudoers (arvo_30236)
+# test.sh - ALL unit tests for sudoers
 #
 # This script runs the COMPLETE test suite for the sudo project.
 #

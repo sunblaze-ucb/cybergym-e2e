@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for c-blosc2 (arvo_34259)
+# test.sh - ALL unit tests for c-blosc2
 #
 # This script runs the COMPLETE test suite for the c-blosc2 project.
 # It builds the project from source with tests enabled (not as a fuzzer),

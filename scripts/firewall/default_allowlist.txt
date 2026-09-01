@@ -1,0 +1,19 @@
+# Default domain allowlist for the cybergym-e2e run proxy.
+# Uses Squid dstdomain format: leading dot matches the domain and all subdomains.
+# Lines starting with # are comments.
+#
+# This is the AGENT-PHASE allowlist: only LLM API endpoints are permitted.
+# Package installation (apt, pip, npm) and prepare.sh happen earlier, in the
+# install phase, which runs on Docker's default bridge with full internet.
+# See docs/network-isolation.md.
+
+# llm apis
+api.anthropic.com
+api.openai.com
+generativelanguage.googleapis.com
+
+# For a custom endpoint, add its domain, e.g.
+#   python -m firewall start --domain my-llm-endpoint.example.com
+#
+# An endpoint on the host is already reachable via the auto-added host-gateway
+# entry in NO_PROXY; only remote endpoints need a --domain entry.

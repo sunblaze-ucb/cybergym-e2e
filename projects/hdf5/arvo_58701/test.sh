@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for hdf5 (arvo_58701)
+# test.sh - ALL unit tests for hdf5
 #
 # This script builds HDF5 with testing enabled and runs the COMPLETE test suite.
 # The original build in the container has BUILD_TESTING=OFF, so we rebuild with tests.

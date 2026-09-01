@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Build and basic tests for libhevc (arvo_23197)
+# test.sh - Build and basic tests for libhevc
 #
 # This project (libhevc) does not have a formal unit test suite.
 # The project builds a static library (libhevcdec) and a decoder binary (hevcdec).

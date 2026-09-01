@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for util-linux (arvo_55282)
+# test.sh - ALL unit tests for util-linux
 #
 # This script runs the COMPLETE test suite for the util-linux project.
 # Only tests that genuinely fail are excluded.

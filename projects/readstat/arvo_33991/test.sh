@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for readstat (arvo_33991)
+# test.sh - ALL unit tests for readstat
 #
 # This script runs the COMPLETE test suite for the ReadStat project.
 # ReadStat uses autotools and the test suite is run via `make check`.

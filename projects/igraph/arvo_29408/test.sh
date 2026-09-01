@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for igraph (arvo_29408)
+# test.sh - ALL unit tests for igraph
 #
 # This script builds and runs the COMPLETE test suite for the igraph project.
 # After compile.sh runs, the use_all_warnings macro is commented out in

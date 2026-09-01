@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libwebp (oss-fuzz_382816119)
+# test.sh - ALL unit tests for libwebp
 #
 # This script runs the COMPLETE test suite for the libwebp project.
 # The tests are fuzztest-based tests that run as unit tests (GoogleTest).

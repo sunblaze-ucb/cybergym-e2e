@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-apt-get update -y
-apt-get install -y libyaml-dev cmake python3
-apt-get install -y libcmocka-dev
-apt-get install -y pkg-config
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libyaml-dev cmake python3  # pre-downloaded in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libcmocka-dev  # pre-downloaded in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config  # pre-downloaded in prepare.sh
 
 cd $SRC/capstonenext
 

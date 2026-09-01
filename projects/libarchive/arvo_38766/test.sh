@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libarchive (arvo_38751)
+# test.sh - ALL unit tests for libarchive
 #
 # This script runs the COMPLETE test suite for the libarchive project.
 # All 717 tests pass - no exclusions needed.

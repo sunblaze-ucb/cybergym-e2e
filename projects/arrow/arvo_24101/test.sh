@@ -1,5 +1,6 @@
 #!/bin/bash
-# test.sh - ALL unit tests for arrow (arvo_24101)
+source /deps/arrow_env_ok.sh || true  # arrow deps prefetched in prepare.sh
+# test.sh - ALL unit tests for arrow
 #
 # This script builds and runs the Arrow C++ test suite.
 # The compile.sh builds fuzz targets only (ARROW_BUILD_TESTS=OFF), so we

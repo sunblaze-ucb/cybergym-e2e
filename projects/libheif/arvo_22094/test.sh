@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for libheif (arvo_22094)
+# test.sh - ALL unit tests for libheif
 #
 # Build system: autotools (autoconf/automake)
 # Test framework: Catch (v1) header-only

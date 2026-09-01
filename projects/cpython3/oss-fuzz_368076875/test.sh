@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for cpython3 (oss-fuzz_368076875)
+# test.sh - ALL unit tests for cpython3
 #
 # This script runs the COMPLETE CPython test suite, excluding only tests
 # that genuinely fail or are not applicable in this environment.
@@ -437,9 +437,20 @@ test_zlib
 test_zoneinfo
 TESTLIST
 
+# Drop the harness's proxy variables before running. urllib reads http_proxy /
+# https_proxy straight from the environment, so an injected proxy makes
+# cpython's own proxy tests (test_urllib, test_urllib2) see configuration that
+# should not be there -- 7 spurious failures. The suite needs no network.
+unset http_proxy https_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY
+
+# test_ftp_error is excluded because it does real DNS despite mocking the
+# connection: FTPHandler.ftp_open() calls socket.gethostbyname() before ever
+# reaching the overridden connect_ftp(), so offline it raises gaierror instead
+# of the ftplib error the test asserts on. It is not marked
+# requires_resource('network') upstream, so regrtest cannot skip it on its own.
 # Run the tests from file, using parallel execution with timeout
 # Use 300s timeout to handle ASAN overhead
-./python -m test -f /tmp/cpython_tests_to_run.txt -j4 --timeout 300
+./python -m test -f /tmp/cpython_tests_to_run.txt -j4 --timeout 300 --ignore '*test_ftp_error'
 
 echo "All tests passed!"
 exit 0

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - Unit tests for net-snmp (arvo_36908)
+# test.sh - Unit tests for net-snmp
 #
 # This script runs the COMPLETE test suite for net-snmp that can execute
 # in the Docker container environment.

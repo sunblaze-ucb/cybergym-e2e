@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for assimp (arvo_50589)
+# test.sh - ALL unit tests for assimp
 #
 # This script runs the COMPLETE test suite for the assimp project.
 # The tests are built using CMake and executed using the gtest-based 'unit' binary.

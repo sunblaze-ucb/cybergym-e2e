@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for PcapPlusPlus (arvo_43847)
+# test.sh - Unit tests for PcapPlusPlus
 #
 # PcapPlusPlus has two main test suites:
 #   - Packet++Test: Tests packet parsing/creation

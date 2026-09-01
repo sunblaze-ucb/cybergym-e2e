@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for openthread (oss-fuzz_411460530)
+# test.sh - ALL unit tests for openthread
 #
 # Build image: cybergym/e2e:openthread
 #

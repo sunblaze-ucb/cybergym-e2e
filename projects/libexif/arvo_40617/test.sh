@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libexif (arvo_40617)
+# test.sh - ALL unit tests for libexif
 #
 # This script runs the COMPLETE test suite for the libexif project.
 # The project uses autotools build system with make check.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libheif (oss-fuzz_42536646)
+# test.sh - ALL unit tests for libheif
 #
 # This script runs the COMPLETE test suite for the libheif project.
 # Only tests that genuinely fail are excluded.

@@ -17,6 +17,8 @@
 #   AWS_REGION=...                 AWS region (default: us-west-2)
 #   AGENT_OUTPUT_DIR=...           Output directory
 #   TIMEOUT=N                      Agent timeout in seconds (default: 5400)
+#   USE_FIREWALL=0                 Disable the firewall (on by default).
+#                                  When on, requires: python -m firewall start
 #
 # Examples:
 #   # Claude Code (default)
@@ -64,6 +66,7 @@ AGENT="${AGENT:-claude-code}"
 AWS_PROFILE="${AWS_PROFILE:-}"
 AWS_REGION="${AWS_REGION:-us-west-2}"
 TIMEOUT="${TIMEOUT:-5400}"
+USE_FIREWALL="${USE_FIREWALL:-1}"
 
 # Set output directory based on agent if not specified
 if [ -z "${AGENT_OUTPUT_DIR:-}" ]; then
@@ -143,7 +146,15 @@ run_task() {
 
     # Run agent and redirect output directly to log file
     local log_file="$AGENT_OUTPUT_DIR/${task_safe}_run.log"
+    local firewall_arg=()
+    if [ "$USE_FIREWALL" = "1" ]; then
+        firewall_arg=(--use-firewall)
+    else
+        firewall_arg=(--no-firewall)
+    fi
+
     python3 "$SCRIPT_DIR/run_agent.py" "$task" \
+        "${firewall_arg[@]}" \
         --agent "$AGENT" \
         --prompt-style "$PROMPT_STYLE" \
         --mode "$MODE" \

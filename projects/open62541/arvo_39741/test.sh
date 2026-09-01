@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for open62541 (arvo_39741)
+# test.sh - ALL unit tests for open62541
 #
 # This script runs the COMPLETE test suite for the open62541 project.
 # Only tests that genuinely fail are excluded.
@@ -31,7 +31,7 @@
 set -e
 
 # Install dependencies needed for building tests
-apt-get update -qq && apt-get install -y -qq check pkg-config > /dev/null 2>&1
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download check pkg-config  # pre-downloaded in prepare.sh
 
 # Create build directory and configure with tests enabled
 mkdir -p /work/open62541-test

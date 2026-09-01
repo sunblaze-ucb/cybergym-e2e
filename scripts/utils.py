@@ -87,7 +87,7 @@ def copy_to_container(container_id, src_path, dst_path, file_list=None):
             raise Exception(f"Failed to copy {src_path}: {result.stderr}")
 
 
-def start_container(image, env_vars=None, container_name=None, workdir=None):
+def start_container(image, env_vars=None, container_name=None, workdir=None, network=None):
     """Start a Docker container and return its ID.
 
     Args:
@@ -95,6 +95,8 @@ def start_container(image, env_vars=None, container_name=None, workdir=None):
         env_vars: Dict of environment variables to set in container (optional)
         container_name: Name for the container (optional)
         workdir: Working directory in container (optional)
+        network: Docker network to attach to (optional). Used by the firewall to
+            start the container on an isolated network with no internet route.
 
     Returns:
         Container ID
@@ -103,6 +105,9 @@ def start_container(image, env_vars=None, container_name=None, workdir=None):
 
     if container_name:
         cmd.extend(["--name", container_name])
+
+    if network:
+        cmd.extend(["--network", network])
 
     if env_vars:
         for key, value in env_vars.items():
@@ -118,13 +123,35 @@ def start_container(image, env_vars=None, container_name=None, workdir=None):
     return result.stdout.strip()
 
 
+def switch_network(container_id, from_network, to_network):
+    """Move a container from one Docker network to another.
+
+    Used to revoke the allow-all install network after the install phase and
+    attach the container to the API-only run network. After this the container
+    has no route back to the install proxy, so the lockdown is enforced at the
+    network layer rather than by proxy config alone.
+    """
+    if from_network == to_network:
+        return
+    subprocess.run(
+        ["docker", "network", "disconnect", "-f", from_network, container_id],
+        check=True, capture_output=True, text=True,
+    )
+    subprocess.run(
+        ["docker", "network", "connect", to_network, container_id],
+        check=True, capture_output=True, text=True,
+    )
+    print(f"  Switched container network: {from_network} -> {to_network}")
+
+
 def cleanup_container(container_id):
     """Remove a container."""
     if container_id:
         subprocess.run(["docker", "rm", "-f", container_id], check=False, capture_output=True)
 
 
-def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_poc=True, scripts_dir=None):
+def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_poc=True, scripts_dir=None,
+                    run_prepare=False, env=None):
     """Set up workspace inside a container for agent or validation.
 
     Args:
@@ -134,6 +161,13 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
         mode: "e2e" or "patch-only"
         copy_gt_poc: Whether to copy ground truth PoC to /data (False for agent runs)
         scripts_dir: Path to scripts directory (to copy validate.py)
+        run_prepare: Run prepare.sh and snapshot /src to /src_backup here, rather than
+            leaving it to validate.py. Used for agent containers so all network-dependent
+            setup finishes before the agent starts (and before the firewall locks the
+            container down). Validation containers leave this False and keep passing
+            --run-prepare to validate.py.
+        env: Extra environment for the network-dependent steps (apt-get, uv/pip, and
+            prepare.sh). Carries HTTP_PROXY/HTTPS_PROXY/NO_PROXY when firewalled.
 
     Sets up:
         /src/ - source code (extracted from src.tgz) and build scripts
@@ -180,11 +214,12 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
         workdir="/",
         verbose=False,
         check=True,
+        env=env,
     )
     if not scripts_dir:
         raise ValueError("scripts_dir required for openhands")
     copy_to_container(container_id, scripts_dir / "install_validate_deps.sh", "/install_validate_deps.sh")
-    exec_run(container_id, "bash -eux /install_validate_deps.sh", workdir="/", verbose=False, check=True)
+    exec_run(container_id, "bash -eux /install_validate_deps.sh", workdir="/", verbose=False, check=True, env=env)
 
     # Copy validate.py if scripts_dir provided
     if scripts_dir:
@@ -226,13 +261,35 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
         check=True,
     )
 
+    # Drop the target repo's git history before anything else touches the tree.
+    # Some src.tgz archives ship the upstream .git, and where its history reaches
+    # past the vulnerable commit -- including via remote refs like origin/master
+    # -- it contains the fix itself, so `git log --all` hands the agent the answer
+    # with no network involved. This runs before pre_patches, prepare.sh and the
+    # /src_backup snapshot, so restore_src() cannot bring it back between stages.
+    #
+    # Only the target repo: several tasks vendor git-managed dependencies
+    # (protobuf, fuzztest, abseil, turbojpeg) under third_party/ or build/_deps/,
+    # and their build systems re-run git against them, so a blanket
+    # `find /src -name .git -delete` breaks those builds.
+    #
+    # Safe to remove: `git apply` does not need a repository (only --index does),
+    # and no task's build scripts read the target repo's history.
+    repo_to_patch = config.get("repo_to_patch", "")
+    if repo_to_patch:
+        exec_run(
+            container_id,
+            f"rm -rf /src/{repo_to_patch}/.git",
+            workdir="/",
+            verbose=False,
+        )
+
     # Apply pre_patches if specified in config (applied before agent starts and before validation backup)
     # pre_patches is a list of patch files to apply sequentially
     pre_patches = config.get("pre_patches", [])
     # Also support legacy single pre_patch field
     if not pre_patches and config.get("pre_patch"):
         pre_patches = [config["pre_patch"]]
-    repo_to_patch = config.get("repo_to_patch", "")
     pre_patch_repo = f"/src/{repo_to_patch}" if repo_to_patch else "/src"
     for i, pre_patch_name in enumerate(pre_patches):
         pre_patch_file = script_path / pre_patch_name
@@ -259,6 +316,25 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
         gt_poc = data_path / "poc.bin"
         if gt_poc.exists():
             copy_to_container(container_id, gt_poc, "/data/poc.bin")
+
+    # Run prepare.sh here (after pre_patches) rather than inside validate.py.
+    # prepare.sh is the last network-dependent step: ~30% of tasks apt-get/pip/git
+    # clone in it. Running it once here means the agent never needs the network,
+    # and its cost stops eating the agent's --timeout budget on every self-test.
+    # Side effects persist: packages land outside /src, and /src_backup is taken
+    # after prepare, so validate.py's restore_src() keeps the prepared tree.
+    if run_prepare:
+        code, stdout, stderr = exec_run(
+            container_id,
+            "bash -eux /src/prepare.sh",
+            "Running prepare.sh",
+            timeout=1800,
+            workdir="/src",
+            env=env,
+        )
+        if code != 0:
+            raise Exception(f"Failed to run prepare.sh: {stdout[-1000:]}\n{stderr[-1000:]}")
+        exec_run(container_id, "cp -a /src /src_backup", workdir="/", verbose=False, check=True)
 
 
 def exec_run(container_id, command, description=None, timeout=1200, env=None, workdir=None, verbose=True, check=False):

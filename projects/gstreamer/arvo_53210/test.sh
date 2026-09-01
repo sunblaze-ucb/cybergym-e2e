@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for gstreamer (arvo_53210)
+# test.sh - ALL unit tests for gstreamer
 #
 # This script runs the COMPLETE test suite for the gstreamer project
 # (gstreamer core + gst-plugins-base).

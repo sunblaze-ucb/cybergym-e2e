@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for freetype2 (arvo_8968)
+# test.sh - ALL unit tests for freetype2
 #
 # FreeType2 v2.9.1 does not have a formal test suite (no `make check`,
 # `ctest`, or `meson test`). The available test programs are located in

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for gdal (arvo_4071)
+# test.sh - ALL unit tests for gdal
 #
 # GDAL 2.3.0 uses autotools. The fuzzer build produces a static library with
 # clang/ASAN, which is unsuitable for running the test suite. This script

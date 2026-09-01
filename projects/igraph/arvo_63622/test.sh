@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for igraph (arvo_63622)
+# test.sh - ALL unit tests for igraph
 #
 # This script runs the COMPLETE test suite for the igraph project.
 # The project uses cmake/ctest as its build system.
@@ -25,7 +25,7 @@ SRC_DIR="${SRC:-/src}/igraph"
 BUILD_DIR="${SRC_DIR}/build_test"
 
 # Install build dependencies needed for test build
-apt-get update -qq && apt-get install -y -qq flex bison libxml2-dev 2>&1 | tail -3
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download flex bison libxml2-dev  # pre-downloaded in prepare.sh
 
 # Create IGRAPH_VERSION file (no git history available in container)
 if [ ! -f "${SRC_DIR}/IGRAPH_VERSION" ]; then

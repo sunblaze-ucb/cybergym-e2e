@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for file (arvo_51603)
+# test.sh - ALL unit tests for file
 #
 # This script runs the COMPLETE test suite for the file project.
 # The "file" project is the Unix file command that determines file types.

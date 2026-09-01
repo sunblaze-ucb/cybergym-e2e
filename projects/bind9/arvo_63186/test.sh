@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for bind9 (arvo_63186)
+# test.sh - ALL unit tests for bind9
 #
 # This script runs the COMPLETE test suite for the bind9 project.
 # Only tests that genuinely fail or hang are excluded.
@@ -30,8 +30,8 @@ set -e
 cd ${SRC:-/src}/bind9
 
 echo "=== Installing test dependencies ==="
-apt-get update -qq
-apt-get install -y libcmocka-dev zlib1g-dev -qq
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libcmocka-dev zlib1g-dev  # pre-downloaded in prepare.sh
 
 echo "=== Configuring bind9 with cmocka support ==="
 autoreconf -fi

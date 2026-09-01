@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for tinygltf (arvo_42123)
+# test.sh - ALL unit tests for tinygltf
 #
 # This script runs the COMPLETE test suite for the tinygltf project.
 # Tests are built and run using Catch2 framework.

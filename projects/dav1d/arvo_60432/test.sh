@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for dav1d (arvo_60432)
+# test.sh - ALL unit tests for dav1d
 #
 # This script runs the COMPLETE test suite for the dav1d project.
 # Tests are run from the pre-built /work/build directory.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for clamav (arvo_23499)
+# test.sh - ALL unit tests for clamav
 #
 # This runs the COMPLETE test suite for the ClamAV project, excluding only
 # tests that genuinely fail or are skipped by default.
@@ -54,9 +54,8 @@ export CXXFLAGS="$CFLAGS"
 export LDFLAGS=""
 
 # Install build/test dependencies
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq pkg-config check libsubunit-dev zlib1g-dev libbz2-dev \
-    libxml2-dev libcurl4-openssl-dev libncurses5-dev > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config check libsubunit-dev zlib1g-dev libbz2-dev libxml2-dev libcurl4-openssl-dev libncurses5-dev  # pre-downloaded in prepare.sh
 
 # Build in a separate directory to avoid conflicts with the fuzz build
 TESTBUILD=/tmp/clamav-test-build

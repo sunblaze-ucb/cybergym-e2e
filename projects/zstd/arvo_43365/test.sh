@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for zstd (arvo_43365)
+# test.sh - ALL unit tests for zstd
 #
 # This script runs the COMPLETE test suite for the zstd project.
 # Tests included:

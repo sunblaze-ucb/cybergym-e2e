@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for assimp (oss-fuzz_42535201)
+# test.sh - ALL unit tests for assimp
 #
 # This script runs the COMPLETE Google Test suite for the assimp project.
 # The original build in the container was configured for fuzzing (libfuzzer + ASAN)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (arvo_25013)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This script runs the COMPLETE test suite for the harfbuzz project.
 # Build system: meson + ninja
@@ -18,9 +18,9 @@
 set -e
 
 # Install build dependencies
-apt-get update -qq
-apt-get install -y -qq libglib2.0-dev libfreetype6-dev libicu-dev pkg-config > /dev/null 2>&1
-pip3 install meson ninja > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libglib2.0-dev libfreetype6-dev libicu-dev pkg-config  # pre-downloaded in prepare.sh
+pip3 install --no-index --find-links=/deps/wheels meson ninja  # pre-downloaded in prepare.sh
 
 cd $SRC/harfbuzz
 

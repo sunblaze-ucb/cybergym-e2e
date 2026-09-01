@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for htslib (arvo_18152)
+# test.sh - ALL unit tests for htslib
 #
 # This script runs the COMPLETE test suite for the htslib project.
 # After compile.sh runs (which builds with AFL+ASAN instrumentation),
@@ -34,8 +34,8 @@ set -e
 cd /src/htslib
 
 # Install build dependencies needed for compiling and testing
-apt-get update -qq
-apt-get install -y -qq autoconf zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libssl-dev 2>&1 | tail -3
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download autoconf zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libssl-dev  # pre-downloaded in prepare.sh
 
 # Clean the AFL+ASAN-instrumented build from compile.sh
 make clean

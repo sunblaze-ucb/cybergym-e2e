@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for jq (arvo_64574)
+# test.sh - ALL unit tests for jq
 #
 # This script runs the COMPLETE test suite for the jq project,
 # excluding only tests that genuinely fail on this version.

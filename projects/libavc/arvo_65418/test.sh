@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libavc (arvo_55964)
+# test.sh - ALL unit tests for libavc
 #
 # This script runs the COMPLETE test suite for the libavc project.
 # libavc does not have traditional unit tests (ctest shows 0 tests).

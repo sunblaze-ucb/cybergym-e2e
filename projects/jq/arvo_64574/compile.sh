@@ -13,7 +13,7 @@ export FUZZING_LANGUAGE=c
 cd $SRC/jq
 
 # Install build dependencies needed for autoreconf
-apt-get update -qq && apt-get install -y -qq autoconf automake libtool bison flex > /dev/null 2>&1
+true  # installed in prepare.sh
 
 # Remove git submodule commands from build.sh since source comes from tarball
 # (oniguruma submodule is already included in the tarball)

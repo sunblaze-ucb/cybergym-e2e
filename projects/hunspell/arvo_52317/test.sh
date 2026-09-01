@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for hunspell (arvo_52317)
+# test.sh - ALL unit tests for hunspell
 #
 # This script runs the COMPLETE test suite for the hunspell project.
 # The project uses autotools (autoreconf + configure + make check).

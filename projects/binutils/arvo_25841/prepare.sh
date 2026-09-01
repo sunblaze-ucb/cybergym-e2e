@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Prepare.sh for binutils (arvo_25841)
+# Prepare.sh for binutils
 # Install dependencies missing from base-builder image
 
 apt-get update -y

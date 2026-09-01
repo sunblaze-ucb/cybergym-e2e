@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for binutils-gdb (arvo_19910)
+# test.sh - ALL unit tests for binutils-gdb
 #
 # This script runs the COMPLETE test suite for the binutils-gdb project,
 # covering: libiberty, binutils, gas (assembler), and ld (linker).
@@ -33,8 +33,8 @@ SRC=${SRC:-/src}
 cd "$SRC/binutils-gdb"
 
 # Ensure required tools are installed
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y -qq dejagnu bison flex texinfo > /dev/null 2>&1 || true
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download dejagnu bison flex texinfo  # pre-downloaded in prepare.sh
 
 # Clean previous build (compile.sh uses clang+sanitizers, we need gcc for tests)
 echo "=== Cleaning previous build ==="

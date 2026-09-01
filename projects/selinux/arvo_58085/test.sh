@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for selinux (arvo_36611)
+# test.sh - Unit tests for selinux
 #
 # This script runs all available tests for the selinux project.
 # The primary test mechanism uses the secilc-fuzzer binary to validate

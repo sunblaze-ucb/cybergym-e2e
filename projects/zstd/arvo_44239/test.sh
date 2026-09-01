@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for zstd (arvo_44239)
+# test.sh - Unit tests for zstd
 #
 # zstd has an extensive test suite that includes:
 #   - fullbench: Compression/decompression benchmarks

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libspectre (arvo_21638)
+# test.sh - ALL unit tests for libspectre
 #
 # This script runs the COMPLETE test suite for the libspectre project.
 # libspectre has 3 test programs (spectre-test, parser-test, fuzz-test)
@@ -25,8 +25,8 @@ cd /src/libspectre
 
 # Install required dependencies if not present
 if ! command -v pkg-config &>/dev/null || ! pkg-config --exists cairo 2>/dev/null; then
-    apt-get update -qq
-    apt-get install -y -qq pkg-config libcairo2-dev libgs-dev ghostscript autoconf automake libtool 2>&1 | tail -5
+    true  # apt lists fetched in prepare.sh
+    cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config libcairo2-dev libgs-dev ghostscript autoconf automake libtool  # pre-downloaded in prepare.sh
 fi
 
 # Build the project with tests enabled if not already built

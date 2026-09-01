@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for htslib (arvo_18196)
+# test.sh - ALL unit tests for htslib
 #
 # This runs the COMPLETE test suite for the htslib project.
 # After compile.sh builds the fuzzer with sanitizer flags, we need to do a

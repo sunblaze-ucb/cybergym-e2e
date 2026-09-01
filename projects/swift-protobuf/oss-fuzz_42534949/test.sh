@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for swift-protobuf (oss-fuzz_42534949)
+# test.sh - ALL unit tests for swift-protobuf
 #
 # This script runs the COMPLETE test suite for the swift-protobuf project.
 # Only tests that genuinely fail are excluded.

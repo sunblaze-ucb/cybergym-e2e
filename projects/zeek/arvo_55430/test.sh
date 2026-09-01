@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for zeek (arvo_55430)
+# test.sh - Unit tests for zeek
 #
 # This script runs ALL available fuzzer tests using their seed corpora.
 # The OSS-Fuzz build environment for zeek only contains fuzzer binaries,
@@ -66,7 +66,7 @@ test_fuzzer() {
 }
 
 echo "========================================"
-echo "Zeek Fuzzer Test Suite (arvo_55430)"
+echo "Zeek Fuzzer Test Suite"
 echo "========================================"
 echo ""
 

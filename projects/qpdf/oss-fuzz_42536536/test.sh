@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for qpdf (oss-fuzz_42535152)
+# test.sh - Unit tests for qpdf
 #
 # This script runs the available tests for the qpdf project in the OSS-Fuzz environment.
 #

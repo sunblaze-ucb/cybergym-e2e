@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for opensc (arvo_45552)
+# test.sh - ALL unit tests for opensc
 #
 # This script runs the COMPLETE test suite for the OpenSC project.
 #
@@ -29,8 +29,8 @@ set -e
 # Install CMOCKA if not already installed (needed for unit tests)
 if ! dpkg -s libcmocka-dev >/dev/null 2>&1; then
     echo "Installing libcmocka-dev..."
-    apt-get update -qq
-    apt-get install -y -qq libcmocka-dev
+    true  # apt lists fetched in prepare.sh
+    cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libcmocka-dev  # pre-downloaded in prepare.sh
 fi
 
 cd /src/opensc

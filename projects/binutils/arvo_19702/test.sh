@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for binutils-gdb (arvo_19702)
+# test.sh - ALL unit tests for binutils-gdb
 #
 # This runs the COMPLETE test suite for the binutils-gdb project,
 # covering libiberty, binutils, gas (assembler), and ld (linker).

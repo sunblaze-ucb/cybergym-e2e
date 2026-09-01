@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for librawspeed (arvo_3265)
+# test.sh - ALL unit tests for librawspeed
 #
 # This script builds and runs the COMPLETE test suite for librawspeed.
 # The project's build.sh uses -DBUILD_TESTING=OFF and deletes the build dir,
@@ -24,8 +24,8 @@
 set -e
 
 echo "=== Installing test dependencies ==="
-apt-get update -qq 2>/dev/null
-apt-get install -y -qq cmake 2>&1 | tail -1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download cmake  # pre-downloaded in prepare.sh
 
 # Create compiler wrappers that strip -Werror
 # (CMakeLists.txt forces -Werror via set_directory_properties COMPILE_OPTIONS)
@@ -60,8 +60,8 @@ cd /tmp/testbuild
   -DWITH_PUGIXML=OFF -DUSE_XMLLINT=OFF -DWITH_JPEG=OFF -DWITH_ZLIB=OFF \
   -DBUILD_TESTING=ON -DBUILD_TOOLS=OFF -DBUILD_BENCHMARKING=OFF \
   -DBUILD_FUZZERS=OFF \
-  -DALLOW_DOWNLOADING_GOOGLETEST=ON \
-  -DGOOGLETEST_PATH=/nonexistent \
+  -DALLOW_DOWNLOADING_GOOGLETEST=OFF \
+  -DGOOGLETEST_PATH=/deps/googletest \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   ${SRC:-/src}/librawspeed/
 

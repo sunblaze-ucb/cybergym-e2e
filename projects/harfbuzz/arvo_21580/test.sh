@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for harfbuzz (arvo_21580)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This script runs the COMPLETE test suite for the harfbuzz project
 # using the meson build system with gcc (no sanitizers).
@@ -33,8 +33,8 @@ SRC_DIR="${SRC:-/src}/harfbuzz"
 BUILD_DIR="${SRC_DIR}/build"
 
 echo "=== Installing test dependencies ==="
-apt-get update -qq
-apt-get install -y -qq pkg-config libglib2.0-dev libfreetype6-dev meson ninja-build > /dev/null 2>&1
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download pkg-config libglib2.0-dev libfreetype6-dev libfontconfig1-dev meson ninja-build  # pre-downloaded in prepare.sh
 
 echo "=== Configuring harfbuzz with meson ==="
 cd "${SRC_DIR}"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for fmt (arvo_25884)
+# test.sh - ALL unit tests for fmt
 #
 # Build image: gcr.io/oss-fuzz-base/base-builder@sha256:fba1033c6a64433642ab97b6ea987ddaa9938e06596c6cace1c786130fc1461b
 #

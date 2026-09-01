@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for gstreamer (arvo_54811)
+# test.sh - ALL unit tests for gstreamer
 #
 # This script runs the COMPLETE test suite for the gstreamer project,
 # built with meson (core + gst-plugins-base + dependency subprojects).
@@ -34,13 +34,10 @@ BUILD_DIR="/tmp/_testbuild"
 # If the test build doesn't exist yet, create it
 if [ ! -d "$BUILD_DIR" ]; then
     # Install test dependencies
-    apt-get update -qq
-    apt-get install -y -qq \
-        libglib2.0-dev check flex bison gettext \
-        libffi-dev zlib1g-dev libmount-dev libelf-dev \
-        libpcre3-dev python3-pip 2>/dev/null
+    true  # apt lists fetched in prepare.sh
+    cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libglib2.0-dev check flex bison gettext libffi-dev zlib1g-dev libmount-dev libelf-dev libpcre3-dev python3-pip  # pre-downloaded in prepare.sh
 
-    pip3 install meson==0.63.2 2>/dev/null || true
+    pip3 install --no-index --find-links=/deps/wheels meson==0.63.2  # pre-downloaded in prepare.sh
 
     cd /tmp
     CC=gcc CXX=g++ CFLAGS="" CXXFLAGS="" LDFLAGS="" \

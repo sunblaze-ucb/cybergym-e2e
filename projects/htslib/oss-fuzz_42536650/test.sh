@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for htslib (oss-fuzz_42536650)
+# test.sh - ALL unit tests for htslib
 #
 # This script runs the COMPLETE test suite for the htslib project,
 # excluding only tests that genuinely fail in this container.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libgit2 (arvo_11382)
+# test.sh - ALL unit tests for libgit2
 #
 # This script runs the COMPLETE test suite for the libgit2 project using
 # the clar test framework. Online, stress, and perf suites are excluded

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Test script for elfutils arvo_43307 (link_map.c overflow fix)
+# Test script for elfutils (link_map.c overflow fix)
 # Uses the fuzz-dwfl-core fuzzer to exercise the dwfl_core_file_report
 # code path which includes the vulnerable link_map.c:read_addrs function
 

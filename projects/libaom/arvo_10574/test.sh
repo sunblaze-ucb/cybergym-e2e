@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - Unit tests for libaom (arvo_10574)
+# test.sh - Unit tests for libaom
 #
 # This script builds libaom with tests enabled and runs the test suite.
 # Parameterized DSP/SIMD tests are excluded as they take hours to complete.

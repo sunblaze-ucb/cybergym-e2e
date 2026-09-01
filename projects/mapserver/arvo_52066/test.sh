@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for mapserver (arvo_52066)
+# test.sh - Unit tests for mapserver
 #
 # This script runs the MapServer msautotest suite after building MapServer
 # with the system GDAL library.
@@ -24,20 +24,8 @@
 set -e
 
 # Install build dependencies
-apt-get update -qq
-apt-get install -y -qq \
-    libgdal-dev \
-    gdal-bin \
-    libfreetype6-dev \
-    libfribidi-dev \
-    libharfbuzz-dev \
-    libcairo2-dev \
-    libfcgi-dev \
-    libgeos-dev \
-    libgif-dev \
-    libcurl4-openssl-dev \
-    python3-lxml \
-    2>/dev/null
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libgdal-dev gdal-bin libfreetype6-dev libfribidi-dev libharfbuzz-dev libcairo2-dev libfcgi-dev libgeos-dev libgif-dev libcurl4-openssl-dev python3-lxml  # pre-downloaded in prepare.sh
 
 # Build MapServer
 cd /src/MapServer
@@ -60,7 +48,7 @@ cmake .. \
 make -j$(nproc) >/dev/null 2>&1
 
 # Install pytest
-pip3 install pytest >/dev/null 2>&1
+pip3 install --no-index --find-links=/deps/wheels pytest  # pre-downloaded in prepare.sh
 
 # Add built binaries to PATH
 export PATH=/src/MapServer/build_test:$PATH

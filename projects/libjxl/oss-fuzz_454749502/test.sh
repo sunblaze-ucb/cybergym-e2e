@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libjxl (oss-fuzz_454749502)
+# test.sh - ALL unit tests for libjxl
 #
 # Build image: cybergym/e2e:libjxl
 #
@@ -30,7 +30,7 @@ for d in testdata third_party/googletest third_party/lcms third_party/sjpeg \
 done
 
 # Install libpng-dev needed by tests
-apt-get update -qq && apt-get install -y -qq libpng-dev zlib1g-dev > /dev/null 2>&1
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libpng-dev zlib1g-dev  # pre-downloaded in prepare.sh
 
 # Configure build for testing (not fuzzing)
 unset FUZZING_ENGINE SANITIZER

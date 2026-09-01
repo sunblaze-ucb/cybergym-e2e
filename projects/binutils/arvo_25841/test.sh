@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for binutils (arvo_25841)
+# test.sh - ALL unit tests for binutils
 #
 # This script runs the test suites for binutils-gdb project components.
 #

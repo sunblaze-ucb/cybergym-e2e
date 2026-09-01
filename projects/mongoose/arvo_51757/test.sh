@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for mongoose (arvo_51757)
+# test.sh - ALL unit tests for mongoose
 #
 # This script runs the COMPLETE test suite for the mongoose project.
 # Tests discovered:

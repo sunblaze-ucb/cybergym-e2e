@@ -2,8 +2,8 @@
 set -e
 
 # --- dependencies ---
-apt-get update -y
-apt-get install -y python3 libcmocka-dev pkg-config
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download python3 libcmocka-dev pkg-config  # pre-downloaded in prepare.sh
 
 # --- build Capstone and tests ---
 cd "$SRC/capstonenext"

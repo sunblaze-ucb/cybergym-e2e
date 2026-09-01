@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libavc (arvo_27856)
+# test.sh - ALL unit tests for libavc
 #
 # libavc does not have a traditional unit test suite (no make check, ctest, etc.).
 # It provides a decoder CLI (avcdec) and an encoder CLI (avcenc) as test applications.

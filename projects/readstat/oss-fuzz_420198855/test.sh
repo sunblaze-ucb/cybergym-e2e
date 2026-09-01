@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for readstat (oss-fuzz_420198855)
+# test.sh - ALL unit tests for readstat
 #
 # Build image: cybergym/e2e:readstat
 #

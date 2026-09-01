@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - Unit tests for binutils (arvo_18228)
+# test.sh - Unit tests for binutils
 #
 # This container is a minimal OSS-Fuzz build environment. The build is
 # intentionally partial (build.sh uses "make MAKEINFO=true && true" to

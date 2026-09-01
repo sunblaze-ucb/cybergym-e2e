@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for ghostscript (oss-fuzz_399390672)
+# test.sh - ALL unit tests for ghostscript
 #
 # Build image: cybergym/e2e:ghostscript
 #
@@ -87,7 +87,7 @@ echo "jbig2dec tests: PASSED"
 # 4. freetype tests (meson-based, 1 test)
 ######################################################################
 echo "=== Running freetype tests ==="
-pip3 install meson ninja > /dev/null 2>&1
+pip3 install --no-index --find-links=/deps/wheels meson ninja  # pre-downloaded in prepare.sh
 cd /src/ghostpdl/freetype
 rm -rf builddir 2>/dev/null || true
 meson setup builddir --default-library=static > /dev/null 2>&1

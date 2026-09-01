@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for libbpf (arvo_40769)
+# test.sh - ALL unit tests for libbpf
 #
 # Test Summary:
 # libbpf does not have traditional unit tests that can run without a VM.

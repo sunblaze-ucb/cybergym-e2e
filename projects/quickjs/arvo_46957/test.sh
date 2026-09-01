@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for quickjs (arvo_46957)
+# test.sh - ALL unit tests for quickjs
 #
 # This script runs the COMPLETE test suite for the quickjs project.
 # After compile.sh, the Makefile is modified with CFLAGS+= to pick up

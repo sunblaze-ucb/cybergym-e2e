@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for wt (oss-fuzz_370689421)
+# test.sh - ALL unit tests for wt
 #
 # This script runs the COMPLETE test suite for the wt project.
 # Only tests that genuinely fail are excluded.

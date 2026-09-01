@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for binutils-gdb (arvo_21300)
+# test.sh - ALL unit tests for binutils-gdb
 #
 # This script runs the full test suite for binutils-gdb project.
 # Tests use dejagnu (runtest) for gas, binutils, and ld subsystems,

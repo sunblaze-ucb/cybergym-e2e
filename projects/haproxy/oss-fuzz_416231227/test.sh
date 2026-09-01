@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for haproxy (oss-fuzz_416231227)
+# test.sh - ALL unit tests for haproxy
 #
 # Build image: cybergym/e2e:haproxy
 #

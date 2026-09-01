@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - Unit tests for faad2 (arvo_58452)
+# test.sh - Unit tests for faad2
 #
 # NOTE: faad2 does not have traditional unit tests defined in its build system.
 # The 'make check' target exists but has no tests defined ("Nothing to be done for 'check'").

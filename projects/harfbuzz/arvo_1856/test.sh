@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh - ALL unit tests for harfbuzz (arvo_1856)
+# test.sh - ALL unit tests for harfbuzz
 #
 # This script runs the COMPLETE test suite for the harfbuzz project.
 # The project uses autotools as its build system (autogen.sh + configure + make).
@@ -37,8 +37,8 @@
 set -e
 
 # Install test dependencies (glib, freetype needed for full test suite)
-apt-get update -qq 2>/dev/null
-apt-get install -y -qq libglib2.0-dev libfreetype6-dev 2>&1 | tail -2
+true  # apt lists fetched in prepare.sh
+cp -n /deps/debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true; apt-get install -y --no-download libglib2.0-dev libfreetype6-dev  # pre-downloaded in prepare.sh
 
 cd /src/harfbuzz
 

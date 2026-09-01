@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test.sh - ALL unit tests for elfutils (arvo_56179)
+# test.sh - ALL unit tests for elfutils
 #
 # This script runs the COMPLETE test suite for the elfutils project.
 # elfutils uses autotools build system.
