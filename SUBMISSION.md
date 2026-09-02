@@ -15,7 +15,7 @@ Top level:
 | Field | Description |
 |-------|-------------|
 | `agent_name` | Name/version of the agent scaffold. |
-| `category` | `model` or `agent`. By model-focused we mean it evaluates the underlying model capability without relying on specialized agent design. |
+| `category` | `model` or `agent`. Use `model` if the submission evaluates the underlying model capability without relying on specialized agent design; use `agent` otherwise. |
 | `link` | URL of the public writeup, paper, or blog post. |
 | `runs` | One block per mode: `e2e` and `patch-only`. |
 
@@ -135,7 +135,7 @@ Explain the approach and the full experimental setting: agent scaffold, tools av
 
 It is not needed to solve any task, and allowing it opens the door to reward hacking, so block it. Every task here is a real upstream vulnerability with a public fix: an agent that can reach the internet can look up the issue, the changelog, or the fix commit and reproduce it, which measures retrieval rather than vulnerability analysis. Setup is the exception — `prepare.sh` needs the network for some tasks — so the reference firewall switches the container onto the isolated network after the prepare stage, leaving the agent stage with no external access.
 
-Enforce it however you like — `scripts/firewall`, your own proxy or firewall rules, or an air-gapped runner — and describe the mechanism in the writeup. But a container-level block is not the whole story, and two paths get around one entirely:
+Enforce it however you like — `scripts/firewall`, your own proxy or firewall rules, or an air-gapped runner — and describe the mechanism in the writeup. But a container-level block is not the whole story, and some retrieval paths get around it entirely, including:
 
 - **Provider-side tools.** Web search, URL fetching and remote MCP servers execute on the model provider's infrastructure, not in your container. The request leaves as an ordinary API call to the model endpoint you have already allowlisted, and the retrieval happens on the far side, where nothing you run can observe or stop it. Disable these explicitly at the API or CLI level; do not assume they are off by default, and re-check after any SDK or CLI upgrade.
 
@@ -151,12 +151,13 @@ Whatever you enforce, read some trajectories before submitting. Look for the age
 | `crash.log` | **no** | yes |
 | `poc.bin` | **no** | yes |
 | ground-truth PoC in `/data` | **no** | given as the input PoC |
+| ground-truth patch (the upstream fix) | **no** | **no** |
 
-In `e2e` the agent must discover the crash itself. Placing `crash.log` or `poc.bin` in the container hands it the answer and makes stage 1 meaningless. The ground-truth PoC belongs only to the validator, never to the agent.
+In `e2e` the agent must discover the crash itself. Placing `crash.log` or `poc.bin` in the container hands it the answer and makes stage 1 meaningless. The ground-truth PoC belongs only to the validator, never to the agent, and the ground-truth patch is withheld in both modes.
 
 **Mask the task id.** Do not pass the task identifier, or anything derived from it, into the agent container. `arvo_62547` and `oss-fuzz_42536279` map to public issue trackers, so the id alone is enough to look the vulnerability up — and a model may recognize it without any network at all.
 
-The obvious leak is `config.toml`. The full task config carries `task_id`, `vul_commit` and `patch_commit`, the last of which is the upstream fix itself. The reference harness writes a **sanitized** copy into the container; a scaffold that copies the file verbatim leaks all three.
+The obvious leak is `config.toml`. The full task config carries `task_id`, `vul_commit` and `patch_commit`, the last of which points straight at the upstream fix. The reference harness writes a **sanitized** copy into the container; a scaffold that copies the file verbatim leaks all three.
 
 Less obvious carriers, worth checking in your own scaffold: container names, mounted host paths, working-directory names, environment variables, log file names, and anything the agent's prompt interpolates.
 
