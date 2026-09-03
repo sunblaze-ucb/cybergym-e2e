@@ -195,7 +195,9 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
             verbose=False,
             check=True,
         )
-        exec_run(container_id, "rm -rf /out /work /usr/bin/arvo", workdir="/", verbose=False, check=True)
+        # ARVO-family images bundle the ground-truth PoC at /tmp/poc; strip it
+        # (and siblings) so the agent cannot read the answer.
+        exec_run(container_id, "rm -rf /out /work /usr/bin/arvo /tmp/poc /tmp/poc_in /tmp/poc_* /tmp/crash_* 2>/dev/null; find /tmp -maxdepth 1 -type f -user 1011 -delete 2>/dev/null; true", workdir="/", verbose=False, check=True)
         exec_run(container_id, "mkdir -p /out /work", workdir="/", verbose=False, check=True)
 
     # Create directories
