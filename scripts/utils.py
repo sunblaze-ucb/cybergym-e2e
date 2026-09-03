@@ -196,6 +196,7 @@ def setup_workspace(container_id, data_path, script_path, mode="e2e", copy_gt_po
             check=True,
         )
         exec_run(container_id, "rm -rf /out /work /usr/bin/arvo", workdir="/", verbose=False, check=True)
+        exec_run(container_id, "find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} +", workdir="/", verbose=False, check=True)
         exec_run(container_id, "mkdir -p /out /work", workdir="/", verbose=False, check=True)
 
     # Create directories

@@ -162,3 +162,5 @@ The obvious leak is `config.toml`. The full task config carries `task_id`, `vul_
 Less obvious carriers, worth checking in your own scaffold: container names, mounted host paths, working-directory names, environment variables, log file names, and anything the agent's prompt interpolates.
 
 **Remove leakage sources from the container.** Before the agent starts, look at what is actually in the container rather than only what you meant to put there, and strip anything that points at the answer — notably `/src/<repo_to_patch>/.git`, whose history can contain extra information, and in `e2e` any reference `poc.bin` or `crash.log` left behind.
+
+Some task images carry it too, not just the files your scaffold copies in: the `n132/arvo:*-fix` and `cybergym/oss-fuzz:*-fix` images ship a prebuilt `/src` and `/out` along with the ground-truth PoC at `/tmp/poc`. Clean those as well — see [`scripts/utils.py:190-200`](scripts/utils.py#L190-L200).
