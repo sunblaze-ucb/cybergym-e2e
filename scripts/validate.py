@@ -207,7 +207,7 @@ def validate_task(
                 result = subprocess.run("sudo -E bash -eux /src/run_poc.sh", shell=True, cwd=src_dir, capture_output=True, encoding='utf-8', errors='replace', timeout=1200)
                 poc_output = f"Exit code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
-                if result.returncode == 0:
+                if result.returncode in {0, 71}:
                     log("  FAILED: Agent PoC did NOT crash")
                     log(poc_output)
                     results["stage1"]["status"] = "failed"
