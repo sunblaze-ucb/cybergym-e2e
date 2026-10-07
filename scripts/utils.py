@@ -87,7 +87,7 @@ def copy_to_container(container_id, src_path, dst_path, file_list=None):
             raise Exception(f"Failed to copy {src_path}: {result.stderr}")
 
 
-def start_container(image, env_vars=None, container_name=None, workdir=None, network=None):
+def start_container(image, env_vars=None, container_name=None, workdir=None, network=None, security_opts=None):
     """Start a Docker container and return its ID.
 
     Args:
@@ -97,6 +97,8 @@ def start_container(image, env_vars=None, container_name=None, workdir=None, net
         workdir: Working directory in container (optional)
         network: Docker network to attach to (optional). Used by the firewall to
             start the container on an isolated network with no internet route.
+        security_opts: Optional list of Docker --security-opt values. MSan tasks need
+            seccomp=unconfined because sanitizer startup calls personality().
 
     Returns:
         Container ID
@@ -108,6 +110,10 @@ def start_container(image, env_vars=None, container_name=None, workdir=None, net
 
     if network:
         cmd.extend(["--network", network])
+
+    if security_opts:
+        for security_opt in security_opts:
+            cmd.extend(["--security-opt", security_opt])
 
     if env_vars:
         for key, value in env_vars.items():
