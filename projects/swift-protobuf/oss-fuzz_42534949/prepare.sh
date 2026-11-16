@@ -7,9 +7,7 @@ mkdir -p /deps/git
 mkdir -p $(dirname /deps/git/github.com/apple/swift-docc-plugin)
 ( git clone --mirror https://github.com/apple/swift-docc-plugin.git /deps/git/github.com/apple/swift-docc-plugin 2>/dev/null || git clone --mirror https://github.com/apple/swift-docc-plugin /deps/git/github.com/apple/swift-docc-plugin ) || echo 'WARN: mirror failed https://github.com/apple/swift-docc-plugin'
 [ -d /deps/git/github.com/apple/swift-docc-plugin ] && ln -sfn /deps/git/github.com/apple/swift-docc-plugin /deps/git/github.com/apple/swift-docc-plugin.git || true
-mkdir -p $(dirname /deps/git/github.com/apple/swift-protobuf)
-( git clone --mirror https://github.com/apple/swift-protobuf.git /deps/git/github.com/apple/swift-protobuf 2>/dev/null || git clone --mirror https://github.com/apple/swift-protobuf /deps/git/github.com/apple/swift-protobuf ) || echo 'WARN: mirror failed https://github.com/apple/swift-protobuf'
-[ -d /deps/git/github.com/apple/swift-protobuf ] && ln -sfn /deps/git/github.com/apple/swift-protobuf /deps/git/github.com/apple/swift-protobuf.git || true
+# swift-protobuf itself is not mirrored: its upstream history contains the fix.
 # swift-docc-plugin pulls swift-docc-symbolkit transitively. The insteadOf
 # rewrite below is host-wide, so any github repo SwiftPM resolves must be
 # mirrored here or the clone fails -- with or without network.
