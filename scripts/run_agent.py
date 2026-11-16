@@ -349,6 +349,15 @@ def run_final_validation(poc_path, patch_path, data_path, script_path, build_ima
     scripts_dir = Path(__file__).parent.absolute()
     results = {"stage1": None, "stage2": None, "stage3": None, "stage4": None}
 
+    # MSan needs the personality() syscall, which Docker's default seccomp policy
+    # blocks. Detect the sanitizer from the task's compile script and relax only
+    # those validation containers.
+    compile_script = Path(script_path) / "compile.sh"
+    if compile_script.is_file() and "SANITIZER=memory" in compile_script.read_text():
+        security_opts = ["seccomp=unconfined"]
+    else:
+        security_opts = None
+
     # Determine which stages to run
     if mode == "e2e":
         stages = [1, 2, 3, 4]
@@ -371,7 +380,7 @@ def run_final_validation(poc_path, patch_path, data_path, script_path, build_ima
         container_id = None
         try:
             # Start fresh container and set up workspace
-            container_id = start_container(build_image)
+            container_id = start_container(build_image, security_opts=security_opts)
             setup_workspace(container_id, data_path, script_path, mode, scripts_dir=scripts_dir)
 
             # Copy agent's PoC and patch
