@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
 # Prepare.sh for c-blosc2
-# Install LLVM/Clang 14 because clang 22's MSan doesn't detect the
-# use-of-uninitialized-value bug in Lizard_decompress_LIZv1.
-# Clang 14 properly catches this MSan issue.
+# Install LLVM/Clang 14: the default clang in this image does not reproduce
+# the PoC under MSan.
 
 set -eu
 

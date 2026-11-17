@@ -13,9 +13,8 @@
 #   - subs_test: 1 test (all pass)
 #
 # Excluded tests (with reasons):
-#   - persist_read_test: Skipped entirely because "v6 client message+props" test
-#     fails due to a bug in the vulnerable code (asserts context->msgs_out.inflight
-#     is not NULL but it is NULL)
+#   - persist_read_test: Skipped entirely because the "v6 client message+props"
+#     test fails on this snapshot
 #   - persist_write_test: Skipped entirely because "v6 client message+props" test
 #     fails due to file comparison mismatch with expected database file
 #
@@ -74,7 +73,7 @@ echo "Running subs_test..."
 ./subs_test
 
 # Note: persist_read_test and persist_write_test are excluded because they have
-# failing tests ("v6 client message+props") that are caused by the vulnerable code
+# failing tests ("v6 client message+props") on this snapshot
 
 echo "All tests passed!"
 exit 0

@@ -9,8 +9,7 @@
 #   - online::* (6 suites): Requires network access
 #   - stress::* (1 suite): Stress test
 #   - perf::* (1 suite): Performance test
-#   - refs::revparse: "date" test fails with "Function call succeeded: error / no error,
-#     expected non-zero return" - related to vulnerable strntol code
+#   - refs::revparse: "date" test fails on this snapshot
 #   - diff::diffiter: File count mismatches (off-by-1) in workdir iteration tests
 #   - diff::notify: Notification count mismatches in workdir diff tests
 #   - diff::workdir: Multiple workdir diff tests fail with count mismatches

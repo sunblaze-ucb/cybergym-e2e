@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# Test script for elfutils (link_map.c overflow fix)
-# Uses the fuzz-dwfl-core fuzzer to exercise the dwfl_core_file_report
-# code path which includes the vulnerable link_map.c:read_addrs function
+# Test script for elfutils
+# Uses the fuzz-dwfl-core fuzzer
 
 set -e
 
@@ -47,7 +46,7 @@ for f in linkmap-cut.core.bz2 test-core.core.bz2 backtrace.i386.core.bz2 backtra
     fi
 done
 
-# Run tests with various core files that exercise link_map.c
+# Run tests with various core files
 echo ""
 echo "--- Testing core file processing (link_map.c code paths) ---"
 run_test "$TEST_DIR/linkmap-cut.core" "linkmap-cut.core"

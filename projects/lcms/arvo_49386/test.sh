@@ -8,8 +8,7 @@ echo "=== Running tests for lcms ==="
 # Create a temporary log file
 LOG_FILE=$(mktemp /tmp/lcms_test_log.XXXXXX)
 
-# Patch the test to handle the stricter validation in the patched version
-# The patch rejects profiles with no tags, but the test creates placeholder profiles
+# Adjust testcms2.c when the condition below holds
 if grep -q "Corrupted profile: no tags found" src/cmsio0.c 2>/dev/null; then
     echo "Patching test for stricter validation..."
     

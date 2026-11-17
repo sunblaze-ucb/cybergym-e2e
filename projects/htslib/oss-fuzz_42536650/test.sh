@@ -9,9 +9,7 @@
 #     Precompressed reference data doesn't match current codec output.
 #     Round-trip encoding/decoding works, but comparison against stored
 #     reference compressed files fails. Only varint passes.
-#   - test_view (in test.pl): CRAM slice decode failures on large_seq,
-#     large_aux, large_aux_java, and xx#u test cases (6 test groups fail).
-#     These are CRAM encoder/decoder issues in the vulnerable version.
+#   - test_view (in test.pl): 6 test groups fail on this snapshot.
 #
 # Total test.pl tests: 323 (238 included, 85 excluded via test_view skip)
 # Standalone tests: 16 (all pass)
@@ -95,8 +93,7 @@ make test_htscodecs_varint
 echo "PASS: htscodecs varint"
 
 echo "=== Running test.pl (excluding test_view) ==="
-# test_view excluded: CRAM decode failures on large_seq, large_aux,
-# large_aux_java, and xx#u test files (vulnerable code version issue)
+# test_view excluded (fails on this snapshot)
 cd test && REF_PATH=: perl ./test.pl -F test_bgzip,test_index,test_multi_ref,test_MD,test_vcf_api,test_bcf2vcf,test_vcf_sweep,test_vcf_various,test_bcf_sr_sort,test_bcf_sr_no_index,test_bcf_sr_range,test_command,test_convert_padded_header,test_rebgzip,test_logging,test_plugin_loading,test_realn,test_bcf_set_variant_type,test_annot_tsv && cd /src/htslib
 echo "PASS: test.pl (238 tests)"
 

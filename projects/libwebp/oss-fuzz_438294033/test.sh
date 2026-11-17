@@ -19,9 +19,8 @@
 #   Total suites: 4 | Included: 4 | Excluded: 0
 #
 # Excluded individual tests (with reasons):
-#   - PGM format in test_dwebp.sh and test_lossless.sh: The vulnerable source
-#     code produces incorrect YUV (PGM) output for lossless webp files,
-#     causing MD5 mismatch vs reference checksums. BMP/PAM/PPM/TIFF all pass.
+#   - PGM format in test_dwebp.sh and test_lossless.sh: MD5 mismatch vs
+#     reference checksums on this snapshot. BMP/PAM/PPM/TIFF all pass.
 #   - test_cwebp.sh with TIFF inputs: TIFF support disabled when statically
 #     linking (cmake config). Only PNG and PPM inputs are used.
 #
@@ -65,8 +64,7 @@ echo "All FuzzTest/GTest unit tests passed."
 
 ###############################################################################
 # 2. dwebp decoding validation tests (MD5 checksums)
-#    Excluding PGM format: vulnerable source produces wrong YUV output for
-#    lossless files, causing MD5 mismatch.
+#    Excluding PGM format (MD5 mismatch on this snapshot).
 ###############################################################################
 echo ""
 echo "=== Suite 2: dwebp decode verification (MD5 checksums) ==="

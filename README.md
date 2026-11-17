@@ -25,11 +25,16 @@ Install Python dependencies:
 pip install tomli tomli_w anthropic openai boto3 httpx huggingface_hub docker
 ```
 
-Download the benchmark data from HuggingFace:
+Download the benchmark data from HuggingFace, pinned to the current dataset revision:
 ```bash
 export HF_TOKEN=...
-hf download sunblaze-ucb/cybergym-e2e --repo-type dataset --local-dir data/
+hf download sunblaze-ucb/cybergym-e2e --repo-type dataset --revision 29a59f0876f5c3612e44f380aa297ab4faf4b847 --local-dir data/
 ```
+
+> **Dataset updated 2026-11-16.** We repacked the task archives to clean the leak reported in
+> [#5](https://github.com/sunblaze-ucb/cybergym-e2e/issues/5), along with some other potential leaks.
+> The tasks themselves are unchanged. If you downloaded `data/` before this update, delete it and
+> download again with the command above.
 
 Download the Docker images:
 ```bash

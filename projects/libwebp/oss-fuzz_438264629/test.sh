@@ -10,10 +10,10 @@
 #   Total: 15 test suites
 #   Included: 8 fuzztest/gtest suites (12 individual gtest cases)
 #   Excluded: 7
-#     - test_dwebp.sh: lossless1.webp.pgm MD5 mismatch due to vulnerable code
-#       (exit code 1); cannot exclude individual sub-tests from this script
-#     - test_lossless.sh: lossless vector pgm comparisons fail due to vulnerable
-#       code (binary diff in char 270); cannot exclude individual sub-tests
+#     - test_dwebp.sh: MD5 mismatch on this snapshot (exit code 1); cannot
+#       exclude individual sub-tests from this script
+#     - test_lossless.sh: pgm comparisons fail on this snapshot; cannot exclude
+#       individual sub-tests
 #     - test_cwebp.sh: MSan false positive on PNG reading (use-of-uninitialized-value
 #       in pngdec.c:302) because the build uses -fsanitize=memory
 #     - animdecoder_fuzzer: Segfaults on --list_fuzz_tests / --gtest_list_tests

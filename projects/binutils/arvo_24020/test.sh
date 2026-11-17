@@ -5,8 +5,7 @@
 # Tests cover: binutils, gas (assembler), ld (linker), and libiberty.
 #
 # Excluded tests (with reasons):
-#   - readelf --enable-checks --sections --wide zero-sec: Fails in vulnerable
-#     version due to readelf bug (known issue in this commit)
+#   - readelf --enable-checks --sections --wide zero-sec: fails on this snapshot
 #
 # Test summary:
 #   binutils:  273 expected passes, 1 excluded, 2 unsupported
@@ -49,7 +48,7 @@ make -C gas check 2>&1 || true
 make -C ld check 2>&1 || true
 make -C libiberty check 2>&1 || true
 
-# Known failing tests to exclude (these fail in the vulnerable version)
+# Known failing tests to exclude (they fail on this snapshot)
 KNOWN_FAILS="readelf --enable-checks --sections --wide zero-sec"
 
 # Check for unexpected failures in .sum files

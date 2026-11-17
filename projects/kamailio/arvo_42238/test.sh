@@ -19,11 +19,8 @@
 #   URI tests: 6 | Passing: 6
 #
 # Excluded tests (with reasons):
-#   - ms-invite-00-rpl.sip: Triggers heap-buffer-overflow in parse_via (ASAN error)
-#   - no_eom_reply.sip: Triggers heap-buffer-overflow in parse_via (ASAN error)
-#   - register.sip: Triggers ASAN error after recompilation
-#   - unregister.sip: Triggers ASAN error after recompilation
-#   These files trigger memory safety bugs that are detected by ASAN in the vulnerable code.
+#   - ms-invite-00-rpl.sip, no_eom_reply.sip, register.sip, unregister.sip:
+#     fail under ASAN on this snapshot.
 #
 # Exit codes:
 #   0 - All included tests passed
@@ -56,7 +53,7 @@ TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# List of SIP files to exclude (trigger ASAN errors in vulnerable code)
+# List of SIP files to exclude (fail under ASAN on this snapshot)
 EXCLUDED_FILES="ms-invite-00-rpl.sip no_eom_reply.sip register.sip unregister.sip"
 
 is_excluded() {

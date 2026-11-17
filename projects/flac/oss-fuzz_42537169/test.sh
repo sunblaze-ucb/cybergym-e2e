@@ -2,8 +2,6 @@
 set -e
 
 # Test script for flac
-# This vulnerability was a use-of-uninitialized-value in decode.c when
-# format/subformat handling was inconsistent with --force-*-wave-format options
 
 SRC=${SRC:-/src}
 TESTDIR=$(mktemp -d /tmp/flac_test.XXXXXX)

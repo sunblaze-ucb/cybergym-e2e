@@ -30,7 +30,7 @@ TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# List of SIP files to exclude (trigger ASAN errors in vulnerable code)
+# List of SIP files to exclude (fail under ASAN on this snapshot)
 EXCLUDED_FILES="ms-invite-00-rpl.sip no_eom_reply.sip register.sip unregister.sip"
 
 is_excluded() {

@@ -21,18 +21,8 @@
 #   - clusterfuzz-testcase-minimized-parse_fuzz_test-6147478969253888 (265KB)
 #   - clusterfuzz-testcase-minimized-parse_fuzz_test-6662101589426176 (492KB)
 #
-# Skipped test cases (require network):
-#   - clusterfuzz-testcase-minimized-parse_fuzz_test-5685636882890752  (install'')
-#   - clusterfuzz-testcase-minimized-parse_fuzz_test-6186839351623680  (install'')
-#   - clusterfuzz-testcase-minimized-parse_fuzz_test-5455194230226944  (install'.')
-#     Each input is an SQL INSTALL statement, so DuckDB tries to fetch an
-#     extension from the extension repository. DuckDB's HTTP client does not
-#     honour http_proxy, so it attempts a direct connection and fails with no
-#     trace in the proxy log.
-#     NOTE: the last two do not exist in the unpatched tree -- patch.diff adds
-#     them as regression cases alongside its fix, so they only appear in stage 3
-#     (tests run WITH the patch applied). A scan of the shipped source will not
-#     show them.
+# Skipped test cases: the inputs in NETWORK_CASES below need network access,
+# which the test environment does not have.
 #
 # Exit codes:
 #   0 - All tests passed

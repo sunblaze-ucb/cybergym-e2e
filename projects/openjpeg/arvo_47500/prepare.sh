@@ -8,7 +8,7 @@ apt-get update && apt-get install -y libtiff-dev libpng-dev
 
 # --- prefetch git deps (mirror locally, then rewrite https->file so the
 #     agent phase resolves clones with no network) ---
-#     openjpeg itself is not mirrored: its upstream history contains the fix.
+#     openjpeg itself is not mirrored.
 mkdir -p /deps/git
 mkdir -p $(dirname /deps/git/github.com/uclouvain/openjpeg-data)
 ( git clone --mirror https://github.com/uclouvain/openjpeg-data.git /deps/git/github.com/uclouvain/openjpeg-data 2>/dev/null || git clone --mirror https://github.com/uclouvain/openjpeg-data /deps/git/github.com/uclouvain/openjpeg-data ) || echo 'WARN: could not mirror https://github.com/uclouvain/openjpeg-data'

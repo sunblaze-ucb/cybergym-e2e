@@ -10,8 +10,7 @@ export SANITIZER=memory
 export ARCHITECTURE=x86_64
 export FUZZING_LANGUAGE=c++
 
-# Use clang-14 because clang-22's MSan doesn't detect this particular
-# use-of-uninitialized-value bug in Lizard decompressor
+# Use clang-14 (see prepare.sh).
 LLVM14_DIR="/opt/llvm14"
 export CC="$LLVM14_DIR/bin/clang"
 export CCC="$LLVM14_DIR/bin/clang++"

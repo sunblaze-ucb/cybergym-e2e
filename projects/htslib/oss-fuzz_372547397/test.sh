@@ -5,10 +5,8 @@
 # rebuilding with gcc (not fuzzer-instrumented) and running all tests.
 #
 # Excluded tests (with reasons):
-#   - test_view (in test.pl): Fails due to IUPAC base encoding issue in xx#u.sam
-#     tests. The vulnerable code changes 'U' to 'N' in base sequences, causing
-#     6 sub-test failures (3 per thread count: 0 and 4 threads). This is a known
-#     bug in the vulnerable version. 2 test.pl test functions excluded.
+#   - test_view (in test.pl): 6 sub-test failures on this snapshot (3 per
+#     thread count: 0 and 4 threads). 2 test.pl test functions excluded.
 #
 # Total test.pl functions: 25 (including duplicates for thread counts)
 # Included test.pl functions: 23

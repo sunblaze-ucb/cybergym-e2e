@@ -17,7 +17,7 @@ mkdir -p $(dirname /deps/git/github.com/google/googletest)
 mkdir -p $(dirname /deps/git/github.com/litespeedtech/lsquic)
 ( git clone --mirror https://github.com/litespeedtech/lsquic.git /deps/git/github.com/litespeedtech/lsquic 2>/dev/null || git clone --mirror https://github.com/litespeedtech/lsquic /deps/git/github.com/litespeedtech/lsquic ) || echo 'WARN: could not mirror https://github.com/litespeedtech/lsquic'
 [ -d /deps/git/github.com/litespeedtech/lsquic ] && ln -sfn /deps/git/github.com/litespeedtech/lsquic /deps/git/github.com/litespeedtech/lsquic.git || true
-# uWebSockets itself is not mirrored: its upstream history contains the fix.
+# uWebSockets itself is not mirrored.
 mkdir -p $(dirname /deps/git/github.com/uNetworking/uSockets)
 ( git clone --mirror https://github.com/uNetworking/uSockets.git /deps/git/github.com/uNetworking/uSockets 2>/dev/null || git clone --mirror https://github.com/uNetworking/uSockets /deps/git/github.com/uNetworking/uSockets ) || echo 'WARN: could not mirror https://github.com/uNetworking/uSockets'
 [ -d /deps/git/github.com/uNetworking/uSockets ] && ln -sfn /deps/git/github.com/uNetworking/uSockets /deps/git/github.com/uNetworking/uSockets.git || true

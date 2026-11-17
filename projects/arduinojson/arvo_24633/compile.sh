@@ -7,9 +7,7 @@ export UBSAN_OPTIONS=print_stacktrace=1:print_summary=1:silence_unsigned_overflo
 export FUZZER_ARGS="-rss_limit_mb=2560 -timeout=25"
 export AFL_FUZZER_ARGS="-m none"
 export FUZZING_ENGINE=libfuzzer
-# Choose sanitizer based on whether the patch has been applied:
-# - Vulnerable (no Codepoint() ctor in Utf16.hpp) -> use MemorySanitizer to reproduce UMR crash
-# - Patched (Codepoint() ctor present) -> use AddressSanitizer for stable runs
+# Choose the sanitizer for this build.
 if grep -q "Codepoint()\s*:\s*_highSurrogate(0)" "$SRC/arduinojson/src/ArduinoJson/Json/Utf16.hpp" 2>/dev/null; then
 	export SANITIZER=address
 else

@@ -42,7 +42,8 @@ import tomli
 # validate.py is called inside container via exec_run, not imported directly
 from utils import (
     copy_to_container, litellm_delete_api_key, litellm_generate_api_key, litellm_get_api_key_usage, start_container, cleanup_container, exec_run,
-    setup_workspace, switch_network, get_llm_env, call_llm, get_poc_hex_dump, get_aws_credentials
+    setup_workspace, switch_network, get_llm_env, call_llm, get_poc_hex_dump, get_aws_credentials,
+    check_src_tgz
 )
 
 # Default timeout in seconds (90 minutes)
@@ -348,6 +349,9 @@ def run_final_validation(poc_path, patch_path, data_path, script_path, build_ima
     """
     scripts_dir = Path(__file__).parent.absolute()
     results = {"stage1": None, "stage2": None, "stage3": None, "stage4": None}
+
+    # Stop before any container starts if src.tgz is from an old dataset revision.
+    check_src_tgz(Path(data_path) / "src.tgz")
 
     # Determine which stages to run
     if mode == "e2e":
@@ -1123,6 +1127,13 @@ Examples:
     if args.agent == "openhands" and args.prompt_style == "iterative":
         print("WARNING: Using iterative prompt with OpenHands. Agent will try to test but may fail.")
         print("         Consider using --prompt-style no-test for OpenHands.")
+
+    # Stop before anything starts (output dirs, API keys, containers) if the task's
+    # src.tgz is from an old dataset revision.
+    try:
+        check_src_tgz(Path(args.data_dir) / args.task_path / "src.tgz")
+    except RuntimeError as e:
+        sys.exit(f"ERROR: {e}")
 
     # Setup output directories
     task_name = args.task_path.replace("/", "_")

@@ -7,8 +7,7 @@
 #   Total: 11 | Included: 10 | Excluded: 1
 #
 # Excluded tests (with reasons):
-#   - regexp_test: Fails to compile due to incompatible pointer types error
-#     in libregexp.c:3430 (vulnerable code version). Cannot build binary.
+#   - regexp_test: fails to compile on this snapshot.
 #
 # Included tests (the full `make test` suite):
 #   1. test_closure.js

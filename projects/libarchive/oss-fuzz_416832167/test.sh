@@ -7,17 +7,17 @@
 #   Total: 855 | Included: 838 | Excluded: 17
 #
 # Excluded tests (with reasons):
-#   - libarchive_test_compat_zip_4: Fails due to known bug in vulnerable version
+#   - libarchive_test_compat_zip_4: fails on this snapshot
 #   - libarchive_test_read_format_cpio_bin*: cpio binary format read failures (8 tests)
 #   - libarchive_test_read_pax_truncated: Fails on truncated pax archive handling
-#   - bsdcpio_test_basic: bsdcpio test failure in vulnerable version
+#   - bsdcpio_test_basic: bsdcpio test failure
 #   - bsdcpio_test_option_0: bsdcpio option test failure
 #   - bsdcpio_test_option_L_upper: bsdcpio option test failure
 #   - bsdcpio_test_option_d: bsdcpio option test failure
 #   - bsdcpio_test_option_f: bsdcpio option test failure
 #   - bsdcpio_test_option_m: bsdcpio option test failure
 #   - bsdcpio_test_option_t: bsdcpio option test failure
-#   - bsdtar_test_list_item: bsdtar list item test failure in vulnerable version
+#   - bsdtar_test_list_item: bsdtar list item test failure
 #
 # Exit codes:
 #   0 - All included tests passed

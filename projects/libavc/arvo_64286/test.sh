@@ -9,10 +9,9 @@
 # Test Statistics:
 #   Total decoder test files: 628
 #   Included: 620
-#   Excluded: 8 (fail in vulnerable version)
+#   Excluded: 8 (fail on this snapshot)
 #
-# Excluded test files (with reasons - these fail due to malformed input or
-# vulnerabilities in the pre-patch code):
+# Excluded test files (with reasons):
 #   - 065aa611187ec6933b2ae198efe9276014b0b35a: Decoder returns non-zero
 #   - 0bed19c04757f88f73db67e2e1142efa6a409bbd: Decoder returns non-zero
 #   - 49300bd16ff6395bf77e01acfc257a29a90c8022: Decoder returns non-zero
@@ -35,7 +34,7 @@ TEST_DATA_DIR="/tmp/libavc_test_data"
 TEST_OUTPUT_DIR="/tmp/libavc_test_output"
 CORPUS_ZIP="${SRC_DIR}/avc_dec_fuzzer_seed_corpus.zip"
 
-# List of excluded files (known to fail in vulnerable version)
+# List of excluded files (known to fail on this snapshot)
 EXCLUDED_FILES=(
     "065aa611187ec6933b2ae198efe9276014b0b35a"
     "0bed19c04757f88f73db67e2e1142efa6a409bbd"

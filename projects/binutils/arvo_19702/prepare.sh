@@ -4,10 +4,8 @@
 apt-get update -qq
 apt-get install -y -qq bison flex dejagnu texinfo
 
-# Install clang-10 to match the original arvo build environment.
-# clang-22 (the default in this base-builder image) does not emit
-# UBSan array-bounds instrumentation for this particular OOB pattern
-# in crx-dis.c, so the PoC fails to trigger. clang-10 correctly detects it.
+# Install clang-10 to match the original arvo build environment; the default
+# clang in this base-builder image does not reproduce the PoC.
 apt-get install -y -qq clang-10 llvm-10 libc++-10-dev libc++abi-10-dev
 
 # Replace the system clang/clang++ with clang-10

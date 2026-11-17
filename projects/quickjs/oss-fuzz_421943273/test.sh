@@ -19,10 +19,7 @@
 #  10. test_point.js (requires point.so shared lib)
 #
 # Excluded tests (with reasons):
-#   - regexp_test: Fails to build due to dependency file path error
-#     (.obj/regexp_test.d: No such file or directory) and incompatible
-#     pointer type warnings/errors in the vulnerable code. Cannot fix
-#     source code per project rules.
+#   - regexp_test: fails to build on this snapshot.
 #
 # Exit codes:
 #   0 - All included tests passed

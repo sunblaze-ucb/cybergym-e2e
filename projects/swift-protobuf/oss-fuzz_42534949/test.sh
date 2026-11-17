@@ -6,9 +6,7 @@
 #
 # Excluded tests (with reasons):
 #   - SwiftProtobufTests.Test_TextFormatDecodingOptions/testIgnoreUnknown_Integer:
-#     Fails due to a bug in handling negative hex/octal numbers in text format parsing.
-#     The test expects parsing to succeed for inputs like "-0x12" but receives malformedNumber error.
-#     This is the vulnerability being tested (OSS-Fuzz issue 42534949).
+#     fails on this snapshot.
 #
 # Total tests: 918
 # Included: 917

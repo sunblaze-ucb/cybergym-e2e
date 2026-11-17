@@ -8,6 +8,8 @@ A submission covers **both evaluation modes**: run the benchmark once in `e2e` a
 
 **One attempt per task.** We only accept `max_attempts = 1` at this time.
 
+**Dataset update.** Please check the dataset update in the [README](README.md#setup) and run on the dataset revision pinned there.
+
 ### Schema
 
 Top level:

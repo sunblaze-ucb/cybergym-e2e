@@ -13,6 +13,24 @@ import httpx
 import tomli
 import tomli_w
 
+from audit_src_tgz import audit as audit_archive
+
+
+def check_src_tgz(path):
+    """Raise if a task's src.tgz fails the tar metadata audit (scripts/audit_src_tgz.py).
+
+    Archives from dataset revisions before 2026-11-16 keep per-file timestamps, owners
+    and modes that point at the vulnerable files, so they must not reach an agent.
+    """
+    _, _, kinds, _, err = audit_archive(str(path))
+    if err or kinds:
+        detail = err or ", ".join(f"{k}: {n} members" for k, n in sorted(kinds.items()))
+        raise RuntimeError(
+            f"{path} failed the src.tgz metadata audit ({detail}). It is probably from an "
+            "old dataset revision: download the data again with the pinned `hf download "
+            "--revision ...` command in README.md."
+        )
+
 
 def get_poc_hex_dump(poc_file, max_bytes=200):
     """Get hex dump of PoC file for feedback."""

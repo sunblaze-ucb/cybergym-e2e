@@ -76,8 +76,7 @@ make test_htscodecs_varint
 echo "PASS: htscodecs varint"
 
 echo "=== Running test.pl (excluding test_view) ==="
-# test_view excluded: CRAM decode failures on large_seq, large_aux,
-# large_aux_java, and xx#u test files (vulnerable code version issue)
+# test_view excluded (fails on this snapshot)
 cd test && REF_PATH=: perl ./test.pl -F test_bgzip,test_index,test_multi_ref,test_MD,test_vcf_api,test_bcf2vcf,test_vcf_sweep,test_vcf_various,test_bcf_sr_sort,test_bcf_sr_no_index,test_bcf_sr_range,test_command,test_convert_padded_header,test_rebgzip,test_logging,test_plugin_loading,test_realn,test_bcf_set_variant_type,test_annot_tsv && cd /src/htslib
 echo "PASS: test.pl (238 tests)"
 
