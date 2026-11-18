@@ -8,21 +8,13 @@ echo "=== Running tests for lcms ==="
 # Create a temporary log file
 LOG_FILE=$(mktemp /tmp/lcms_test_log.XXXXXX)
 
-# Adjust testcms2.c when the condition below holds
-if grep -q "Corrupted profile: no tags found" src/cmsio0.c 2>/dev/null; then
-    echo "Patching test for stricter validation..."
-    
-    # Backup original test
-    cp testbed/testcms2.c testbed/testcms2.c.backup
-    
-    # Fix the CheckVersionHeaderWriting test to add a minimal tag
-    sed -i '/cmsSetProfileVersion(h, test_versions\[index\]);/i \
-      \/\/ Add a minimal tag so the profile is valid (patch requires at least one tag)\
+# Give the profiles written by the CheckVersionHeaderWriting test a tag
+sed -i '/cmsSetProfileVersion(h, test_versions\[index\]);/i \
+      \/\/ Add a minimal tag to the profile\
       cmsMLU* mlu = cmsMLUalloc(DbgThread(), 1);\
       cmsMLUsetASCII(mlu, "en", "US", "Test");\
       cmsWriteTag(h, cmsSigProfileDescriptionTag, mlu);\
       cmsMLUfree(mlu);' testbed/testcms2.c
-fi
 
 # Run the test suite
 make check | tee "$LOG_FILE"

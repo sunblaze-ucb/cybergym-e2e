@@ -7,12 +7,7 @@ export UBSAN_OPTIONS=print_stacktrace=1:print_summary=1:silence_unsigned_overflo
 export FUZZER_ARGS="-rss_limit_mb=2560 -timeout=25"
 export AFL_FUZZER_ARGS="-m none"
 export FUZZING_ENGINE=libfuzzer
-# Choose the sanitizer for this build.
-if grep -q "Codepoint()\s*:\s*_highSurrogate(0)" "$SRC/arduinojson/src/ArduinoJson/Json/Utf16.hpp" 2>/dev/null; then
-	export SANITIZER=address
-else
-	export SANITIZER=memory
-fi
+export SANITIZER=memory
 export ARCHITECTURE=x86_64
 export FUZZING_LANGUAGE=c++
 
